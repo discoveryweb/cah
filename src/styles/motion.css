@@ -1,0 +1,50 @@
+@layer components {
+  .js .reveal {
+    transform: translateY(22px);
+    opacity: 0;
+    transition:
+      opacity 900ms var(--ease-out),
+      transform 900ms var(--ease-out);
+    transition-delay: var(--d, 0ms);
+    will-change: opacity, transform;
+  }
+
+  .js .reveal.is-visible {
+    transform: none;
+    opacity: 1;
+    will-change: auto;
+  }
+
+  /* A gentle lift for interactive rows */
+  .lift {
+    transition: transform 380ms var(--ease-out);
+  }
+
+  .lift:hover {
+    transform: translateY(-3px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.001ms !important;
+    }
+
+    .js .reveal {
+      transform: none;
+      opacity: 1;
+    }
+
+    .marquee__track {
+      animation: none;
+    }
+  }
+}

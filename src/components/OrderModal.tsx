@@ -49,7 +49,7 @@ export function OrderModal({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => firstFieldRef.current?.focus(), 50);
+    const focusTimer = window.setTimeout(() => firstFieldRef.current?.focus(), 80);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -122,7 +122,7 @@ export function OrderModal({
           website,
         }),
       });
-      const result = await response.json().catch(() => ({})) as ApiResponse;
+      const result = (await response.json().catch(() => ({}))) as ApiResponse;
 
       if (!response.ok || result.ok !== true) {
         if (result.fields) setErrors(result.fields);
@@ -151,14 +151,14 @@ export function OrderModal({
     }
   };
 
-  const field =
-    "h-11 w-full rounded-xl border bg-ink/70 px-3.5 text-sm text-txt placeholder:text-muted transition-colors focus:border-violet focus:outline-none focus:ring-2 focus:ring-violet/30";
+  const fieldClass = (invalid: boolean, extra?: string) =>
+    cn("modal-input", extra, invalid && "modal-input--invalid");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#03051a]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="modal-overlay">
       <button
         type="button"
-        className="absolute inset-0 z-0 h-full w-full cursor-default border-0 bg-transparent"
+        className="modal-backdrop"
         onClick={onClose}
         aria-label="بستن پنجرهٔ ثبت درخواست"
         tabIndex={-1}
@@ -169,154 +169,190 @@ export function OrderModal({
         aria-modal="true"
         aria-labelledby="order-title"
         aria-describedby="order-description"
-        className="order-modal-panel relative z-10 max-h-[94dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl p-6 sm:rounded-3xl sm:p-8"
+        className="modal-panel"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="بستن"
-          className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-txt-2 transition-colors hover:bg-white/10 hover:text-txt focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet"
-        >
-          <X className="h-5 w-5" aria-hidden="true" />
+        <button type="button" onClick={onClose} aria-label="بستن" className="modal-close">
+          <X aria-hidden="true" />
         </button>
 
-        <h2 id="order-title" className="pe-10 text-xl font-extrabold text-txt">
-          ثبت درخواست مشاوره و سفارش
-        </h2>
-        <p id="order-description" className="mt-1 text-xs leading-6 text-txt-2">
-          اطلاعات پروژه را بنویسید تا برای ادامه با شما تماس بگیریم.
-        </p>
-
-        {status === "success" ? (
-          <div role="status" className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p>{statusMessage}</p>
+        <div className="modal-body">
+          <div className="modal-head">
+            <span className="modal-eyebrow" dir="ltr">
+              CAHEN / START A PROJECT
+            </span>
+            <h2 id="order-title" className="modal-title">
+              ثبت درخواست مشاوره و سفارش
+            </h2>
+            <p id="order-description" className="modal-description">
+              اطلاعات پروژه را بنویسید تا برای ادامه با شما تماس بگیریم.
+            </p>
           </div>
-        ) : (
-          <form onSubmit={submit} noValidate className="mt-5 space-y-4">
-            <div>
-              <label htmlFor="o-name" className="mb-1.5 block text-xs font-medium text-txt-2">
-                نام و نام خانوادگی <span className="text-lav">*</span>
-              </label>
-              <input
-                id="o-name"
-                ref={firstFieldRef}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                autoComplete="name"
-                maxLength={80}
-                required
-                aria-invalid={Boolean(errors.name)}
-                aria-describedby={errors.name ? "e-name" : undefined}
-                className={cn(field, errors.name ? "border-red-400/70" : "border-line")}
-              />
-              {errors.name && <p id="e-name" className="mt-1 text-xs text-red-300">{errors.name}</p>}
-            </div>
 
-            <div>
-              <label htmlFor="o-phone" className="mb-1.5 block text-xs font-medium text-txt-2">
-                شماره موبایل <span className="text-lav">*</span>
-              </label>
-              <input
-                id="o-phone"
-                type="tel"
-                dir="ltr"
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="09123456789"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                maxLength={24}
-                required
-                aria-required="true"
-                aria-invalid={Boolean(errors.phone)}
-                aria-describedby={errors.phone ? "e-phone" : undefined}
-                className={cn(field, "text-right placeholder:text-right", errors.phone ? "border-red-400/70" : "border-line")}
-              />
-              {errors.phone && <p id="e-phone" className="mt-1 text-xs text-red-300">{errors.phone}</p>}
+          {status === "success" ? (
+            <div role="status" className="modal-success">
+              <span className="modal-success__icon" aria-hidden="true">
+                <CheckCircle2 />
+              </span>
+              <p>{statusMessage}</p>
+              <button type="button" onClick={onClose} className="btn btn--ghost">
+                بستن پنجره
+              </button>
             </div>
-
-            <div>
-              <label htmlFor="o-email" className="mb-1.5 block text-xs font-medium text-txt-2">
-                ایمیل <span className="text-muted">(اختیاری)</span>
-              </label>
-              <input
-                id="o-email"
-                type="email"
-                dir="ltr"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                maxLength={254}
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? "e-email" : undefined}
-                className={cn(field, errors.email ? "border-red-400/70" : "border-line")}
-              />
-              {errors.email && <p id="e-email" className="mt-1 text-xs text-red-300">{errors.email}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="o-service" className="mb-1.5 block text-xs font-medium text-txt-2">
-                نوع خدمت <span className="text-muted">(اختیاری)</span>
-              </label>
-              <select
-                id="o-service"
-                value={service}
-                onChange={(event) => setService(event.target.value)}
-                aria-invalid={Boolean(errors.service)}
-                aria-describedby={errors.service ? "e-service" : undefined}
-                className={cn(field, errors.service ? "border-red-400/70" : "border-line")}
-              >
-                <option value="">انتخاب کنید…</option>
-                {SERVICE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              {errors.service && <p id="e-service" className="mt-1 text-xs text-red-300">{errors.service}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="o-msg" className="mb-1.5 block text-xs font-medium text-txt-2">
-                توضیح کوتاه پروژه <span className="text-muted">(اختیاری)</span>
-              </label>
-              <textarea
-                id="o-msg"
-                rows={4}
-                maxLength={400}
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                aria-invalid={Boolean(errors.message)}
-                aria-describedby={errors.message ? "e-message" : undefined}
-                className={cn(field, "h-auto resize-y py-2.5 leading-7", errors.message ? "border-red-400/70" : "border-line")}
-              />
-              {errors.message && <p id="e-message" className="mt-1 text-xs text-red-300">{errors.message}</p>}
-            </div>
-
-            <div className="order-modal__honeypot" aria-hidden="true">
-              <label htmlFor="o-website">وب‌سایت</label>
-              <input id="o-website" tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} />
-            </div>
-
-            {status === "error" && (
-              <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-xs leading-6 text-red-100">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <p>{statusMessage}</p>
+          ) : (
+            <form onSubmit={submit} noValidate className="modal-form">
+              <div className="modal-field">
+                <label htmlFor="o-name" className="modal-label">
+                  نام و نام خانوادگی <span className="req">*</span>
+                </label>
+                <input
+                  id="o-name"
+                  ref={firstFieldRef}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  autoComplete="name"
+                  maxLength={80}
+                  required
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? "e-name" : undefined}
+                  className={fieldClass(Boolean(errors.name))}
+                />
+                {errors.name && (
+                  <p id="e-name" className="modal-error">
+                    {errors.name}
+                  </p>
+                )}
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={status === "sending"}
-              className="order-modal__submit flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white transition-all disabled:cursor-wait disabled:opacity-60"
-            >
-              {status === "sending" ? (
-                <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> در حال ارسال…</>
-              ) : "ارسال درخواست"}
-            </button>
-          </form>
-        )}
+              <div className="modal-field">
+                <label htmlFor="o-phone" className="modal-label">
+                  شماره موبایل <span className="req">*</span>
+                </label>
+                <input
+                  id="o-phone"
+                  type="tel"
+                  dir="ltr"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="09123456789"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  maxLength={24}
+                  required
+                  aria-required="true"
+                  aria-invalid={Boolean(errors.phone)}
+                  aria-describedby={errors.phone ? "e-phone" : undefined}
+                  className={fieldClass(Boolean(errors.phone), "modal-input--ltr")}
+                />
+                {errors.phone && (
+                  <p id="e-phone" className="modal-error">
+                    {errors.phone}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-field">
+                <label htmlFor="o-email" className="modal-label">
+                  ایمیل <small>(اختیاری)</small>
+                </label>
+                <input
+                  id="o-email"
+                  type="email"
+                  dir="ltr"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  maxLength={254}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? "e-email" : undefined}
+                  className={fieldClass(Boolean(errors.email), "modal-input--ltr")}
+                />
+                {errors.email && (
+                  <p id="e-email" className="modal-error">
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-field">
+                <label htmlFor="o-service" className="modal-label">
+                  نوع خدمت <small>(اختیاری)</small>
+                </label>
+                <select
+                  id="o-service"
+                  value={service}
+                  onChange={(event) => setService(event.target.value)}
+                  aria-invalid={Boolean(errors.service)}
+                  aria-describedby={errors.service ? "e-service" : undefined}
+                  className={fieldClass(Boolean(errors.service), "modal-select")}
+                >
+                  <option value="">انتخاب کنید…</option>
+                  {SERVICE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {errors.service && (
+                  <p id="e-service" className="modal-error">
+                    {errors.service}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-field">
+                <label htmlFor="o-msg" className="modal-label">
+                  توضیح کوتاه پروژه <small>(اختیاری)</small>
+                </label>
+                <textarea
+                  id="o-msg"
+                  rows={3}
+                  maxLength={400}
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  aria-invalid={Boolean(errors.message)}
+                  aria-describedby={errors.message ? "e-message" : undefined}
+                  className={fieldClass(Boolean(errors.message), "modal-input--area")}
+                />
+                {errors.message && (
+                  <p id="e-message" className="modal-error">
+                    {errors.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-honeypot" aria-hidden="true">
+                <label htmlFor="o-website">وب‌سایت</label>
+                <input
+                  id="o-website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(event) => setWebsite(event.target.value)}
+                />
+              </div>
+
+              {status === "error" && (
+                <div role="alert" className="modal-alert">
+                  <AlertCircle aria-hidden="true" />
+                  <p>{statusMessage}</p>
+                </div>
+              )}
+
+              <button type="submit" disabled={status === "sending"} className="modal-submit">
+                {status === "sending" ? (
+                  <>
+                    <LoaderCircle className="animate-spin" aria-hidden="true" />
+                    در حال ارسال…
+                  </>
+                ) : (
+                  "ارسال درخواست"
+                )}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

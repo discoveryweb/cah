@@ -1,25 +1,26 @@
 import { PROJECTS } from "../data";
 import { CircularGallery } from "./CircularGallery";
-import { Reveal, SectionBadge } from "./ui";
+import { Reveal, SectionHead } from "./ui";
 
-export function Projects() {
+export function Projects({ onOrder }: { onOrder: () => void }) {
   return (
-    <section id="projects" className="section-anchor section-space relative">
-      <div className="mx-auto max-w-[1280px] px-5 sm:px-8">
-        <Reveal className="section-heading mb-7 flex flex-col gap-5 sm:mb-9 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <SectionBadge>پروژه‌های منتخب</SectionBadge>
-            <h2 className="section-title mt-4">
-              ایده‌ها، <span className="text-grad">در قابِ تجربه.</span>
-            </h2>
-          </div>
-          <p className="section-intro max-w-md lg:pb-1">
-            چند نگاه مفهومی به مسائلی که دوست داریم حل کنیم؛ از تصویر اولیه تا تجربه‌ای که روی صفحه جان می‌گیرد.
-          </p>
+    <section id="projects" className="section projects">
+      <div className="container">
+        <Reveal>
+          <SectionHead
+            badge="پروژه‌های منتخب"
+            index="01"
+            title={
+              <>
+                ایده‌ها، <span className="text-grad">در قابِ تجربه.</span>
+              </>
+            }
+            intro="چند نگاه مفهومی به مسائلی که دوست داریم حل کنیم؛ از تصویر اولیه تا تجربه‌ای که روی صفحه جان می‌گیرد."
+          />
         </Reveal>
-
-        <CircularGallery items={PROJECTS} />
       </div>
+
+      <CircularGallery items={PROJECTS} onOrder={onOrder} />
     </section>
   );
 }

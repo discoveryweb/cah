@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { isLowEndDevice, supportsWebGL } from "../utils/capabilities";
 
 type MorphLayout = {
   width: number;
@@ -32,6 +31,9 @@ type PlacedLogo = { positions: MorphArray; colors: MorphArray };
 const SAMPLE_SIZE = 176;
 const MAX_DEVICE_PIXEL_RATIO = 1.5;
 const PARTICLE_BUDGET = 760;
+const CORE_COUNT = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
+/** Lower-powered machines keep the motion but render fewer, larger particles. */
+const BUDGET_SCALE = CORE_COUNT <= 2 ? 0.62 : CORE_COUNT <= 4 ? 0.85 : 1;
 const FRAME_INTERVAL = 1000 / 45;
 
 function clamp(value: number, min: number, max: number) {
@@ -201,8 +203,6 @@ export function ParticleMorph({
       setMode("loading");
       if (
         motionQuery.matches
-        || isLowEndDevice()
-        || !supportsWebGL()
         || typeof ResizeObserver === "undefined"
         || typeof IntersectionObserver === "undefined"
         || images.length < 2
@@ -218,7 +218,7 @@ export function ParticleMorph({
       }
 
       try {
-        const count = Math.round(PARTICLE_BUDGET * density);
+        const count = Math.round(PARTICLE_BUDGET * density * BUDGET_SCALE);
         const palette = images.map((_, index) => colors[index] ?? color).map((value) => value ?? "");
         const sampledLogos = await Promise.all(images.map((src, index) => sampleImage(src, count, palette[index] || undefined)));
         if (run !== session) return;

@@ -1,4 +1,7 @@
 import heroImage from "./assets/hero.jpg";
+import instagramImage from "./assets/social/instagram.svg";
+import telegramImage from "./assets/social/telegram.svg";
+import whatsappImage from "./assets/social/whatsapp.svg";
 import projectsImage from "./assets/projects.jpg";
 import ctaImage from "./assets/cta.jpg";
 
@@ -9,6 +12,34 @@ export const NAV_LINKS = [
   { label: "رویکرد ما", href: "#approach", id: "approach" },
   { label: "دربارهٔ CAHEN", href: "#about", id: "about" },
   { label: "تماس", href: "#contact", id: "contact" },
+] as const;
+
+export const CAPABILITIES = [
+  "استراتژی برند",
+  "طراحی محصول",
+  "تجربهٔ کاربری",
+  "رابط کاربری",
+  "توسعهٔ فرانت‌اند",
+  "هویت بصری",
+  "سیستم طراحی",
+  "روایت برند",
+] as const;
+
+export const CAPABILITIES_LATIN = [
+  "BRAND STRATEGY",
+  "PRODUCT DESIGN",
+  "USER EXPERIENCE",
+  "INTERFACE",
+  "FRONT-END",
+  "IDENTITY",
+  "DESIGN SYSTEM",
+  "ART DIRECTION",
+] as const;
+
+export const SOCIAL_CHANNELS = [
+  { name: "تلگرام", platform: "Telegram", href: "https://t.me/", image: telegramImage, color: "#26A5E4" },
+  { name: "اینستاگرام", platform: "Instagram", href: "https://www.instagram.com/", image: instagramImage, color: "#E4405F" },
+  { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", image: whatsappImage, color: "#25D366" },
 ] as const;
 
 export const SERVICE_OPTIONS = [
@@ -32,6 +63,7 @@ export const SERVICES = [
     icon: "compass",
     number: "1",
     title: "استراتژی و طراحی محصول",
+    latin: "STRATEGY & PRODUCT",
     text: "شناخت مسئله، ترسیم مسیر و تعریف تجربه‌ای که به نیاز کاربر پاسخ می‌دهد.",
     option: "استراتژی و طراحی محصول",
   },
@@ -39,6 +71,7 @@ export const SERVICES = [
     icon: "panels",
     number: "2",
     title: "طراحی وب و رابط کاربری",
+    latin: "WEB & INTERFACE",
     text: "وب‌سایت‌ها و رابط‌هایی دقیق، منسجم و متناسب با شخصیت برند شما.",
     option: "طراحی رابط و تجربهٔ کاربری",
   },
@@ -46,6 +79,7 @@ export const SERVICES = [
     icon: "code",
     number: "3",
     title: "توسعهٔ فرانت‌اند",
+    latin: "FRONT-END",
     text: "تبدیل طرح به تجربه‌ای سریع، واکنش‌گرا و خوش‌ساخت در تمام نمایشگرها.",
     option: "توسعهٔ فرانت‌اند",
   },
@@ -53,6 +87,7 @@ export const SERVICES = [
     icon: "palette",
     number: "4",
     title: "هویت بصری و برندینگ",
+    latin: "BRAND & IDENTITY",
     text: "ساخت زبانی بصری روشن و متمایز برای حضور یکپارچه در فضای دیجیتال.",
     option: "هویت بصری و برندینگ",
   },
