@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertCircle, CheckCircle2, LoaderCircle, X } from "lucide-react";
+import { AlertCircle, ArrowUpLeft, CheckCircle2, LoaderCircle, X } from "lucide-react";
 import { SERVICE_OPTIONS } from "../data";
 import { normalizePhoneNumber } from "../utils/phone.mjs";
 import { cn } from "../utils/cn";
@@ -49,7 +49,7 @@ export function OrderModal({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => firstFieldRef.current?.focus(), 80);
+    const focusTimer = window.setTimeout(() => firstFieldRef.current?.focus(), 90);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -61,9 +61,9 @@ export function OrderModal({
 
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
         )
-      ).filter((element) => !element.hasAttribute("hidden") && element.tabIndex >= 0);
+      ).filter((element) => element.offsetParent !== null);
       if (!focusable.length) return;
 
       const first = focusable[0];
@@ -152,13 +152,13 @@ export function OrderModal({
   };
 
   const fieldClass = (invalid: boolean, extra?: string) =>
-    cn("modal-input", extra, invalid && "modal-input--invalid");
+    cn("field__input", extra, invalid && "field__input--invalid");
 
   return (
-    <div className="modal-overlay">
+    <div className="modal">
       <button
         type="button"
-        className="modal-backdrop"
+        className="modal__backdrop"
         onClick={onClose}
         aria-label="بستن پنجرهٔ ثبت درخواست"
         tabIndex={-1}
@@ -169,40 +169,43 @@ export function OrderModal({
         aria-modal="true"
         aria-labelledby="order-title"
         aria-describedby="order-description"
-        className="modal-panel"
+        className="modal__panel"
       >
-        <button type="button" onClick={onClose} aria-label="بستن" className="modal-close">
-          <X aria-hidden="true" />
-        </button>
+        <div className="modal__bar">
+          <span dir="ltr">CAHEN / START A PROJECT</span>
+          <button type="button" onClick={onClose} className="modal__close" aria-label="بستن">
+            <span>بستن</span>
+            <X aria-hidden="true" />
+          </button>
+        </div>
 
-        <div className="modal-body">
-          <div className="modal-head">
-            <span className="modal-eyebrow" dir="ltr">
-              CAHEN / START A PROJECT
-            </span>
-            <h2 id="order-title" className="modal-title">
-              ثبت درخواست مشاوره و سفارش
-            </h2>
-            <p id="order-description" className="modal-description">
-              اطلاعات پروژه را بنویسید تا برای ادامه با شما تماس بگیریم.
-            </p>
-          </div>
+        <div className="modal__scroll">
+          <span className="modal__eyebrow" dir="ltr">
+            LET&apos;S BUILD SOMETHING
+          </span>
+          <h2 id="order-title" className="modal__title">
+            دربارهٔ پروژه‌تان بگویید
+          </h2>
+          <p id="order-description" className="modal__desc">
+            چند سؤال کوتاه، تا بدانیم از کجا شروع کنیم. اگر جزئیات را هنوز نمی‌دانید، اشکالی ندارد؛
+            همین‌جا با هم روشنش می‌کنیم.
+          </p>
 
           {status === "success" ? (
-            <div role="status" className="modal-success">
-              <span className="modal-success__icon" aria-hidden="true">
+            <div role="status" className="modal__success">
+              <span className="modal__success-icon" aria-hidden="true">
                 <CheckCircle2 />
               </span>
               <p>{statusMessage}</p>
-              <button type="button" onClick={onClose} className="btn btn--ghost">
-                بستن پنجره
+              <button type="button" onClick={onClose} className="btn btn--light btn--sm">
+                <span>بستن پنجره</span>
               </button>
             </div>
           ) : (
-            <form onSubmit={submit} noValidate className="modal-form">
-              <div className="modal-field">
-                <label htmlFor="o-name" className="modal-label">
-                  نام و نام خانوادگی <span className="req">*</span>
+            <form onSubmit={submit} noValidate className="modal__form">
+              <div className="field">
+                <label htmlFor="o-name" className="field__label">
+                  نام و نام خانوادگی <span className="field__req">*</span>
                 </label>
                 <input
                   id="o-name"
@@ -216,16 +219,16 @@ export function OrderModal({
                   aria-describedby={errors.name ? "e-name" : undefined}
                   className={fieldClass(Boolean(errors.name))}
                 />
-                {errors.name && (
-                  <p id="e-name" className="modal-error">
+                {errors.name ? (
+                  <p id="e-name" className="field__error">
                     {errors.name}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="modal-field">
-                <label htmlFor="o-phone" className="modal-label">
-                  شماره موبایل <span className="req">*</span>
+              <div className="field">
+                <label htmlFor="o-phone" className="field__label">
+                  شماره موبایل <span className="field__req">*</span>
                 </label>
                 <input
                   id="o-phone"
@@ -241,18 +244,18 @@ export function OrderModal({
                   aria-required="true"
                   aria-invalid={Boolean(errors.phone)}
                   aria-describedby={errors.phone ? "e-phone" : undefined}
-                  className={fieldClass(Boolean(errors.phone), "modal-input--ltr")}
+                  className={fieldClass(Boolean(errors.phone), "field__input--ltr")}
                 />
-                {errors.phone && (
-                  <p id="e-phone" className="modal-error">
+                {errors.phone ? (
+                  <p id="e-phone" className="field__error">
                     {errors.phone}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="modal-field">
-                <label htmlFor="o-email" className="modal-label">
-                  ایمیل <small>(اختیاری)</small>
+              <div className="field">
+                <label htmlFor="o-email" className="field__label">
+                  ایمیل <small>اختیاری</small>
                 </label>
                 <input
                   id="o-email"
@@ -266,18 +269,18 @@ export function OrderModal({
                   maxLength={254}
                   aria-invalid={Boolean(errors.email)}
                   aria-describedby={errors.email ? "e-email" : undefined}
-                  className={fieldClass(Boolean(errors.email), "modal-input--ltr")}
+                  className={fieldClass(Boolean(errors.email), "field__input--ltr")}
                 />
-                {errors.email && (
-                  <p id="e-email" className="modal-error">
+                {errors.email ? (
+                  <p id="e-email" className="field__error">
                     {errors.email}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="modal-field">
-                <label htmlFor="o-service" className="modal-label">
-                  نوع خدمت <small>(اختیاری)</small>
+              <div className="field">
+                <label htmlFor="o-service" className="field__label">
+                  نوع خدمت <small>اختیاری</small>
                 </label>
                 <select
                   id="o-service"
@@ -285,7 +288,7 @@ export function OrderModal({
                   onChange={(event) => setService(event.target.value)}
                   aria-invalid={Boolean(errors.service)}
                   aria-describedby={errors.service ? "e-service" : undefined}
-                  className={fieldClass(Boolean(errors.service), "modal-select")}
+                  className={fieldClass(Boolean(errors.service), "field__select")}
                 >
                   <option value="">انتخاب کنید…</option>
                   {SERVICE_OPTIONS.map((option) => (
@@ -294,16 +297,16 @@ export function OrderModal({
                     </option>
                   ))}
                 </select>
-                {errors.service && (
-                  <p id="e-service" className="modal-error">
+                {errors.service ? (
+                  <p id="e-service" className="field__error">
                     {errors.service}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="modal-field">
-                <label htmlFor="o-msg" className="modal-label">
-                  توضیح کوتاه پروژه <small>(اختیاری)</small>
+              <div className="field">
+                <label htmlFor="o-msg" className="field__label">
+                  توضیح کوتاه پروژه <small>اختیاری</small>
                 </label>
                 <textarea
                   id="o-msg"
@@ -313,16 +316,16 @@ export function OrderModal({
                   onChange={(event) => setMessage(event.target.value)}
                   aria-invalid={Boolean(errors.message)}
                   aria-describedby={errors.message ? "e-message" : undefined}
-                  className={fieldClass(Boolean(errors.message), "modal-input--area")}
+                  className={fieldClass(Boolean(errors.message), "field__input--area")}
                 />
-                {errors.message && (
-                  <p id="e-message" className="modal-error">
+                {errors.message ? (
+                  <p id="e-message" className="field__error">
                     {errors.message}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="modal-honeypot" aria-hidden="true">
+              <div className="modal__honeypot" aria-hidden="true">
                 <label htmlFor="o-website">وب‌سایت</label>
                 <input
                   id="o-website"
@@ -333,21 +336,24 @@ export function OrderModal({
                 />
               </div>
 
-              {status === "error" && (
-                <div role="alert" className="modal-alert">
+              {status === "error" ? (
+                <div role="alert" className="modal__alert">
                   <AlertCircle aria-hidden="true" />
                   <p>{statusMessage}</p>
                 </div>
-              )}
+              ) : null}
 
-              <button type="submit" disabled={status === "sending"} className="modal-submit">
+              <button type="submit" disabled={status === "sending"} className="modal__submit">
                 {status === "sending" ? (
                   <>
                     <LoaderCircle className="animate-spin" aria-hidden="true" />
-                    در حال ارسال…
+                    <span>در حال ارسال…</span>
                   </>
                 ) : (
-                  "ارسال درخواست"
+                  <>
+                    <span>ارسال درخواست</span>
+                    <ArrowUpLeft aria-hidden="true" />
+                  </>
                 )}
               </button>
             </form>

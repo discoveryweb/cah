@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { NAV_LINKS } from "../data";
+import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 
 /** Hairline scroll progress fixed to the very top of the viewport. */
 export function ScrollProgress() {
@@ -32,7 +34,7 @@ export function ScrollProgress() {
     };
   }, []);
 
-  return <span ref={barRef} className="scroll-progress" aria-hidden="true" />;
+  return <span ref={barRef} className="progress" aria-hidden="true" />;
 }
 
 export function BackToTop() {
@@ -42,7 +44,7 @@ export function BackToTop() {
     let frame = 0;
     const update = () => {
       frame = 0;
-      setVisible(window.scrollY > 720);
+      setVisible(window.scrollY > 900);
     };
     const schedule = () => {
       if (frame) return;
@@ -69,47 +71,64 @@ export function BackToTop() {
   );
 }
 
-/** Soft light that follows the pointer on precise-pointer devices. */
-export function CursorGlow() {
-  const ref = useRef<HTMLDivElement>(null);
+/** A quiet chapter index pinned to the outer edge on large screens. */
+export function ChapterRail() {
+  const active = useActiveSection();
+  const invert = useInvertAt("middle");
+
+  return (
+    <nav className={`rail${invert ? " rail--light" : ""}`} aria-label="فهرست فصل‌ها">
+      <ol className="rail__list">
+        {NAV_LINKS.map((link, index) => (
+          <li key={link.id}>
+            <a
+              href={`#${link.id}`}
+              className={`rail__link${active === link.id ? " rail__link--active" : ""}`}
+              aria-current={active === link.id ? "location" : undefined}
+              title={link.label}
+            >
+              <span className="rail__num" dir="ltr">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="rail__tick" aria-hidden="true" />
+              <span className="sr-only">{link.label}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+const TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Tehran",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** Tehran local time, refreshed on the minute. */
+export function TehranClock({ className, short = false }: { className?: string; short?: boolean }) {
+  const [time, setTime] = useState(() => TIME_FORMAT.format(new Date()));
 
   useEffect(() => {
-    if (window.matchMedia("(hover: none)").matches) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const node = ref.current;
-    if (!node) return;
+    let timer = 0;
 
-    let frame = 0;
-    let targetX = window.innerWidth / 2;
-    let targetY = window.innerHeight * 0.3;
-    let currentX = targetX;
-    let currentY = targetY;
-    let raf = 0;
-
-    const render = () => {
-      currentX += (targetX - currentX) * 0.12;
-      currentY += (targetY - currentY) * 0.12;
-      node.style.transform = `translate3d(${currentX - 320}px, ${currentY - 320}px, 0)`;
-      raf = window.requestAnimationFrame(render);
+    const schedule = () => {
+      const now = new Date();
+      setTime(TIME_FORMAT.format(now));
+      timer = window.setTimeout(schedule, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
     };
 
-    const onMove = (event: PointerEvent) => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        targetX = event.clientX;
-        targetY = event.clientY;
-      });
-    };
-
-    window.addEventListener("pointermove", onMove, { passive: true });
-    raf = window.requestAnimationFrame(render);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("pointermove", onMove);
-    };
+    schedule();
+    return () => window.clearTimeout(timer);
   }, []);
 
-  return <div ref={ref} className="cursor-glow" aria-hidden="true" />;
+  return (
+    <span className={className}>
+      {!short && <i aria-hidden="true" />}
+      <span dir="ltr">{time}</span>
+      <span className="sr-only">به وقت تهران</span>
+    </span>
+  );
 }

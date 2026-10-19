@@ -1,65 +1,64 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUpLeft, Search, X } from "lucide-react";
-import { NAV_LINKS, SOCIAL_CHANNELS } from "../data";
+import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
+import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import { cn } from "../utils/cn";
-import { LogoMark } from "./ui";
+import { Brand } from "./ui";
+import { TehranClock } from "./SiteChrome";
 
 const SEARCH_INDEX = [
-  { keys: ["نمونه", "پروژه", "کار", "کانسپت"], id: "projects" },
-  { keys: ["خدمات", "توانمندی", "طراحی", "توسعه", "برند", "تجربه"], id: "services" },
-  { keys: ["روش", "رویکرد", "مراحل", "فرایند"], id: "approach" },
-  { keys: ["درباره", "تیم", "cahen", "کاهن", "استودیو"], id: "about" },
-  { keys: ["تماس", "همکاری", "مشاوره"], id: "contact" },
+  { keys: ["کار", "پروژه", "نمونه", "soma", "orbit", "aura", "پرتفولیو"], id: "work" },
+  { keys: ["خدمت", "توانمندی", "طراحی", "توسعه", "برند", "هویت", "محصول"], id: "services" },
+  { keys: ["فرایند", "روش", "مراحل", "process", "پروسه"], id: "process" },
+  { keys: ["استودیو", "درباره", "تیم", "cahen", "کاهن", "ما"], id: "studio" },
+  { keys: ["تماس", "همکاری", "پروژه", "مشاوره", "contact", "ایمیل"], id: "contact" },
 ];
 
-export function Header({ onOrder }: { onOrder: () => void }) {
+export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [active, setActive] = useState("home");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const frameRef = useRef(0);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const lastScroll = useRef(0);
+  const active = useActiveSection();
+  const invert = useInvertAt("top");
 
   useEffect(() => {
+    let frame = 0;
     const update = () => {
-      frameRef.current = 0;
-      setScrolled(window.scrollY > 12);
-      const threshold = window.scrollY + 170;
-      let current = "home";
-      for (const link of NAV_LINKS) {
-        const section = document.getElementById(link.id);
-        if (section && section.getBoundingClientRect().top + window.scrollY <= threshold) current = link.id;
-      }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) current = "contact";
-      setActive(current);
+      frame = 0;
+      const y = window.scrollY;
+      setScrolled(y > 16);
+      const delta = y - lastScroll.current;
+      if (y > 520 && delta > 6 && !menuOpen && !searchOpen) setHidden(true);
+      else if (delta < -4 || y < 320) setHidden(false);
+      lastScroll.current = y;
     };
-
     const schedule = () => {
-      if (frameRef.current) return;
-      frameRef.current = window.requestAnimationFrame(update);
+      if (frame) return;
+      frame = window.requestAnimationFrame(update);
     };
-
     update();
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule, { passive: true });
     return () => {
-      window.cancelAnimationFrame(frameRef.current);
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
     };
-  }, []);
+  }, [menuOpen, searchOpen]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setMenuOpen(false);
         setSearchOpen(false);
+        setMenuOpen(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setSearchOpen(true);
+        setSearchOpen((value) => !value);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -67,211 +66,277 @@ export function Header({ onOrder }: { onOrder: () => void }) {
   }, []);
 
   useEffect(() => {
-    if (searchOpen) window.setTimeout(() => searchRef.current?.focus(), 60);
-    else {
-      setQuery("");
-      setNotFound(false);
+    if (searchOpen) {
+      const timer = window.setTimeout(() => searchRef.current?.focus(), 120);
+      return () => window.clearTimeout(timer);
     }
+    setQuery("");
+    setNotFound(false);
   }, [searchOpen]);
 
   useEffect(() => {
+    if (!menuOpen) return;
     const previous = document.body.style.overflow;
-    if (menuOpen) document.body.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => {
+      menuRef.current?.querySelector<HTMLElement>(".menu__link")?.focus();
+    }, 90);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !menuRef.current) return;
+      const focusable = Array.from(
+        menuRef.current.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")
+      ).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previous;
     };
   }, [menuOpen]);
 
   const goTo = (id: string) => {
-    setMenuOpen(false);
     setSearchOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMenuOpen(false);
+    const section = document.getElementById(id);
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const submitSearch = (event: FormEvent) => {
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const value = query.trim().toLocaleLowerCase("fa");
-    if (!value) return;
-
-    const match = SEARCH_INDEX.find((section) => section.keys.some((key) => value.includes(key) || key.includes(value)));
+    const text = query.trim().toLowerCase();
+    if (!text) return;
+    const match = SEARCH_INDEX.find((entry) => entry.keys.some((key) => text.includes(key)));
     if (!match) {
       setNotFound(true);
       return;
     }
-    setNotFound(false);
     goTo(match.id);
   };
 
   return (
     <>
       <header
-        className={cn("site-header", scrolled && "site-header--scrolled", menuOpen && "site-header--open")}
+        className={cn(
+          "header",
+          scrolled && "header--solid",
+          hidden && "header--hidden",
+          invert && "header--invert",
+          ready && "header--ready"
+        )}
       >
-        <div className="header-inner container">
-          <a href="#home" className="brand" aria-label="CAHEN — بازگشت به صفحهٔ اصلی" onClick={() => setMenuOpen(false)}>
-            <span className="brand__mark">
-              <LogoMark />
-            </span>
-            <span className="brand__type">
-              <span className="brand__word" dir="ltr">CAHEN</span>
-              <span className="brand__sub" dir="ltr">DIGITAL STUDIO</span>
-            </span>
+        <div className="frame header__inner">
+          <a href="#home" className="brand" aria-label="CAHEN — بازگشت به ابتدای صفحه">
+            <Brand />
           </a>
 
-          <nav aria-label="منوی اصلی" className="nav">
-            <ul className="nav__list">
-              {NAV_LINKS.map((link) => (
-                <li key={link.id}>
-                  <a
-                    href={link.href}
-                    aria-current={active === link.id ? "location" : undefined}
-                    className={cn("nav__link", active === link.id && "nav__link--active")}
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+          <nav className="nav" aria-label="ناوبری اصلی">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                className={cn("nav__link", active === link.id && "nav__link--active")}
+                aria-current={active === link.id ? "location" : undefined}
+              >
+                {link.label}
+              </a>
+            ))}
           </nav>
 
-          <div className="header-actions">
+          <div className="header__side">
+            <TehranClock className="header__clock" />
             <button
               type="button"
+              className="header__search"
               onClick={() => setSearchOpen((value) => !value)}
               aria-label={searchOpen ? "بستن جست‌وجو" : "جست‌وجو در سایت"}
               aria-expanded={searchOpen}
-              aria-controls="site-search-panel"
-              className="icon-btn"
+              aria-controls="site-search"
             >
-              {searchOpen ? <X aria-hidden="true" /> : <Search aria-hidden="true" />}
+              <Search aria-hidden="true" />
             </button>
-
-            <button type="button" onClick={onOrder} className="btn btn--primary header-cta">
-              شروع همکاری
+            <button type="button" className="header__cta" onClick={onOrder}>
+              <span>شروع همکاری</span>
               <ArrowUpLeft aria-hidden="true" />
             </button>
-
             <button
               type="button"
-              className="icon-btn icon-btn--menu menu-btn"
+              className="menu-btn"
               aria-label={menuOpen ? "بستن منو" : "باز کردن منو"}
               aria-expanded={menuOpen}
-              aria-controls="mobile-menu"
+              aria-controls="site-menu"
               onClick={() => setMenuOpen((value) => !value)}
             >
-              {menuOpen ? (
-                <X aria-hidden="true" />
-              ) : (
-                <span className="menu-btn__lines" aria-hidden="true">
-                  <i />
-                  <i />
-                </span>
-              )}
+              <span className="menu-btn__lines" aria-hidden="true">
+                <i />
+                <i />
+              </span>
             </button>
-          </div>
-        </div>
-
-        <div className={cn("search-wrap", searchOpen && "search-wrap--open")} aria-hidden={!searchOpen}>
-          <div className="search-wrap__inner">
-            <div className="container">
-              <form id="site-search-panel" onSubmit={submitSearch} role="search" className="search-panel">
-                <Search aria-hidden="true" />
-                <label htmlFor="site-search" className="sr-only">جست‌وجو در سایت</label>
-                <input
-                  id="site-search"
-                  ref={searchRef}
-                  tabIndex={searchOpen ? 0 : -1}
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setNotFound(false);
-                  }}
-                  placeholder="چه چیزی را جست‌وجو می‌کنید؟"
-                  className="search-panel__input"
-                />
-                <kbd className="search-panel__kbd">⌘K</kbd>
-                {notFound && <p role="status" className="search-hint">بخشی با این عبارت پیدا نشد؛ عبارت دیگری را امتحان کنید.</p>}
-              </form>
-              <div className="search-suggestions">
-                {NAV_LINKS.slice(1).map((link) => (
-                  <button key={link.id} type="button" tabIndex={searchOpen ? 0 : -1} onClick={() => goTo(link.id)}>
-                    {link.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </header>
 
-      <div
-        id="mobile-menu"
-        className={cn("menu-sheet", menuOpen && "menu-sheet--open")}
-        aria-hidden={!menuOpen}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) setMenuOpen(false);
-        }}
+      <section
+        id="site-search"
+        className={cn("search", searchOpen && "search--open")}
+        aria-hidden={!searchOpen}
       >
-        <div className="menu-sheet__scroll">
-          <div className="menu-sheet__panel">
-            <div className="menu-sheet__label">
-              <span>CAHEN / NAVIGATION</span>
-              <span>MENU</span>
-            </div>
-
-            <nav aria-label="منوی موبایل" className="menu-sheet__list">
-              <ul>
-                {NAV_LINKS.map((link, index) => (
-                  <li key={link.id} className="menu-sheet__item">
-                    <a
-                      href={link.href}
-                      tabIndex={menuOpen ? 0 : -1}
-                      aria-current={active === link.id ? "location" : undefined}
-                      onClick={() => setMenuOpen(false)}
-                      className={cn("menu-sheet__link", active === link.id && "menu-sheet__link--active")}
-                    >
-                      <span className="menu-sheet__index" dir="ltr">{String(index + 1).padStart(2, "0")}</span>
-                      <span>{link.label}</span>
-                      <ArrowUpLeft aria-hidden="true" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="menu-sheet__foot">
+        <div className="search__inner">
+          <div className="search__body frame">
+            <form className="search__form" role="search" onSubmit={submitSearch}>
+              <Search aria-hidden="true" />
+              <label htmlFor="site-search-input" className="sr-only">
+                جست‌وجو در سایت
+              </label>
+              <input
+                id="site-search-input"
+                ref={searchRef}
+                className="search__input"
+                type="search"
+                value={query}
+                tabIndex={searchOpen ? 0 : -1}
+                placeholder="در سایت جست‌وجو کنید…"
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setNotFound(false);
+                }}
+              />
+              <kbd className="search__kbd">⌘K</kbd>
               <button
                 type="button"
+                className="search__close"
+                onClick={() => setSearchOpen(false)}
+                tabIndex={searchOpen ? 0 : -1}
+                aria-label="بستن جست‌وجو"
+              >
+                <X aria-hidden="true" />
+              </button>
+            </form>
+
+            <div className="search__results">
+              {NAV_LINKS.filter((link) => link.id !== "home").map((link) => (
+                <button
+                  key={link.id}
+                  type="button"
+                  className="search__result"
+                  tabIndex={searchOpen ? 0 : -1}
+                  onClick={() => goTo(link.id)}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+            {notFound ? (
+              <p className="search__hint" role="status">
+                بخشی با این عبارت پیدا نشد؛ «کارها» یا «تماس» را امتحان کنید.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <div
+        id="site-menu"
+        ref={menuRef}
+        className={cn("menu", menuOpen && "menu--open")}
+        aria-hidden={!menuOpen}
+      >
+        <div className="menu__scroll">
+          <div className="menu__inner frame">
+            <div className="menu__top">
+              <span dir="ltr">CAHEN / INDEX — ۲۰۲۶</span>
+              <button
+                type="button"
+                className="menu__close"
+                onClick={() => setMenuOpen(false)}
+                tabIndex={menuOpen ? 0 : -1}
+                aria-label="بستن منو"
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
+
+            <nav aria-label="منوی اصلی" className="menu__list">
+              {NAV_LINKS.map((link, index) => (
+                <div className="menu__item" key={link.id}>
+                  <a
+                    href={`#${link.id}`}
+                    className="menu__link"
+                    tabIndex={menuOpen ? 0 : -1}
+                    aria-current={active === link.id ? "location" : undefined}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="menu__num" dir="ltr">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="menu__label">{link.label}</span>
+                    <span className="menu__en" dir="ltr">
+                      {link.latin}
+                    </span>
+                  </a>
+                </div>
+              ))}
+            </nav>
+
+            <div className="menu__foot">
+              <div className="menu__foot-group">
+                <span className="menu__foot-label" dir="ltr">
+                  SOCIAL
+                </span>
+                <div className="menu__social">
+                  {SOCIAL_CHANNELS.map((channel) => (
+                    <a
+                      key={channel.platform}
+                      href={channel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      tabIndex={menuOpen ? 0 : -1}
+                    >
+                      <img src={channel.image} alt="" width={16} height={16} loading="lazy" decoding="async" />
+                      {channel.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <div className="menu__foot-group">
+                <span className="menu__foot-label" dir="ltr">
+                  DIRECT
+                </span>
+                <a
+                  href={`mailto:${CONTACT.email}`}
+                  className="menu__mail"
+                  tabIndex={menuOpen ? 0 : -1}
+                  dir="ltr"
+                >
+                  {CONTACT.email}
+                </a>
+              </div>
+
+              <button
+                type="button"
+                className="menu__cta"
                 tabIndex={menuOpen ? 0 : -1}
                 onClick={() => {
                   setMenuOpen(false);
                   onOrder();
                 }}
-                className="btn btn--primary"
               >
-                شروع همکاری
+                شروع یک پروژه
                 <ArrowUpLeft aria-hidden="true" />
               </button>
-
-              <div className="menu-sheet__social" aria-label="شبکه‌های اجتماعی CAHEN">
-                {SOCIAL_CHANNELS.map((channel) => (
-                  <a
-                    key={channel.platform}
-                    href={channel.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    tabIndex={menuOpen ? 0 : -1}
-                  >
-                    <img src={channel.image} alt="" width={16} height={16} loading="lazy" decoding="async" />
-                    {channel.name}
-                  </a>
-                ))}
-              </div>
-
-              <p className="menu-sheet__label" dir="ltr">
-                <span>TEHRAN / IRAN</span>
-                <span>CAHEN © {new Date().getFullYear()}</span>
-              </p>
             </div>
           </div>
         </div>

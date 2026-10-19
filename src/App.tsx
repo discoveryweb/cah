@@ -1,56 +1,51 @@
 import { useCallback, useState } from "react";
+import { Cursor } from "./components/Cursor";
+import { Cta } from "./components/Cta";
+import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
-import { Features } from "./components/Features";
-import { Projects } from "./components/Projects";
-import { Services } from "./components/Services";
-import { Approach } from "./components/Approach";
-import { Studio } from "./components/Studio";
-import { Manifesto } from "./components/Manifesto";
-import { CtaBanner } from "./components/CtaBanner";
-import { Footer } from "./components/Footer";
+import { Intro } from "./components/Intro";
 import { OrderModal } from "./components/OrderModal";
-import { BackToTop, CursorGlow, ScrollProgress } from "./components/SiteChrome";
+import { Preloader } from "./components/Preloader";
+import { Process } from "./components/Process";
+import { Quote } from "./components/Quote";
+import { Services } from "./components/Services";
+import { ChapterRail, BackToTop, ScrollProgress } from "./components/SiteChrome";
+import { Studio } from "./components/Studio";
+import { Work } from "./components/Work";
 
 export default function App() {
   const [order, setOrder] = useState<{ open: boolean; service?: string }>({ open: false });
+  const [ready, setReady] = useState(false);
 
   const openOrder = useCallback((service?: string) => setOrder({ open: true, service }), []);
   const closeOrder = useCallback(() => setOrder((current) => ({ ...current, open: false })), []);
+  const handleReady = useCallback(() => setReady(true), []);
 
   return (
-    <div dir="rtl" className="shell">
+    <div dir="rtl" className={`site${ready ? " is-ready" : ""}`}>
       <a href="#main-content" className="skip-link">
         رفتن به محتوای اصلی
       </a>
 
-      <div className="atmosphere" aria-hidden="true">
-        <div className="atmosphere__base" />
-        <div className="atmosphere__grid" />
-        <div className="atmosphere__orb atmosphere__orb--1" />
-        <div className="atmosphere__orb atmosphere__orb--2" />
-        <div className="atmosphere__orb atmosphere__orb--3" />
-        <div className="atmosphere__beam" />
-      </div>
-
-      <CursorGlow />
-      <div className="grain" aria-hidden="true" />
+      <Preloader onDone={handleReady} />
+      <Cursor />
       <ScrollProgress />
+      <Header onOrder={() => openOrder()} ready={ready} />
+      <ChapterRail />
 
-      <div className="relative z-10">
-        <Header onOrder={() => openOrder()} />
-        <main id="main-content" tabIndex={-1}>
-          <Hero onOrder={() => openOrder()} />
-          <Features />
-          <Projects onOrder={openOrder} />
-          <Services onOrder={openOrder} />
-          <Approach />
-          <Studio />
-          <Manifesto />
-          <CtaBanner onOrder={() => openOrder()} />
-        </main>
-        <Footer />
-      </div>
+      <main id="main-content" tabIndex={-1}>
+        <Hero onOrder={() => openOrder()} />
+        <Intro />
+        <Work onOrder={() => openOrder()} />
+        <Services onOrder={openOrder} />
+        <Process />
+        <Quote />
+        <Studio />
+        <Cta onOrder={() => openOrder()} />
+      </main>
+
+      <Footer />
 
       <OrderModal open={order.open} onClose={closeOrder} initialService={order.service} />
       <BackToTop />

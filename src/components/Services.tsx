@@ -1,87 +1,134 @@
-import { ArrowUpLeft, Code2, Compass, PanelsTopLeft, Palette } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpLeft } from "lucide-react";
 import { SERVICES } from "../data";
-import { useSpotlight } from "../utils/spotlight";
-import { Reveal, SectionBadge, SectionHead } from "./ui";
-
-const ICONS = { compass: Compass, panels: PanelsTopLeft, code: Code2, palette: Palette };
-
-function ServiceCard({
-  icon,
-  number,
-  latin,
-  title,
-  text,
-  onSelect,
-}: {
-  icon: keyof typeof ICONS;
-  number: string;
-  latin: string;
-  title: string;
-  text: string;
-  onSelect: () => void;
-}) {
-  const Icon = ICONS[icon];
-  const ref = useSpotlight<HTMLElement>();
-
-  return (
-    <article ref={ref} className="service spotlight">
-      <div className="service__top">
-        <span className="service__icon" aria-hidden="true">
-          <Icon strokeWidth={1.6} />
-        </span>
-        <span className="service__index" dir="ltr" aria-hidden="true">
-          {number.padStart(2, "0")} / 04
-        </span>
-      </div>
-
-      <span className="service__latin" dir="ltr">
-        {latin}
-      </span>
-      <h3 className="service__title">{title}</h3>
-      <p className="service__text">{text}</p>
-
-      <button type="button" onClick={onSelect} className="service__action">
-        <span>گفت‌وگو دربارهٔ این خدمت</span>
-        <ArrowUpLeft aria-hidden="true" />
-      </button>
-
-      <span className="service__glow" aria-hidden="true" />
-    </article>
-  );
-}
+import { cn } from "../utils/cn";
+import { Reveal, SectionHead } from "./ui";
 
 export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
+  const [open, setOpen] = useState<number | null>(0);
+  const [hovered, setHovered] = useState<number | null>(null);
+
   return (
-    <section id="services" className="section section--tint services">
-      <div className="container">
-        <Reveal>
-          <SectionHead
-            badge="آنچه کنار هم می‌سازیم"
-            index="02"
-            title={
-              <>
-                از تصویر بزرگ، <span className="text-grad">تا پیکسل آخر.</span>
-              </>
-            }
-            intro="مجموعه‌ای از تخصص‌ها که در کنار هم، حضوری دیجیتال با شخصیت و عملکرد می‌سازند."
-          />
+    <section
+      id="services"
+      className="chapter theme-paper services section"
+      aria-labelledby="services-title"
+    >
+      <div className="frame">
+        <SectionHead
+          index="03"
+          label="توانمندی‌ها"
+          latin="Capabilities"
+          id="services-title"
+          title={
+            <>
+              آنچه می‌سازیم، با <span className="accent">دقت</span>.
+            </>
+          }
+          note="چهار حوزه که در کنار هم یک محصول کامل می‌سازند: از اولین پرسش تا آخرین پیکسلِ منتشرشده. برای دیدن جزئیات هر حوزه، روی آن باز کنید."
+        />
+
+        <Reveal className="services__list" delay={80}>
+          {SERVICES.map((service, index) => {
+            const isOpen = open === index;
+            return (
+              <div
+                key={service.number}
+                className={cn("service", isOpen && "service--open")}
+                onPointerEnter={() => setHovered(index)}
+                onPointerLeave={() => setHovered(null)}
+              >
+                <h3>
+                  <button
+                    type="button"
+                    className="service__trigger"
+                    aria-expanded={isOpen}
+                    aria-controls={`service-panel-${index}`}
+                    id={`service-trigger-${index}`}
+                    onClick={() => setOpen(isOpen ? null : index)}
+                  >
+                    <span className="service__num" dir="ltr">
+                      {service.number}
+                    </span>
+                    <span className="service__name">
+                      <strong>{service.title}</strong>
+                      <span dir="ltr">{service.latin}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "service__toggle",
+                        hovered === index && !isOpen && "service__toggle--hot"
+                      )}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </h3>
+
+                <div
+                  className="service__panel"
+                  id={`service-panel-${index}`}
+                  role="region"
+                  aria-labelledby={`service-trigger-${index}`}
+                  aria-hidden={!isOpen}
+                >
+                  <div className="service__panel-inner">
+                    <div className="service__content">
+                      <span className="service__watermark" aria-hidden="true" dir="ltr">
+                        {service.number}
+                      </span>
+                      <div className="service__lede">
+                        <p className="service__desc">{service.text}</p>
+                        <button
+                          type="button"
+                          className="service__cta"
+                          tabIndex={isOpen ? 0 : -1}
+                          onClick={() => onOrder(service.option)}
+                          data-cursor="hover"
+                        >
+                          <span>شروع این خدمت</span>
+                          <ArrowUpLeft aria-hidden="true" />
+                        </button>
+                      </div>
+                      <div className="service__meta">
+                        <span className="service__meta-label">
+                          <span dir="ltr">DELIVERABLES</span>
+                        </span>
+                        <ul className="service__deliverables">
+                          {service.deliverables.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+
+                        <dl className="service__facts">
+                          <div>
+                            <dt>زمان تقریبی</dt>
+                            <dd>{service.duration}</dd>
+                          </div>
+                          <div>
+                            <dt>مناسب برای</dt>
+                            <dd>{service.suited}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </Reveal>
 
-        <ul className="service-grid">
-          {SERVICES.map((service, index) => (
-            <li key={service.number}>
-              <Reveal delay={index * 70} className="h-full">
-                <ServiceCard {...service} onSelect={() => onOrder(service.option)} />
-              </Reveal>
-            </li>
-          ))}
-        </ul>
-
-        <Reveal delay={120} className="services__foot">
-          <p className="services__foot-note">هر پروژه، ترکیبی متفاوت از این توانمندی‌هاست.</p>
-          <SectionBadge className="!border-white/[0.08] !bg-white/[0.02] !text-[#a9a4bd]">
-            یک تیم، یک مسیر، یک نتیجه
-          </SectionBadge>
+        <Reveal className="services__foot" delay={120}>
+          <p>هر پروژه، ترکیبی از این چهار حوزه است — نه یک انتخاب از میان آن‌ها</p>
+          <button
+            type="button"
+            className="link-arrow"
+            onClick={() => onOrder()}
+            data-cursor="hover"
+          >
+            <span>با ما دربارهٔ پروژه‌تان حرف بزنید</span>
+            <ArrowUpLeft aria-hidden="true" />
+          </button>
         </Reveal>
       </div>
     </section>

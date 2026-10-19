@@ -1,45 +1,23 @@
-import heroImage from "./assets/hero.jpg";
+import somaImage from "./assets/soma.jpg";
 import instagramImage from "./assets/social/instagram.svg";
 import telegramImage from "./assets/social/telegram.svg";
 import whatsappImage from "./assets/social/whatsapp.svg";
-import projectsImage from "./assets/projects.jpg";
-import ctaImage from "./assets/cta.jpg";
+import orbitImage from "./assets/orbit.jpg";
+import auraImage from "./assets/aura.jpg";
 
 export const NAV_LINKS = [
-  { label: "خانه", href: "#home", id: "home" },
-  { label: "پروژه‌ها", href: "#projects", id: "projects" },
-  { label: "توانمندی‌ها", href: "#services", id: "services" },
-  { label: "رویکرد ما", href: "#approach", id: "approach" },
-  { label: "دربارهٔ CAHEN", href: "#about", id: "about" },
-  { label: "تماس", href: "#contact", id: "contact" },
-] as const;
-
-export const CAPABILITIES = [
-  "استراتژی برند",
-  "طراحی محصول",
-  "تجربهٔ کاربری",
-  "رابط کاربری",
-  "توسعهٔ فرانت‌اند",
-  "هویت بصری",
-  "سیستم طراحی",
-  "روایت برند",
-] as const;
-
-export const CAPABILITIES_LATIN = [
-  "BRAND STRATEGY",
-  "PRODUCT DESIGN",
-  "USER EXPERIENCE",
-  "INTERFACE",
-  "FRONT-END",
-  "IDENTITY",
-  "DESIGN SYSTEM",
-  "ART DIRECTION",
+  { id: "home", label: "خانه", latin: "Index" },
+  { id: "work", label: "کارها", latin: "Work" },
+  { id: "services", label: "توانمندی‌ها", latin: "Services" },
+  { id: "process", label: "فرایند", latin: "Process" },
+  { id: "studio", label: "استودیو", latin: "Studio" },
+  { id: "contact", label: "تماس", latin: "Contact" },
 ] as const;
 
 export const SOCIAL_CHANNELS = [
-  { name: "تلگرام", platform: "Telegram", href: "https://t.me/", image: telegramImage, color: "#26A5E4" },
-  { name: "اینستاگرام", platform: "Instagram", href: "https://www.instagram.com/", image: instagramImage, color: "#E4405F" },
-  { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", image: whatsappImage, color: "#25D366" },
+  { name: "تلگرام", platform: "Telegram", href: "https://t.me/", image: telegramImage },
+  { name: "اینستاگرام", platform: "Instagram", href: "https://www.instagram.com/", image: instagramImage },
+  { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", image: whatsappImage },
 ] as const;
 
 export const SERVICE_OPTIONS = [
@@ -51,110 +29,193 @@ export const SERVICE_OPTIONS = [
   "بهینه‌سازی و پشتیبانی",
 ] as const;
 
-export const FEATURES = [
-  { icon: "target", number: "1", title: "هدف‌محور", text: "هر تصمیم، در خدمت مسئلهٔ واقعی." },
-  { icon: "layers", number: "2", title: "یکپارچه", text: "از ایدهٔ اولیه تا آخرین جزئیات." },
-  { icon: "fingerprint", number: "3", title: "به‌یادماندنی", text: "زیبایی با هویت، نه فقط تزئین." },
-  { icon: "gauge", number: "4", title: "آمادهٔ رشد", text: "تجربه‌ای سریع، واکنش‌گرا و پایدار." },
+export const TICKER = [
+  "استراتژی برند",
+  "طراحی محصول",
+  "تجربهٔ کاربری",
+  "رابط کاربری",
+  "توسعهٔ فرانت‌اند",
+  "هویت بصری",
+  "سیستم طراحی",
+  "جهت‌دهی هنری",
 ] as const;
 
-export const SERVICES = [
+export const PRINCIPLES = [
   {
-    icon: "compass",
-    number: "1",
-    title: "استراتژی و طراحی محصول",
-    latin: "STRATEGY & PRODUCT",
-    text: "شناخت مسئله، ترسیم مسیر و تعریف تجربه‌ای که به نیاز کاربر پاسخ می‌دهد.",
-    option: "استراتژی و طراحی محصول",
+    number: "01",
+    title: "فکر پیش از فرم",
+    text: "زیبایی زمانی ماندگار است که بر پایهٔ هدف ساخته شود، نه بر پایهٔ مد روز.",
   },
   {
-    icon: "panels",
-    number: "2",
-    title: "طراحی وب و رابط کاربری",
-    latin: "WEB & INTERFACE",
-    text: "وب‌سایت‌ها و رابط‌هایی دقیق، منسجم و متناسب با شخصیت برند شما.",
-    option: "طراحی رابط و تجربهٔ کاربری",
+    number: "02",
+    title: "جزئیات با دلیل",
+    text: "از فاصله‌ها تا حرکت‌ها؛ هیچ جزئیاتی تصادفی نیست و هر انتخاب قابل توضیح است.",
   },
   {
-    icon: "code",
-    number: "3",
-    title: "توسعهٔ فرانت‌اند",
-    latin: "FRONT-END",
-    text: "تبدیل طرح به تجربه‌ای سریع، واکنش‌گرا و خوش‌ساخت در تمام نمایشگرها.",
-    option: "توسعهٔ فرانت‌اند",
-  },
-  {
-    icon: "palette",
-    number: "4",
-    title: "هویت بصری و برندینگ",
-    latin: "BRAND & IDENTITY",
-    text: "ساخت زبانی بصری روشن و متمایز برای حضور یکپارچه در فضای دیجیتال.",
-    option: "هویت بصری و برندینگ",
+    number: "03",
+    title: "ساختن با هم",
+    text: "بهترین نتیجه از گفت‌وگوی شفاف، بازخورد صادقانه و همکاری واقعی شکل می‌گیرد.",
   },
 ] as const;
 
-export const PROJECTS = [
+export const WORK = [
   {
-    id: "1",
-    label: "SOMA",
-    title: "خرید، با تجربه‌ای تازه",
-    category: "E-COMMERCE · CONCEPT",
-    description: "کانسپت یک فروشگاه دیجیتال با تمرکز بر روایت محصول، وضوح مسیر خرید و تجربهٔ موبایل.",
-    tags: ["تجربهٔ خرید", "رابط کاربری", "واکنش‌گرا"],
-    image: heroImage,
-    alt: "نمای مفهومی یک فروشگاه آنلاین روی نمایشگرهای مختلف",
-    tone: "violet",
+    id: "soma",
+    name: "SOMA",
+    index: "01",
+    title: "خرید، با تجربهٔ یک نمایشگاه",
+    category: "E-COMMERCE / PRODUCT",
+    year: "۲۰۲۵",
+    sector: "خرده‌فروشی دیجیتال",
+    role: "استراتژی · تجربهٔ کاربری · رابط کاربری",
+    description: "بازطراحی یک فروشگاه آنلاین با تمرکز بر روایت محصول و مسیر خریدی که کاربر را همراه می‌کند.",
+    intro:
+      "SOMA پیش از این یک فروشگاه بود؛ مجموعه‌ای از محصولات که کنار هم چیده شده بودند. کاری که انجام دادیم، تبدیل آن به یک نمایشگاه بود: فضایی که در آن هر محصول، دلیلِ بودنش را روایت می‌کند.",
+    challenge:
+      "نرخ رهاکردن سبد خرید بالا بود و کاربران در مرحلهٔ انتخاب اندازه، مسیر را رها می‌کردند. مسئله، کمبود امکانات نبود؛ نبودِ اطمینان بود.",
+    result:
+      "با بازطراحی مسیر محصول، راهنمای اندازهٔ تعاملی و کاهش گام‌های پرداخت، تجربه‌ای ساخته شد که در آن کاربر می‌داند دقیقاً چه می‌خرد.",
+    metrics: [
+      { value: "۳۸٪", label: "رشد تکمیل سفارش" },
+      { value: "۲٫۴×", label: "زمان حضور در صفحهٔ محصول" },
+      { value: "۶→۳", label: "کاهش گام‌های پرداخت" },
+    ],
+    deliverables: ["معماری اطلاعات", "نمونهٔ تعاملی", "سیستم طراحی", "توسعهٔ فرانت‌اند"],
+    image: somaImage,
+    alt: "طبیعت بی‌جان از گلدان سرامیکی و شیشهٔ کهربایی در نور گرم — کانسپت فروشگاه SOMA",
   },
   {
-    id: "2",
-    label: "ORBIT",
-    title: "فراتر از یک صفحهٔ ساده",
-    category: "DIGITAL EXPERIENCE · CONCEPT",
-    description: "یک تجربهٔ دیجیتال مفهومی؛ جایی که حرکت، نور و تایپوگرافی به بخشی از هویت محصول تبدیل می‌شوند.",
-    tags: ["طراحی تعاملی", "هنر دیجیتال", "سیستم بصری"],
-    image: projectsImage,
-    alt: "کانسپت تجربهٔ دیجیتال با فرم‌های نورانی بنفش روی لپ‌تاپ",
-    tone: "blue",
+    id: "orbit",
+    name: "ORBIT",
+    index: "02",
+    title: "هویتی که حرکت می‌کند",
+    category: "FINTECH / BRAND SYSTEM",
+    year: "۲۰۲۴",
+    sector: "خدمات مالی",
+    role: "هویت بصری · وب‌سایت · حرکت",
+    description: "یک سیستم هویتی پویا برای پلتفرم مالی ORBIT؛ از نشانه و تایپوگرافی تا زبان حرکت در محصول.",
+    intro:
+      "ORBIT در بازاری فعالیت می‌کند که همه شبیه هم حرف می‌زنند. می‌خواستیم برندی بسازیم که پیش از خواندنِ متن، از طریق فرم و حرکت شناخته شود.",
+    challenge:
+      "هویت قبلی در کوچک‌ترین اندازه‌ها ناخوانا بود و در محصول دیجیتال هیچ نسخهٔ حرکتی نداشت. تیم محصول هم برای هر صفحه، زبان بصری خودش را ساخته بود.",
+    result:
+      "یک سیستم نشانهٔ شبکه‌ای، پالت محدود و کتاب حرکت نوشتیم؛ سپس آن را در وب‌سایت و اپلیکیشن پیاده کردیم تا هر نقطهٔ تماس، یک صدا داشته باشد.",
+    metrics: [
+      { value: "۱", label: "سیستم، همهٔ نقاط تماس" },
+      { value: "۴۲", label: "کامپوننت مستندشده" },
+      { value: "۲ هفته", label: "زمان پیاده‌سازی در تیم" },
+    ],
+    deliverables: ["نشانه و لوگوتایپ", "تایپوگرافی", "کتاب برند", "زبان حرکت"],
+    image: orbitImage,
+    alt: "کمان برنجی و کرهٔ سیاه روی سکو — کانسپت هویت ORBIT",
   },
   {
-    id: "3",
-    label: "AURA",
-    title: "هویتی با حضور روشن",
-    category: "BRAND SYSTEM · CONCEPT",
-    description: "تمرینی برای ساخت یک زبان بصری منسجم؛ از نشانه و رنگ تا نحوهٔ حضور برند در وب.",
-    tags: ["هویت بصری", "طراحی وب", "جهت‌دهی هنری"],
-    image: ctaImage,
-    alt: "فرم کروی شیشه‌ای با نور بنفش به‌عنوان تصویر کانسپت هویت بصری",
-    tone: "plum",
+    id: "aura",
+    name: "AURA",
+    index: "03",
+    title: "نوری که برند می‌شود",
+    category: "BEAUTY / IDENTITY",
+    year: "۲۰۲۴",
+    sector: "مراقبت پوست",
+    role: "جهت‌دهی هنری · هویت · وب",
+    description: "هویت بصری و تجربهٔ دیجیتال برندی که می‌خواست دربارهٔ نور، ماده و آرامش حرف بزند.",
+    intro:
+      "AURA یک برند مراقبت از پوست است که محصولش را بر اساس نور و بافت توصیف می‌کند. زبان بصری آن را از همان دو عنصر ساختیم: نور به‌عنوان رنگ، بافت به‌عنوان فرم.",
+    challenge:
+      "دستهٔ محصولات این حوزه اشباع شده و همه از یک زیبایی‌شناسی مشابه استفاده می‌کنند. برند به تمایزی نیاز داشت که در قفسه و در فید اینستاگرام دیده شود.",
+    result:
+      "یک جهان بصری گرم و مینیمال ساختیم؛ با تایپوگرافی بزرگ، فضای منفی سخاوتمندانه و تصویری که محصول را در نور، نه در استودیو، نشان می‌دهد.",
+    metrics: [
+      { value: "۲٫۹×", label: "رشد تعامل در لانچ" },
+      { value: "۱۱", label: "قالب محتوای بصری" },
+      { value: "۱", label: "زبان، از بسته تا وب" },
+    ],
+    deliverables: ["هویت بصری", "بسته‌بندی", "جهت‌دهی هنری", "وب‌سایت"],
+    image: auraImage,
+    alt: "کرهٔ شیشه‌ای و نور شکسته روی کاغذ — کانسپت هویت AURA",
   },
 ] as const;
 
 export const PROCESS_STEPS = [
   {
-    number: "1",
-    label: "DISCOVER",
-    icon: "search",
-    title: "اول، درست می‌فهمیم",
-    text: "با پرسش‌های درست، هدف کسب‌وکار، مخاطب و مسئلهٔ اصلی را شفاف می‌کنیم.",
+    number: "01",
+    latin: "DISCOVER",
+    title: "اول، گوش می‌دهیم",
+    text: "با پرسش‌های درست، هدف کسب‌وکار، مخاطب و مسئلهٔ اصلی را شفاف می‌کنیم. این مرحله با یک نقشهٔ روشن تمام می‌شود، نه با یک حدس.",
   },
   {
-    number: "2",
-    label: "DESIGN",
-    icon: "layers",
-    title: "بعد، مسیر را می‌سازیم",
-    text: "ساختار، تجربه و زبان بصری را شکل می‌دهیم؛ سپس جزئیات را با بازخورد دقیق می‌کنیم.",
+    number: "02",
+    latin: "DEFINE",
+    title: "بعد، مسئله را می‌سازیم",
+    text: "یافته‌ها را به یک تعریف دقیق تبدیل می‌کنیم: چه چیزی باید تغییر کند، برای چه کسی و با چه معیاری موفق است.",
   },
   {
-    number: "3",
-    label: "DELIVER",
-    icon: "arrow",
+    number: "03",
+    latin: "DESIGN",
+    title: "حالا، فرم شکل می‌گیرد",
+    text: "ساختار، تجربه و زبان بصری را می‌سازیم. طرح‌ها را در بستر واقعی می‌بینیم و با بازخوردهای کوتاه و دقیق، تیزشان می‌کنیم.",
+  },
+  {
+    number: "04",
+    latin: "BUILD",
     title: "در نهایت، زنده‌اش می‌کنیم",
-    text: "طرح را به محصولی واقعی، واکنش‌گرا و آمادهٔ استفاده تبدیل می‌کنیم.",
+    text: "با کدی که خودمان نوشته‌ایم، طرح را به محصولی سریع، دسترس‌پذیر و پایدار تبدیل می‌کنیم؛ سپس برای رشد آماده‌اش می‌کنیم.",
   },
 ] as const;
 
-export const STUDIO_VALUES = [
-  { number: "A", title: "فکر پیش از فرم", text: "زیبایی زمانی ماندگار است که بر پایهٔ هدف ساخته شود." },
-  { number: "B", title: "جزئیات با دلیل", text: "از فاصله‌ها تا حرکت‌ها؛ هیچ جزئیاتی تصادفی نیست." },
-  { number: "C", title: "ساختن با هم", text: "بهترین نتیجه از گفت‌وگوی شفاف و همکاری واقعی شکل می‌گیرد." },
+export const SERVICES = [
+  {
+    number: "01",
+    title: "استراتژی و طراحی محصول",
+    latin: "PRODUCT STRATEGY",
+    text: "قبل از رسمِ اولین خط، باید بدانیم برای چه کسی و برای چه چیزی طراحی می‌کنیم. پژوهش، تعریف مسئله و ترسیم مسیر محصول، پایهٔ همهٔ کارهای ماست.",
+    deliverables: ["پژوهش کاربر", "نقشهٔ سفر", "معماری اطلاعات", "نمونهٔ اولیه"],
+    duration: "۳ تا ۵ هفته",
+    suited: "محصول جدید یا بازطراحی",
+    option: "استراتژی و طراحی محصول",
+  },
+  {
+    number: "02",
+    title: "طراحی رابط و تجربهٔ کاربری",
+    latin: "INTERFACE & EXPERIENCE",
+    text: "رابط‌هایی که کاربر را راهنمایی می‌کنند، نه سرگرم. از وایرفریم تا سیستم طراحی، هر صفحه با دقت در سلسله‌مراتب و خوانایی ساخته می‌شود.",
+    deliverables: ["وایرفریم", "سیستم طراحی", "رابط واکنش‌گرا", "نمونه‌سازی تعاملی"],
+    duration: "۴ تا ۸ هفته",
+    suited: "وب‌سایت و اپلیکیشن",
+    option: "طراحی رابط و تجربهٔ کاربری",
+  },
+  {
+    number: "03",
+    title: "توسعهٔ فرانت‌اند",
+    latin: "FRONT-END ENGINEERING",
+    text: "طرحی که در مرورگر، همان‌قدر دقیق نباشد که در فایل طراحی بود، تمام نشده است. ما با React، انیمیشن‌های سبک و کدِ تمیز، طرح را زنده می‌کنیم.",
+    deliverables: ["React / TypeScript", "حرکت و تعامل", "دسترس‌پذیری", "بهینه‌سازی سرعت"],
+    duration: "۳ تا ۶ هفته",
+    suited: "پیاده‌سازی طرح نهایی",
+    option: "توسعهٔ فرانت‌اند",
+  },
+  {
+    number: "04",
+    title: "هویت بصری و برندینگ",
+    latin: "BRAND & IDENTITY",
+    text: "برند، چیزی بیشتر از یک لوگو است؛ یک زبان است. نشانه، تایپوگرافی، رنگ، تصویر و لحن را چنان می‌سازیم که در هر نقطهٔ تماس، یک صدا داشته باشند.",
+    deliverables: ["نشانه و لوگوتایپ", "تایپوگرافی", "پالت و گرافیک", "راهنمای برند"],
+    duration: "۵ تا ۹ هفته",
+    suited: "برند در حال رشد",
+    option: "هویت بصری و برندینگ",
+  },
 ] as const;
+
+export const STATS = [
+  { value: "۲۶", label: "پروژهٔ منتشرشده", latin: "PROJECTS SHIPPED" },
+  { value: "۹", label: "صنعت متفاوت", latin: "INDUSTRIES" },
+  { value: "۰۴", label: "حوزهٔ تخصصی", latin: "DISCIPLINES" },
+  { value: "∞", label: "وسواس در جزئیات", latin: "ATTENTION TO DETAIL" },
+] as const;
+
+export const CONTACT = {
+  email: "hello@cahen.studio",
+  handle: "@cahen.studio",
+  city: "تهران، ایران",
+  latinCity: "TEHRAN / IRAN",
+} as const;

@@ -1,4 +1,12 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { ArrowUpLeft } from "lucide-react";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
@@ -14,21 +22,43 @@ export function LogoMark({ className }: { className?: string }) {
       height={600}
       decoding="async"
       draggable={false}
-      className={cn("brand__logo", className)}
+      className={cn("brand__mark", className)}
     />
   );
 }
+
+export function Brand({ sub = "DIGITAL STUDIO" }: { sub?: string }) {
+  return (
+    <>
+      <LogoMark />
+      <span className="brand__type">
+        <span className="brand__word" dir="ltr">
+          CAHEN
+        </span>
+        <span className="brand__sub" dir="ltr">
+          {sub}
+        </span>
+      </span>
+    </>
+  );
+}
+
+type RevealVariant = "up" | "mask" | "scale";
 
 export function Reveal({
   children,
   className,
   delay = 0,
+  variant = "up",
   as: Tag = "div",
+  threshold = 0.08,
 }: {
   children: ReactNode;
   className?: string;
   delay?: number;
-  as?: "div" | "section" | "li" | "article";
+  variant?: RevealVariant;
+  as?: "div" | "section" | "li" | "article" | "span" | "figure" | "header";
+  threshold?: number;
 }) {
   const ref = useRef<HTMLElement | null>(null);
 
@@ -36,8 +66,11 @@ export function Reveal({
     const element = ref.current;
     if (!element) return;
 
-    if (typeof IntersectionObserver === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      element.classList.add("is-visible");
+    if (
+      typeof IntersectionObserver === "undefined" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      element.classList.add("reveal--visible");
       return;
     }
 
@@ -45,82 +78,124 @@ export function Reveal({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
+            entry.target.classList.add("reveal--visible");
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.06, rootMargin: "0px 0px -6% 0px" }
+      { threshold, rootMargin: "0px 0px -6% 0px" }
     );
     observer.observe(element);
 
-    // Content should remain available if an observer is throttled or unavailable.
-    const safetyTimer = window.setTimeout(() => element.classList.add("is-visible"), 6000);
+    // Content must remain available if an observer is throttled or unavailable.
+    const safetyTimer = window.setTimeout(() => element.classList.add("reveal--visible"), 6000);
     return () => {
       observer.disconnect();
       window.clearTimeout(safetyTimer);
     };
-  }, []);
+  }, [threshold]);
 
-  const style = { "--d": `${delay}ms` } as CSSProperties;
+  const style = { "--reveal-delay": `${delay}ms` } as CSSProperties;
   const Component = Tag as "div";
   return (
-    <Component ref={ref as React.RefObject<HTMLDivElement>} className={cn("reveal", className)} style={style}>
+    <Component
+      ref={ref as RefObject<HTMLDivElement>}
+      className={cn("reveal", className)}
+      data-variant={variant}
+      style={style}
+    >
       {children}
     </Component>
   );
 }
 
-export function SectionBadge({ children, className }: { children: ReactNode; className?: string }) {
+/** Word-by-word entrance used on the studio statement. */
+export function SplitText({
+  text,
+  className,
+  stagger = 26,
+}: {
+  text: string;
+  className?: string;
+  stagger?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    if (
+      typeof IntersectionObserver === "undefined" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      element.classList.add("split--visible");
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          element.classList.add("split--visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(element);
+    const timer = window.setTimeout(() => element.classList.add("split--visible"), 6000);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
-    <span className={cn("badge", className)}>
-      <span className="badge__signal" aria-hidden="true" />
-      {children}
+    <span ref={ref} className={cn("split", className)}>
+      {text.split(" ").map((word, index) => (
+        <span className="split__word" key={`${word}-${index}`}>
+          <span style={{ "--word-delay": `${index * stagger}ms` } as CSSProperties}>{word}</span>
+          {" "}
+        </span>
+      ))}
     </span>
   );
 }
 
 export function SectionHead({
-  badge,
   index,
+  label,
+  latin,
   title,
-  intro,
+  note,
   id,
+  className,
 }: {
-  badge: ReactNode;
   index: string;
+  label: string;
+  latin: string;
   title: ReactNode;
-  intro: ReactNode;
+  note?: ReactNode;
   id?: string;
+  className?: string;
 }) {
   return (
-    <div className="section-head">
-      <span className="section-ghost" aria-hidden="true" dir="ltr">{index}</span>
-      <div className="section-head__title-group">
-        <div className="flex items-center gap-4">
-          <SectionBadge>{badge}</SectionBadge>
-          <span className="section-index" aria-hidden="true" dir="ltr">
-            <strong>{index}</strong> / 05
-          </span>
-        </div>
-        <h2 className="section-title" id={id}>{title}</h2>
+    <Reveal className={cn("section-head", className)} as="header">
+      <div className="section-head__aside">
+        <span className="section-head__index" dir="ltr">
+          {index} — {label.toUpperCase()}
+        </span>
+        <span className="label label--plain" dir="ltr">
+          {latin}
+        </span>
       </div>
-      <p className="section-intro">{intro}</p>
-    </div>
+      <div>
+        <h2 className="section-head__title" id={id}>
+          {title}
+        </h2>
+        {note ? <p className="section-head__note">{note}</p> : null}
+      </div>
+    </Reveal>
   );
 }
-
-type ButtonProps = {
-  children: ReactNode;
-  variant?: "primary" | "ghost" | "quiet";
-  href?: string;
-  onClick?: () => void;
-  type?: "button" | "submit";
-  className?: string;
-  arrow?: boolean;
-  disabled?: boolean;
-  ariaLabel?: string;
-};
 
 export function Button({
   children,
@@ -132,14 +207,18 @@ export function Button({
   arrow = true,
   disabled,
   ariaLabel,
-}: ButtonProps) {
-  const classes = cn(
-    "btn",
-    variant === "primary" && "btn--primary",
-    variant === "ghost" && "btn--ghost",
-    variant === "quiet" && "btn--quiet",
-    className
-  );
+}: {
+  children: ReactNode;
+  variant?: "primary" | "light";
+  href?: string;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  className?: string;
+  arrow?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  const classes = cn("btn", variant === "light" && "btn--light", className);
   const content = (
     <>
       <span>{children}</span>
@@ -162,30 +241,74 @@ export function Button({
   );
 }
 
+/** Slight magnetic pull toward the pointer — used on primary calls to action. */
+export function Magnetic({
+  children,
+  strength = 10,
+  className,
+}: {
+  children: ReactNode;
+  strength?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const onMove = useCallback(
+    (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const node = ref.current;
+      if (!node) return;
+      if (window.matchMedia("(hover: none)").matches) return;
+      const rect = node.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width - 0.5;
+      const y = (event.clientY - rect.top) / rect.height - 0.5;
+      node.style.transform = `translate(${(x * strength).toFixed(2)}px, ${(y * strength).toFixed(2)}px)`;
+    },
+    [strength]
+  );
+
+  const reset = useCallback(() => {
+    const node = ref.current;
+    if (node) node.style.transform = "";
+  }, []);
+
+  return (
+    <span
+      ref={ref}
+      className={cn("magnetic", className)}
+      onPointerMove={onMove}
+      onPointerLeave={reset}
+      onBlur={reset}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function Marquee({
   items,
-  duration = 46,
+  speed = 44,
   reverse = false,
   className,
-  itemClassName,
 }: {
   items: readonly string[];
-  duration?: number;
+  speed?: number;
   reverse?: boolean;
   className?: string;
-  itemClassName?: string;
 }) {
   return (
     <div
-      className={cn("marquee", reverse && "marquee--rtl", className)}
-      style={{ "--marquee-duration": `${duration}s` } as CSSProperties}
+      className={cn("marquee", className)}
+      style={{ "--speed": `${speed}s` } as CSSProperties}
       aria-hidden="true"
     >
-      <div className="marquee__track">
+      <div
+        className="marquee__track"
+        style={reverse ? { animationDirection: "reverse" } : undefined}
+      >
         {[0, 1].map((group) => (
           <div className="marquee__group" key={group}>
             {items.map((item) => (
-              <span key={`${group}-${item}`} className={cn("marquee__item", itemClassName)}>
+              <span key={`${group}-${item}`} className="marquee__item">
                 {item}
               </span>
             ))}
@@ -193,5 +316,14 @@ export function Marquee({
         ))}
       </div>
     </div>
+  );
+}
+
+export function ArrowLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="link-arrow">
+      <span>{children}</span>
+      <ArrowUpLeft aria-hidden="true" />
+    </span>
   );
 }

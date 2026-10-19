@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import cahenMark from "../assets/cahen-mark.png";
-import { isLowEndDevice, supportsWebGL } from "../utils/capabilities";
+import { supportsWebGL } from "../utils/capabilities";
 import type { ParticleObjectProps } from "./canvasui/ParticleObject";
 
+const CORE_COUNT = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
+const BUDGET_SCALE = CORE_COUNT <= 2 ? 0.55 : CORE_COUNT <= 4 ? 0.8 : 1;
+
 const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" | "onLoad" | "onError"> = {
-  count: 7600,
+  count: Math.round(7600 * BUDGET_SCALE),
   size: 2.3,
   sizeVariance: 0.28,
-  color: "",
+  color: "#efe8d8",
   background: "",
   scale: 3.55,
   cameraDistance: 4.1,
@@ -43,7 +46,8 @@ export function ParticleLogo() {
     let isInView = false;
     const syncMotionAndCapability = () => {
       // The static mark is a fallback only, never a placeholder over the particle version.
-      const unavailable = motionQuery.matches || isLowEndDevice() || !supportsWebGL();
+      // Capability (not device tier) decides: low-core devices still get a lighter particle count.
+      const unavailable = motionQuery.matches || !supportsWebGL();
       setStaticFallback(unavailable);
       setMotionReady(isInView && !unavailable);
     };

@@ -1,29 +1,123 @@
 @layer components {
-  .js .reveal {
-    transform: translateY(22px);
+  /* =========================================================
+     Shared reveal primitives
+     ========================================================= */
+  .reveal {
     opacity: 0;
+    transform: translateY(26px);
     transition:
-      opacity 900ms var(--ease-out),
-      transform 900ms var(--ease-out);
-    transition-delay: var(--d, 0ms);
-    will-change: opacity, transform;
+      opacity 900ms var(--ease) var(--reveal-delay, 0ms),
+      transform 900ms var(--ease) var(--reveal-delay, 0ms);
+    will-change: transform, opacity;
   }
 
-  .js .reveal.is-visible {
+  .reveal--visible {
     transform: none;
     opacity: 1;
-    will-change: auto;
   }
 
-  /* A gentle lift for interactive rows */
-  .lift {
-    transition: transform 380ms var(--ease-out);
+  .reveal[data-variant="mask"] {
+    overflow: hidden;
+    padding-bottom: 0.08em;
+    transform: none;
   }
 
-  .lift:hover {
-    transform: translateY(-3px);
+  .reveal[data-variant="mask"] > * {
+    display: block;
+    transform: translateY(105%);
+    transition: transform 1000ms var(--ease) var(--reveal-delay, 0ms);
   }
 
+  .reveal[data-variant="mask"].reveal--visible > * {
+    transform: none;
+  }
+
+  .reveal[data-variant="scale"] {
+    transform: translateY(20px) scale(0.985);
+  }
+
+  .reveal[data-variant="scale"].reveal--visible {
+    transform: none;
+  }
+
+  /* Split text words */
+  .split {
+    display: inline;
+  }
+
+  .split__word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+
+  .split__word > span {
+    display: inline-block;
+    transform: translateY(115%) rotate(1.5deg);
+    transition:
+      transform 900ms var(--ease) var(--word-delay, 0ms),
+      opacity 600ms ease var(--word-delay, 0ms);
+    opacity: 0.001;
+  }
+
+  .split--visible .split__word > span {
+    transform: none;
+    opacity: 1;
+  }
+
+  /* Marquee intensity on scroll is handled inline in the component. */
+
+  /* =========================================================
+     Ambient motion
+     ========================================================= */
+  .float-slow {
+    animation: float-slow 9s ease-in-out infinite;
+  }
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-9px);
+    }
+  }
+
+  .fade-up {
+    animation: fade-up 900ms var(--ease) both;
+  }
+
+  @keyframes fade-up {
+    from {
+      transform: translateY(18px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  /* Cursor-following spotlight for the hero */
+  .spotlight {
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 460px;
+    height: 460px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232, 65, 28, 0.1), transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 600ms ease;
+  }
+
+  /* =========================================================
+     Accessibility
+     ========================================================= */
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
@@ -34,17 +128,22 @@
     *::after {
       animation-duration: 0.001ms !important;
       animation-iteration-count: 1 !important;
-      scroll-behavior: auto !important;
       transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
     }
 
-    .js .reveal {
-      transform: none;
-      opacity: 1;
+    .reveal,
+    .reveal[data-variant="mask"] > *,
+    .split__word > span,
+    .hero__line-inner {
+      transform: none !important;
+      opacity: 1 !important;
     }
 
-    .marquee__track {
-      animation: none;
+    .work__preview,
+    .cursor,
+    .cursor-ring {
+      display: none !important;
     }
   }
 }
