@@ -43,9 +43,17 @@ Deliberate choices, all visible in `src/components/Hero.tsx`:
 - Muted, `playsInline`, `loop`, `preload="auto"` — the film is the LCP element, so
   the poster is `fetchPriority="high"` and paints before a single video byte.
 - Phones never download the 1920 file; the `src` is chosen by media query.
-- `prefers-reduced-motion`, save-data or a ≤2-core device renders the poster only
-  and skips the video element entirely. A 29 KB blurred thumbnail paints first,
-  then the sharp poster (`fetchPriority="high"`) replaces it.
+- `prefers-reduced-motion` renders the poster only and skips the video element.
+  Everything else gets the film: an earlier build also skipped it on ≤2-core or
+  ≤2 GB devices, which silently removed the video on many machines.
+- Autoplay is attempted on mount, on every readiness event and again on the first
+  gesture, because embedded previews (cross-origin iframes) usually refuse
+  `play()` until the page has been interacted with. If it is still refused, a
+  small "پخش فیلم" control appears and the poster keeps drifting slowly, so the
+  hero never shows an empty black panel (frame zero of the clip is black).
+- A 29 KB blurred thumbnail paints first, then the sharp poster
+  (`fetchPriority="high"`) replaces it; both film files carry a `?v=` stamp so a
+  replaced clip is never served from cache.
 - Both encodes fade to black at each end, and the clip is 60 fps, so the loop
   restart is a beat of darkness rather than a visible jump between two shots.
 - Playback pauses off-screen and in hidden tabs; the scroll transform keeps
@@ -108,7 +116,13 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Three checks run entirely offline: `npm run admin:check` (API/security, 63 assertions), `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 21 assertions) and `npm run netlify:check` (bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API, 23 assertions).
+Four checks run entirely offline: `npm run hero:check` (18 assertions — the film
+element exists even on a 2-core device, autoplay refusal is recovered by a
+gesture, reduced motion keeps the poster, the scroll transform is applied), `npm run admin:check` (API/security, 63 assertions), `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 21 assertions) and `npm run netlify:check` (bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API, 23 assertions). Each runs in `npm run verify`.
+
+If the film ever looks static, open `/?film=debug`: it prints the real element
+state (src, readyState, paused, decode error, whether the poster loaded) so an
+autoplay block is never mistaken for a missing file.
 
 The panel is fully closed while these variables are missing: `/api/admin/session` reports `configured: false`, the UI shows the exact variables to set, and every login attempt returns `503`. There is no setup screen and no default password to guess.
 
