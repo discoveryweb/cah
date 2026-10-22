@@ -10,11 +10,13 @@
 @import "./styles/footer.css";
 @import "./styles/modal.css";
 @import "./styles/motion.css";
+@import "./styles/typography.css";
 
 @theme {
   --font-sans: "Estedad Variable", "Vazirmatn Variable", Tahoma, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-serif: "Instrument Serif", Georgia, serif;
+  /* Persian text in mono/serif slots falls back to the same Persian sans. */
+  --font-mono: "JetBrains Mono Variable", "Vazirmatn Variable", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", "Estedad Variable", Georgia, serif;
 
   --color-paper: #0a0a1e;
   --color-paper-2: #11112c;

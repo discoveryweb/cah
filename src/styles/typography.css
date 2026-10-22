@@ -1,0 +1,256 @@
+@layer components {
+  /* =========================================================
+     Persian typography inside mono and serif contexts
+
+     JetBrains Mono and Instrument Serif ship no Persian glyphs, and
+     their tracking / uppercase treatment breaks Persian letter joins.
+     Every Persian line that sits in one of those slots is reset to the
+     site's Persian sans with normal letter-spacing, so the whole page
+     speaks with one voice.
+     ========================================================= */
+  .fa,
+  .hero__ticker .marquee__item,
+  .hero__caption,
+  .hero__scroll,
+  .intro__caption,
+  .intro__identity-caption,
+  .gallery__hint,
+  .gallery__tags li,
+  .work__foot-note,
+  .project__fact dt,
+  .project__fact dd,
+  .project__body h3,
+  .project__tags span,
+  .project__next span,
+  .services__foot p,
+  .service__deliverables li,
+  .service__facts dt,
+  .studio__fact dt,
+  .cta__meta dt,
+  .cta__avail,
+  .cta__social a,
+  .footer__bottom,
+  .menu__legal,
+  .modal__close,
+  .field__label,
+  .mark-stage__tag--bl,
+  .preloader__bottom,
+  .cursor-ring__label {
+    font-family: var(--font-sans);
+    font-style: normal;
+    font-weight: 480;
+    letter-spacing: 0.015em;
+    text-transform: none;
+    font-variant-numeric: normal;
+  }
+
+  /* Latin fragments that share those rows keep their technical voice. */
+  .hero__caption > span[dir="ltr"],
+  .intro__caption > span[dir="ltr"],
+  .intro__identity-caption > span[dir="ltr"],
+  .cta__top > span[dir="ltr"],
+  .menu__legal > span[dir="ltr"],
+  .footer__bottom [dir="ltr"],
+  .project__fact dd[dir="ltr"],
+  .preloader__bottom [dir="ltr"],
+  .field__label small {
+    font-family: var(--font-mono);
+    font-variant-numeric: normal;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  /* Persian text reads denser than mono Latin: give it room. */
+  .hero__ticker .marquee__item {
+    gap: 24px;
+    padding-inline-end: 24px;
+    font-size: clamp(11px, 0.95vw, 13px);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+  }
+
+  .hero__scroll {
+    gap: 9px;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+  }
+
+  .hero__caption,
+  .intro__caption,
+  .intro__identity-caption {
+    font-size: 10px;
+    letter-spacing: 0.01em;
+  }
+
+  .intro__identity-caption {
+    font-size: 9px;
+  }
+
+  .gallery__hint {
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+  }
+
+  .work__foot-note {
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .services__foot p {
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+  }
+
+  .service__deliverables li,
+  .gallery__tags li,
+  .project__tags span {
+    font-size: 10px;
+    font-weight: 450;
+    letter-spacing: 0;
+  }
+
+  .service__facts dt,
+  .studio__fact dt,
+  .cta__meta dt,
+  .project__fact dt {
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+    opacity: 0.92;
+  }
+
+  .project__fact dd {
+    font-size: 11.5px;
+    letter-spacing: 0;
+    line-height: 1.7;
+  }
+
+  .project__body h3 {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  .project__next span {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .cta__avail {
+    font-size: 11.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .cta__meta dt {
+    font-size: 9.5px;
+  }
+
+  .footer__bottom {
+    font-size: 9.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .menu__legal {
+    font-size: 8.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .field__label {
+    font-size: 10.5px;
+    font-weight: 520;
+    letter-spacing: 0.01em;
+  }
+
+  .field__label small {
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: 0.01em;
+    text-transform: none;
+  }
+
+  .modal__close {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .mark-stage__tag--bl {
+    font-size: 9.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .preloader__bottom {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .cursor-ring__label {
+    font-size: 10px;
+    letter-spacing: 0.01em;
+  }
+
+  /* Persian numerals inside technical rows: tabular, never monospaced. */
+  .studio__stat strong,
+  .project__metrics strong {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
+  .studio__stat strong {
+    font-weight: 520;
+  }
+
+  .project__metrics strong {
+    font-weight: 520;
+  }
+
+  /* Serif italics have no Persian face — emphasis becomes weight + rule. */
+  .studio__statement em,
+  .cta__social-title em,
+  .section-head__title em,
+  .work__title em,
+  .cta__headline em,
+  .studio__title em,
+  .intro__statement em,
+  .gallery__details-body em {
+    font-family: var(--font-sans);
+    font-style: normal;
+    font-weight: 650;
+    letter-spacing: -0.012em;
+  }
+
+  .studio__statement em,
+  .cta__social-title em {
+    color: var(--vermilion-soft);
+    text-decoration: underline;
+    text-decoration-color: rgba(167, 122, 255, 0.42);
+    text-decoration-thickness: 0.05em;
+    text-underline-offset: 0.16em;
+  }
+
+  @media (max-width: 767px) {
+    .hero__ticker .marquee__item {
+      gap: 17px;
+      padding-inline-end: 17px;
+      font-size: 10.5px;
+    }
+
+    .hero__scroll {
+      font-size: 9.5px;
+    }
+
+    .hero__caption,
+    .intro__caption {
+      font-size: 9px;
+    }
+
+    .project__fact dt,
+    .studio__fact dt,
+    .cta__meta dt,
+    .service__facts dt {
+      font-size: 9px;
+    }
+  }
+}

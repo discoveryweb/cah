@@ -366,7 +366,7 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
             </div>
 
             <div className="menu__legal">
-              <span dir="ltr">© ۲۰۲۶ CAHEN STUDIO</span>
+              <span dir="ltr">© 2026 CAHEN STUDIO</span>
               <span>طراحی و کد، درون استودیو</span>
             </div>
           </div>
