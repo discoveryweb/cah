@@ -1,44 +1,50 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import cahenMark from "../assets/cahen-mark.png";
 import { supportsWebGL } from "../utils/capabilities";
+import { violetMarkTexture } from "../utils/markTexture";
 import type { ParticleObjectProps } from "./canvasui/ParticleObject";
 
 const CORE_COUNT = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
 const BUDGET_SCALE = CORE_COUNT <= 2 ? 0.55 : CORE_COUNT <= 4 ? 0.8 : 1;
 
 const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" | "onLoad" | "onError"> = {
-  count: Math.round(7600 * BUDGET_SCALE),
-  size: 2.3,
-  sizeVariance: 0.28,
-  // No colour override: the mark keeps its chrome, shifted to the site violet by CSS.
+  count: Math.round(9000 * BUDGET_SCALE),
+  size: 2.55,
+  sizeVariance: 0.3,
+  /**
+   * Empty keeps the mark's own chrome. The plate lifts its brightness in CSS so
+   * the dark indigo facets of the shipped asset still read on a dark ground.
+   */
   color: "",
   background: "",
-  scale: 3.55,
+  scale: 3.5,
   cameraDistance: 4.1,
   fov: 62,
-  radius: 82,
-  strength: 0.62,
-  swirl: 0.42,
-  spring: 1.15,
-  damping: 0.48,
-  drift: 0.24,
-  floatIntensity: 0.32,
-  rotationIntensity: 0.1,
-  floatSpeed: 0.75,
+  radius: 88,
+  strength: 0.66,
+  swirl: 0.46,
+  spring: 1.12,
+  damping: 0.46,
+  drift: 0.26,
+  floatIntensity: 0.4,
+  rotationIntensity: 0.12,
+  floatSpeed: 0.78,
   orbit: false,
   zoom: false,
   autoRotate: false,
 };
 
 type ParticleObjectComponent = ComponentType<ParticleObjectProps>;
+export type ParticleLogoStatus = "idle" | "live" | "static";
 
-export function ParticleLogo() {
+export function ParticleLogo({ onStatusChange }: { onStatusChange?: (status: ParticleLogoStatus) => void }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [motionReady, setMotionReady] = useState(false);
   const [visible, setVisible] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [ParticleObject, setParticleObject] = useState<ParticleObjectComponent | null>(null);
+  const [texture, setTexture] = useState(cahenMark);
   const handleError = useCallback(() => {
     setLoaded(false);
     setFailed(true);
@@ -50,8 +56,7 @@ export function ParticleLogo() {
     const wrapper = wrapperRef.current;
     let isInView = false;
     const syncMotionAndCapability = () => {
-      // The static mark is a fallback only, never a placeholder over the particle version.
-      // Capability (not device tier) decides: low-core devices still get a lighter particle count.
+      // Capability (not device tier) decides: low-core devices still get a lighter cloud.
       const unavailable = motionQuery.matches || !supportsWebGL();
       setMotionReady(isInView && !unavailable);
     };
@@ -63,11 +68,14 @@ export function ParticleLogo() {
       return () => motionQuery.removeEventListener("change", syncMotionAndCapability);
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      isInView = Boolean(entry?.isIntersecting);
-      setVisible(isInView);
-      syncMotionAndCapability();
-    }, { rootMargin: "120px 0px", threshold: 0.01 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInView = Boolean(entry?.isIntersecting);
+        setVisible(isInView);
+        syncMotionAndCapability();
+      },
+      { rootMargin: "160px 0px", threshold: 0.01 }
+    );
     observer.observe(wrapper);
     return () => {
       observer.disconnect();
@@ -85,29 +93,76 @@ export function ParticleLogo() {
       .catch(() => {
         if (!cancelled) setFailed(true);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [motionReady, visible, failed, ParticleObject]);
 
+  // Recolour the mark once it is close to the viewport, then hand it to the cloud.
+  useEffect(() => {
+    if (!visible || texture !== cahenMark) return;
+    let cancelled = false;
+    violetMarkTexture(cahenMark)
+      .then((url) => {
+        if (!cancelled) setTexture(url);
+      })
+      .catch(() => {
+        /* keep the original asset — the plate's CSS still lifts it */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, texture]);
+
+  // Report the mode so the plate can label itself honestly.
+  useEffect(() => {
+    if (loaded) onStatusChange?.("live");
+  }, [loaded, onStatusChange]);
+
+  useEffect(() => {
+    if (failed) onStatusChange?.("static");
+  }, [failed, onStatusChange]);
+
+  const textured = texture !== cahenMark;
+  const live = motionReady && visible && !failed && Boolean(ParticleObject) && textured;
+
   return (
-    <div ref={wrapperRef} className="particle-logo-stage">
-      {/* The static mark holds the frame until the particle system is ready. */}
+    <div
+      ref={wrapperRef}
+      className="particle-logo-stage"
+      data-live={live}
+      data-loaded={loaded}
+      data-textured={textured}
+    >
+      {/* A soft silhouette keeps the mark readable behind and before the cloud. */}
+      <img
+        className="particle-logo-ghost"
+        src={texture}
+        alt=""
+        aria-hidden="true"
+        width={736}
+        height={600}
+        decoding="async"
+        draggable={false}
+      />
       <img
         className={`particle-logo-static${loaded ? " is-loaded" : ""}`}
-        src={cahenMark}
+        src={texture}
         alt="نشان CAHEN"
         width={736}
         height={600}
         decoding="async"
+        draggable={false}
       />
-      {motionReady && visible && !failed && ParticleObject && (
+      {live && ParticleObject ? (
         <ParticleObject
           {...PARTICLE_OPTIONS}
-          src={cahenMark}
+          src={texture}
           className="particle-logo-canvas"
           onLoad={handleLoad}
           onError={handleError}
         />
-      )}
+      ) : null}
     </div>
   );
 }

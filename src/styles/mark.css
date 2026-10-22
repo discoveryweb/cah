@@ -1,207 +1,411 @@
 @layer components {
   /* =========================================================
-     The identity plate — the CAHEN mark rebuilt from particles
+     Identity plate — the CAHEN mark rebuilt from live particles
      ========================================================= */
   .mark-stage {
+    --tilt-x: 0;
+    --tilt-y: 0;
+    --shift-x: 0px;
+    --shift-y: 0px;
     position: relative;
     display: grid;
-    aspect-ratio: 1;
+    aspect-ratio: 1 / 1.06;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 4px;
     overflow: hidden;
     isolation: isolate;
+    padding: clamp(14px, 2vw, 20px);
     border: 1px solid var(--card-line);
-    border-radius: 28px;
+    border-radius: 30px;
     background:
-      radial-gradient(circle at 50% 34%, rgba(108, 68, 232, 0.5), transparent 62%),
-      linear-gradient(160deg, rgba(34, 28, 78, 0.96), rgba(8, 8, 24, 0.98));
+      radial-gradient(circle at 52% 42%, rgba(116, 74, 240, 0.5), transparent 58%),
+      radial-gradient(circle at 18% 88%, rgba(72, 48, 170, 0.34), transparent 52%),
+      linear-gradient(158deg, rgba(30, 25, 72, 0.98), rgba(6, 6, 20, 0.99));
     box-shadow:
-      0 42px 96px -50px rgba(0, 0, 0, 0.95),
-      0 0 0 1px rgba(255, 255, 255, 0.035) inset,
-      0 34px 70px -44px rgba(129, 84, 246, 0.85);
-    place-items: center;
+      0 46px 100px -54px rgba(0, 0, 0, 0.98),
+      0 30px 64px -46px rgba(129, 84, 246, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    touch-action: pan-y;
   }
 
-  .mark-stage::after {
+  .mark-stage__glow {
     position: absolute;
-    z-index: 3;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(180deg, transparent 60%, rgba(6, 5, 20, 0.58));
-    content: "";
+    z-index: 0;
+    border-radius: 50%;
+    filter: blur(48px);
     pointer-events: none;
+  }
+
+  .mark-stage__glow--one {
+    top: -18%;
+    right: -12%;
+    width: 62%;
+    aspect-ratio: 1;
+    background: rgba(129, 84, 246, 0.5);
+    animation: mark-glow 13s ease-in-out infinite alternate;
+  }
+
+  .mark-stage__glow--two {
+    bottom: -22%;
+    left: -14%;
+    width: 56%;
+    aspect-ratio: 1;
+    background: rgba(74, 52, 190, 0.42);
+    animation: mark-glow 17s ease-in-out -6s infinite alternate-reverse;
+  }
+
+  @keyframes mark-glow {
+    from {
+      opacity: 0.55;
+      transform: translate3d(0, 0, 0) scale(0.94);
+    }
+    to {
+      opacity: 0.95;
+      transform: translate3d(12px, -10px, 0) scale(1.08);
+    }
+  }
+
+  .mark-stage__inner {
+    position: relative;
+    display: grid;
+    min-height: 0;
+    place-items: center;
+    transform: perspective(1400px) rotateX(calc(var(--tilt-y) * 5deg))
+      rotateY(calc(var(--tilt-x) * -5deg));
+    transform-style: preserve-3d;
+    transition: transform 200ms linear;
+    will-change: transform;
   }
 
   .mark-stage__grid {
     position: absolute;
-    z-index: 0;
-    inset: 6%;
+    inset: 2%;
     background-image:
       linear-gradient(rgba(190, 176, 255, 0.075) 1px, transparent 1px),
       linear-gradient(90deg, rgba(190, 176, 255, 0.075) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: radial-gradient(circle, #000 16%, transparent 74%);
-    -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 74%);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle, #000 12%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 72%);
     pointer-events: none;
+  }
+
+  .mark-stage__axis {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(190, 176, 255, 0.22), transparent);
+    pointer-events: none;
+  }
+
+  .mark-stage__axis--v {
+    top: 6%;
+    bottom: 6%;
+    left: 50%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(190, 176, 255, 0.2), transparent);
+  }
+
+  .mark-stage__axis--h {
+    top: 50%;
+    right: 6%;
+    left: 6%;
+    height: 1px;
   }
 
   .mark-stage__ring {
     position: absolute;
-    z-index: 0;
     border-radius: 50%;
     pointer-events: none;
   }
 
   .mark-stage__ring--outer {
-    width: 78%;
+    width: 84%;
     aspect-ratio: 1;
-    border: 1px solid rgba(190, 176, 255, 0.2);
+    border: 1px solid rgba(190, 176, 255, 0.22);
     box-shadow:
-      0 0 0 26px rgba(190, 176, 255, 0.03),
-      0 0 0 58px rgba(190, 176, 255, 0.017);
+      0 0 0 24px rgba(190, 176, 255, 0.03),
+      0 0 0 54px rgba(190, 176, 255, 0.018),
+      inset 0 0 60px rgba(129, 84, 246, 0.14);
   }
 
   .mark-stage__ring--inner {
-    width: 54%;
+    width: 58%;
     aspect-ratio: 1;
-    border: 1px dashed rgba(190, 176, 255, 0.22);
-    animation: mark-stage-rotate 60s linear infinite;
+    border: 1px dashed rgba(190, 176, 255, 0.26);
+    animation: mark-orbit 54s linear infinite;
   }
 
-  @keyframes mark-stage-rotate {
+  @keyframes mark-orbit {
     to {
       transform: rotate(360deg);
     }
   }
 
-  .mark-stage__object {
-    position: relative;
-    z-index: 1;
-    width: 86%;
+  .mark-stage__halo {
+    position: absolute;
+    width: 70%;
     aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(150, 110, 255, 0.34), transparent 66%);
+    filter: blur(26px);
+    pointer-events: none;
   }
 
+  /* ---------- The mark itself ---------- */
+  .mark-stage__object {
+    position: relative;
+    z-index: 2;
+    width: 96%;
+    aspect-ratio: 1;
+    transform: translate3d(var(--shift-x), var(--shift-y), 0);
+    transition: transform 200ms linear;
+  }
+
+  .mark-stage .particle-logo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+  }
+
+  /* A blurred silhouette gives the cloud body and keeps the mark visible. */
+  .mark-stage .particle-logo-ghost {
+    position: absolute;
+    inset: 4%;
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+    opacity: 0.38;
+    filter: saturate(1.2) brightness(1.1) blur(14px);
+    pointer-events: none;
+  }
+
+  .mark-stage .particle-logo-stage[data-textured="false"] .particle-logo-ghost {
+    filter: hue-rotate(24deg) saturate(1.4) brightness(1.55) blur(13px);
+    opacity: 0.36;
+  }
+
+  .mark-stage .particle-logo-static {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    object-fit: contain;
+    filter: saturate(1.05) drop-shadow(0 12px 34px rgba(90, 56, 210, 0.7));
+    opacity: 1;
+    transition: opacity 700ms var(--ease);
+    animation: mark-breathe 7s ease-in-out infinite;
+  }
+
+  .mark-stage .particle-logo-static.is-loaded {
+    opacity: 0;
+  }
+
+  /* Before the violet remap lands the raw dark chrome needs a lift. */
+  .mark-stage .particle-logo-stage[data-textured="false"] .particle-logo-static {
+    filter: hue-rotate(24deg) saturate(1.35) brightness(1.7)
+      drop-shadow(0 12px 34px rgba(90, 56, 210, 0.65));
+  }
+
+  @keyframes mark-breathe {
+    0%,
+    100% {
+      transform: translateY(-3px) scale(1);
+    }
+    50% {
+      transform: translateY(4px) scale(1.015);
+    }
+  }
+
+  .mark-stage .particle-logo-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: pan-y;
+    filter: brightness(1.18) saturate(1.08) drop-shadow(0 0 30px rgba(150, 108, 255, 0.6));
+    opacity: 0;
+    transition: opacity 800ms var(--ease);
+  }
+
+  .mark-stage .particle-logo-stage[data-loaded="true"] .particle-logo-canvas {
+    opacity: 1;
+  }
+
+  /* ---------- Plate chrome ---------- */
   .mark-stage__corner {
     position: absolute;
-    z-index: 2;
-    width: 16px;
-    height: 16px;
-    border: 1px solid rgba(214, 198, 255, 0.44);
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(214, 198, 255, 0.5);
     pointer-events: none;
   }
 
   .mark-stage__corner--tl {
-    top: 14px;
-    left: 14px;
+    top: 0;
+    left: 0;
     border-right: 0;
     border-bottom: 0;
   }
 
+  .mark-stage__corner--tr {
+    top: 0;
+    right: 0;
+    border-bottom: 0;
+    border-left: 0;
+  }
+
+  .mark-stage__corner--bl {
+    bottom: 0;
+    left: 0;
+    border-top: 0;
+    border-right: 0;
+  }
+
   .mark-stage__corner--br {
-    right: 14px;
-    bottom: 14px;
+    right: 0;
+    bottom: 0;
     border-top: 0;
     border-left: 0;
   }
 
-  .mark-stage__tag {
-    position: absolute;
-    z-index: 4;
-    color: rgba(226, 216, 255, 0.58);
+  .mark-stage__rail {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 18px;
     font-family: var(--font-mono);
-    font-size: 7.5px;
+    font-size: 8px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    white-space: nowrap;
-    pointer-events: none;
+    color: rgba(226, 216, 255, 0.62);
   }
 
-  .mark-stage__tag--tl {
-    top: 16px;
-    left: 22px;
+  .mark-stage__rail--bottom {
+    justify-content: space-between;
+    padding-top: 2px;
+    border-top: 1px solid rgba(190, 176, 255, 0.14);
   }
 
-  .mark-stage__tag--tr {
-    top: 16px;
-    right: 22px;
+  .mark-stage__dash {
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, rgba(190, 176, 255, 0.4), transparent);
   }
 
-  .mark-stage__tag--bl {
-    bottom: 18px;
-    left: 22px;
+  .mark-stage__tag--dim {
+    color: rgba(226, 216, 255, 0.34);
+  }
+
+  .mark-stage__live {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: rgba(226, 216, 255, 0.68);
+    color: rgba(232, 224, 255, 0.86);
     font-family: var(--font-sans);
-    font-size: 9px;
-    letter-spacing: 0.05em;
+    font-size: 10px;
+    letter-spacing: 0.01em;
     text-transform: none;
   }
 
-  .mark-stage__tag--bl i {
-    width: 5px;
-    height: 5px;
+  .mark-stage__live i {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: var(--vermilion);
-    box-shadow: 0 0 10px rgba(167, 122, 255, 0.9);
-    animation: mark-stage-pulse 2.4s ease-in-out infinite;
+    background: rgba(214, 198, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(129, 84, 246, 0.16);
   }
 
-  @keyframes mark-stage-pulse {
+  .mark-stage__live[data-live="true"] i {
+    background: #d9c8ff;
+    box-shadow:
+      0 0 0 4px rgba(129, 84, 246, 0.22),
+      0 0 14px rgba(167, 122, 255, 0.95);
+    animation: mark-live 2.2s ease-in-out infinite;
+  }
+
+  @keyframes mark-live {
     0%,
     100% {
       opacity: 1;
       transform: scale(1);
     }
     50% {
-      opacity: 0.45;
-      transform: scale(0.72);
+      opacity: 0.4;
+      transform: scale(0.7);
     }
   }
 
-  .mark-stage__tag--br {
-    right: 22px;
-    bottom: 18px;
+  .mark-stage__hint {
+    position: absolute;
+    z-index: 4;
+    top: 50%;
+    right: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    transform: translate(50%, 118px) scale(1);
+    border: 1px solid rgba(214, 198, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(10, 8, 30, 0.6);
+    color: rgba(238, 232, 255, 0.9);
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    transition: opacity 520ms ease, transform 520ms var(--ease);
   }
 
-  /* The particle mark is shifted from its blue chrome into the site violet. */
-  .mark-stage .particle-logo-canvas,
-  .mark-stage .particle-logo-static {
-    filter: hue-rotate(26deg) saturate(1.12) contrast(1.02)
-      drop-shadow(0 0 46px rgba(130, 90, 255, 0.45));
+  .mark-stage__hint svg {
+    width: 13px;
+    height: 13px;
+    color: var(--vermilion-soft);
+  }
+
+  .mark-stage[data-touched="true"] .mark-stage__hint,
+  .mark-stage[data-mode="static"] .mark-stage__hint {
+    opacity: 0;
+    transform: translate(50%, 132px) scale(0.92);
   }
 
   @media (max-width: 767px) {
     .mark-stage {
+      aspect-ratio: 1 / 1.02;
       border-radius: 22px;
+      padding: 12px;
     }
 
-    .mark-stage__tag {
-      font-size: 6.5px;
+    .mark-stage__rail {
+      font-size: 7px;
       letter-spacing: 0.16em;
     }
 
-    .mark-stage__tag--tl,
-    .mark-stage__tag--tr {
-      top: 12px;
+    .mark-stage__live {
+      font-size: 9px;
     }
 
-    .mark-stage__tag--tl {
-      left: 16px;
+    .mark-stage__hint {
+      transform: translate(50%, 96px);
+      font-size: 9px;
+      padding: 6px 11px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark-stage__glow,
+    .mark-stage__ring--inner,
+    .mark-stage .particle-logo-static {
+      animation: none;
     }
 
-    .mark-stage__tag--tr {
-      right: 16px;
-    }
-
-    .mark-stage__tag--bl {
-      bottom: 13px;
-      left: 16px;
-      font-size: 8px;
-    }
-
-    .mark-stage__tag--br {
-      right: 16px;
-      bottom: 13px;
+    .mark-stage__inner,
+    .mark-stage__object {
+      transform: none;
     }
   }
 }
