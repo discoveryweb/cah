@@ -13,33 +13,38 @@ Create a production build with `npm run build`; run the TypeScript check on its 
 
 ## The hero film
 
-The first screen is a full-bleed film **scrubbed by the scroll**, not a video
-that plays. Scrolling down walks the clip forwards, scrolling up walks it
-backwards, frame for frame; the hero stays pinned for ~2.4 screens of scroll and
-then releases into the page.
+The first screen is a full-bleed film **scrubbed by the scroll**, never played:
+scrolling down walks the clip forwards, scrolling up walks it backwards, frame
+for frame, and the hero stays pinned for ~3.4 screens before releasing into the
+page.
 
-Why it is built this way:
+What makes it smooth (and what was wrong before):
 
-- **Every frame is a keyframe.** `ffmpeg` produces an intra-only encode
-  (`-g 1 -keyint_min 1 -sc_threshold 0`). A seek then decodes one frame instead of
-  walking back to the previous keyframe — the difference between a smooth scrub
-  and a slideshow. Cost: ~3× bitrate (7.8 MB for 13.4 s at 1440×810).
-- **One rAF loop, no React state.** `src/hooks/useHeroFilm.ts` reads `scrollY`
-  once per frame, eases it with a time-based filter (identical feel at 60, 120
-  and 144 Hz), and writes only `video.currentTime` plus one composited
-  `transform`. Nothing re-renders while scrolling.
-- **Coalesced seeks.** One seek can be in flight; the newest target is applied on
-  `seeked`. Targets closer than ~1 frame are skipped, which removes the
-  duplicate-frame judder browsers produce when asked for the frame they already
-  show.
-- **Symmetric both ways.** The easing has no overshoot and no directional
-  history, so scrolling up retraces exactly the frames seen on the way down.
-- **The clip is never played.** It is paused on mount and `autoplay` is off; the
-  only thing moving the timeline is the scroll position.
-- **The poster stays underneath** (with a 14 KB blurred thumbnail for first
-  paint) and fades out when the first frame is decoded, so the hero is never an
-  empty panel — important because the clip opens on black.
-- `prefers-reduced-motion` skips the video entirely and keeps the poster.
+- **Nothing React owns moves.** The engine (`src/hooks/useHeroFilm.ts`) writes
+  only `video.currentTime` and two compositor-only styles per frame. An earlier
+  version kept the progress in React state and in a CSS custom property, so every
+  scroll tick re-rendered the whole hero and recalculated styles for its whole
+  subtree — that was the lag, and the lag is what looked like the picture jumping
+  to a different scene.
+- **The film surface is never transformed.** No scale, no parallax on the video:
+  a per-frame transform forces the browser to re-rasterise the video surface on
+  every tick, which is what shimmered. The overlay fades with a plain opacity.
+- **Every frame is a keyframe** (`-g 1 -keyint_min 1 -sc_threshold 0`), and the
+  encode is deliberately small (1152×648 desktop, 896×504 for ≤900 px) so a seek
+  decodes in a couple of milliseconds.
+- **Frame-grid snapping + coalesced seeks.** Targets are rounded to the 30 fps
+  grid (asking for a mid-frame timestamp lets the decoder pick either
+  neighbour — the wobble), one seek is in flight at a time, and the freshest
+  target wins on `seeked`.
+- **One source for the whole session.** The file is chosen in the first render
+  instead of being swapped after mount; a reload mid-scroll is what used to
+  restart the film at another scene.
+- **The film appears only once it is buffered**, so it cannot stall mid-scroll
+  and then snap to whatever the network produced.
+- **The glass header drops its backdrop blur** while the film is on screen: that
+  blur would otherwise re-blur a surface that changes every frame.
+- `prefers-reduced-motion` skips the video entirely and keeps the poster, with a
+  14 KB blurred thumbnail for the first paint.
 
 Rebuild the film after replacing the source clip:
 
@@ -48,10 +53,9 @@ npm run film:video -- inbox/uploads/<file>.mp4 \
   --scrub --start 0.75 --duration 13.4 --badge 1014,642,262,52
 ```
 
-`--scrub` writes `public/film/hero-scrub-1440.mp4` (desktop) and
-`hero-scrub-1280.mp4` (≤900px), plus the poster and its blurred thumbnail. Other
-flags: `--fit contain`, `--no-interpolate`, `--crf 27`, `--scrub-fps 30`,
-`--placeholder`.
+`--scrub` writes `hero-scrub-1152.mp4`, `hero-scrub-896.mp4`, the poster and its
+blurred thumbnail. Other flags: `--fit contain`, `--no-interpolate`, `--crf 29`,
+`--scrub-fps 30`, `--placeholder`.
 
 Diagnostics: open `/?film=debug` to print the media state (src, duration,
 currentTime, seeking, buffered, decode error) while scrolling.
@@ -109,7 +113,7 @@ npm run admin:hash -- "a long unique passphrase"
 
 Five checks run entirely offline:
 
-- `npm run hero:check` — 20 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; seeks are coalesced; reduced motion keeps the poster.
+- `npm run hero:check` — 27 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.

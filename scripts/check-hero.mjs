@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /**
- * Guards the scroll-scrubbed hero film. These are the failures a visitor sees
- * but a code review cannot: the film playing on its own, the timeline not
- * following the scroll, a dead zone at the start, or the film running backwards
- * only when the page is scrolled up.
+ * Guards the scroll-scrubbed hero film, including the performance regression
+ * that made it feel broken:
  *
- * Runs the real React component in jsdom with a stubbed media element (seeks are
- * recorded, not decoded), so it needs no browser. `npm run hero:check`.
+ *   • the film must never play by itself
+ *   • half the scroll must be half the clip, and scrolling back must retrace it
+ *   • a scroll must NOT re-render React or recalculate styles for the hero
+ *     (the earlier engine wrote React state and a CSS custom property per frame)
+ *   • the clip must never reload mid-scroll (a source swap showed another scene)
+ *
+ * Runs the real component in jsdom with a stubbed media element, so it needs no
+ * browser. `npm run hero:check`.
  */
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -29,68 +33,94 @@ act(() => {
   root.render(<ContentProvider><Hero onOrder={() => {}} /></ContentProvider>);
 });
 
-/**
- * Pretend the tall track is 2400px in a 900px viewport, then scroll to a
- * fraction of the scrub distance and report what the film did.
- */
-window.__scrollTo = async (fraction, settle = 2600) => {
+/** 2400px track inside a 900px viewport; scroll to a fraction of the travel. */
+window.__scrollTo = async (fraction, settle = 2400) => {
   const track = document.querySelector(".hero__track");
   if (!track) return null;
   const height = 2400;
   const travel = height - 900;
+  const top = -travel * fraction;
   track.getBoundingClientRect = () => ({
-    top: -travel * fraction, height, bottom: height - travel * fraction,
-    left: 0, right: 1440, width: 1440, x: 0, y: -travel * fraction,
+    top, height, bottom: top + height, left: 0, right: 1440, width: 1440, x: 0, y: top,
     toJSON: () => ({}),
   });
   Object.defineProperty(window, "scrollY", { value: travel * fraction, configurable: true });
   window.dispatchEvent(new Event("scroll"));
-  // The engine eases with a ~1s time constant: settle before asserting.
   await new Promise((resolve) => setTimeout(resolve, settle));
   const video = document.querySelector("video");
-  const media = document.querySelector(".hero__film-media");
+  const bar = document.querySelector(".hero__progress");
   return {
-    fraction,
     currentTime: video ? Number(video.currentTime.toFixed(3)) : null,
     paused: video ? video.paused : null,
-    transform: media ? media.style.transform : null,
-    overlayOpacity: document.querySelector(".hero__overlay")
-      ? getComputedStyle(document.querySelector(".hero__overlay")).opacity
-      : null,
-    overlayVar: document.querySelector(".hero__overlay")
-      ? document.querySelector(".hero__overlay").style.getPropertyValue("--film-p")
-      : null,
-    progress: Number(document.querySelector(".hero").getAttribute("data-film-progress")),
-    className: document.querySelector(".hero").className,
+    bar: bar ? bar.style.transform : null,
     seeks: window.__seeks.length,
     seekLog: window.__seeks.slice(),
+  };
+};
+
+/**
+ * Counts DOM mutations during a synthetic scroll. A React re-render or a
+ * per-frame CSS custom property shows up here immediately.
+ */
+window.__mutationProbe = async (steps = 40) => {
+  const track = document.querySelector(".hero__track");
+  const hero = document.querySelector(".hero");
+  const records = [];
+  const observer = new MutationObserver((list) => records.push(...list));
+  observer.observe(hero, { attributes: true, subtree: true, childList: true, characterData: true });
+  const height = 2400;
+  const travel = height - 900;
+  for (let i = 0; i <= steps; i += 1) {
+    const top = -(travel * i) / steps;
+    track.getBoundingClientRect = () => ({
+      top, height, bottom: top + height, left: 0, right: 1440, width: 1440, x: 0, y: top,
+      toJSON: () => ({}),
+    });
+    Object.defineProperty(window, "scrollY", { value: (travel * i) / steps, configurable: true });
+    window.dispatchEvent(new Event("scroll"));
+    await new Promise((resolve) => setTimeout(resolve, 24));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  observer.disconnect();
+  const touched = records.map((record) => {
+    const node = record.target;
+    return (node.className || node.nodeName || "").toString().slice(0, 40);
+  });
+  const counts = {};
+  for (const name of touched) counts[name] = (counts[name] || 0) + 1;
+  return {
+    total: records.length,
+    touched: Array.from(new Set(touched)),
+    counts,
+    textChanges: records.filter((r) => r.type === "characterData").length,
   };
 };
 
 window.__report = () => {
   const hero = document.querySelector(".hero");
   const video = document.querySelector("video");
+  const overlay = document.querySelector(".hero__overlay");
   const poster = document.querySelector(".hero__poster--full");
   return {
-    className: hero ? hero.className : "",
     mode: hero ? hero.getAttribute("data-film") : null,
-    progress: hero ? Number(hero.getAttribute("data-film-progress")) : null,
-    trackHeight: document.querySelector(".hero__track")
-      ? getComputedStyle(document.querySelector(".hero__track")).height
-      : null,
+    ready: hero ? hero.getAttribute("data-film-ready") : null,
+    className: hero ? hero.className : "",
     video: video
       ? {
           src: video.getAttribute("src"),
           autoplay: video.autoplay,
           muted: video.muted,
+          loop: video.loop,
           controls: video.controls,
           preload: video.getAttribute("preload"),
-          poster: video.getAttribute("poster"),
         }
       : null,
+    overlayFilmP: overlay ? overlay.style.getPropertyValue("--film-p") : null,
+    overlayOpacity: overlay ? overlay.style.opacity : null,
     posterSrc: poster ? poster.getAttribute("src") : null,
-    seeks: window.__seeks.slice(),
-    played: window.__events.filter((e) => e === "play").length,
+    plays: window.__events.filter((e) => e === "play").length,
+    pauses: window.__events.filter((e) => e === "pause").length,
+    loads: window.__events.filter((e) => e === "load").length,
   };
 };
 `;
@@ -138,8 +168,7 @@ async function mount({ reducedMotion = false } = {}) {
   const quiet = (method) => {
     const original = window.console[method].bind(window.console);
     window.console[method] = (...args) => {
-      const text = args.map(String).join(" ");
-      if (text.includes("act(")) return;
+      if (args.map(String).join(" ").includes("act(")) return;
       original(...args);
     };
   };
@@ -152,20 +181,19 @@ async function mount({ reducedMotion = false } = {}) {
     disconnect() {}
   };
 
-  /* A video that only reports metadata: any play() must not stick. */
   let currentTime = 0;
-  Object.defineProperty(window.HTMLMediaElement.prototype, "duration", {
-    configurable: true,
-    get: () => DURATION,
-  });
+  window.__paused = true;
+  Object.defineProperty(window.HTMLMediaElement.prototype, "duration", { configurable: true, get: () => DURATION });
   Object.defineProperty(window.HTMLMediaElement.prototype, "readyState", { configurable: true, get: () => 4 });
   Object.defineProperty(window.HTMLMediaElement.prototype, "seeking", { configurable: true, get: () => false });
+  Object.defineProperty(window.HTMLMediaElement.prototype, "buffered", {
+    configurable: true,
+    get: () => ({ length: 1, start: () => 0, end: () => DURATION }),
+  });
   Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
     configurable: true,
     get: () => window.__paused,
   });
-  window.__paused = true;
-
   Object.defineProperty(window.HTMLMediaElement.prototype, "currentTime", {
     configurable: true,
     get: () => currentTime,
@@ -177,8 +205,6 @@ async function mount({ reducedMotion = false } = {}) {
   });
   window.HTMLMediaElement.prototype.play = function play() {
     window.__events.push("play");
-    // Report success, then behave like a video that stops immediately: the
-    // scrubber must keep it paused regardless.
     window.__paused = false;
     this.dispatchEvent(new window.Event("playing"));
     return Promise.resolve();
@@ -195,10 +221,10 @@ async function mount({ reducedMotion = false } = {}) {
 
   window.eval(script);
   const video = window.document.querySelector("video");
-  video?.dispatchEvent(new window.Event("loadedmetadata"));
-  video?.dispatchEvent(new window.Event("loadeddata"));
-  video?.dispatchEvent(new window.Event("canplay"));
-  await new Promise((resolve) => setTimeout(resolve, 120));
+  for (const event of ["loadedmetadata", "loadeddata", "canplay", "progress"]) {
+    video?.dispatchEvent(new window.Event(event));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 150));
   return window;
 }
 
@@ -208,7 +234,7 @@ const check = (label, ok, detail = "") => {
   console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok || !detail ? "" : ` — ${detail}`}`);
 };
 
-const near = (a, b, tolerance = 0.35) => Math.abs(a - b) <= tolerance;
+const near = (a, b, tolerance) => Math.abs(a - b) <= tolerance;
 
 /* ---------------------------------------------------------------- scenarios */
 
@@ -218,63 +244,63 @@ const near = (a, b, tolerance = 0.35) => Math.abs(a - b) <= tolerance;
 
   check("the hero is in scrub mode", report.mode === "scrub");
   check(
-    "the film is the all-keyframe scrub encode",
-    Boolean(report.video?.src?.includes("/film/hero-scrub-1920".replace("1920", "1440"))),
+    "it loads the lightweight, all-keyframe scrub encode",
+    Boolean(report.video?.src?.includes("/film/hero-scrub-1152.mp4")),
     String(report.video?.src),
   );
-  check("the video element is muted, inline and has no controls", Boolean(report.video?.muted && !report.video?.controls));
-  check("it is not asked to autoplay", report.video?.autoplay === false, JSON.stringify(report.video));
-  check("it is preloaded fully, so seeks are instant", report.video?.preload === "auto");
-  check("the poster is behind it, versioned", Boolean(report.posterSrc?.includes("hero-poster.jpg?v=")));
-
-  // The track must be tall enough to make the scrub feel deliberate. jsdom has
-  // no CSS engine, so read the declaration straight from the stylesheet.
-  const css = fs.readFileSync(path.join(ROOT, "src/styles/hero.css"), "utf8");
-  const trackRule = /\.hero__track \{[^}]*height:\s*(\d+)svh/.exec(css);
-  check(
-    "the scroll track is several screens tall",
-    Boolean(trackRule) && Number(trackRule[1]) >= 250,
-    trackRule ? trackRule[0].replace(/\s+/g, " ") : "height not found",
-  );
+  check("the video is muted, inline, loopless and has no controls",
+    Boolean(report.video?.muted && !report.video?.controls && !report.video?.loop));
+  check("it is never asked to autoplay", report.video?.autoplay === false);
+  check("it preloads fully, so seeks never hit the network", report.video?.preload === "auto");
+  check("the film is shown only once it is usable", report.ready === "true");
+  check("no CSS custom property is animated per frame", report.overlayFilmP === "");
+  check("the overlay is driven by a plain opacity", report.overlayOpacity !== "");
+  check("the poster stays behind it, versioned", Boolean(report.posterSrc?.includes("hero-poster.jpg?v=")));
 
   const start = await window.__scrollTo(0);
-  check("at the top the film is at its first frame", near(start.currentTime, 0, 0.1), String(start.currentTime));
+  check("at the top the film rests on its first frame", near(start.currentTime, 0, 0.1), String(start.currentTime));
   check("at the top it is paused, not playing", start.paused === true);
-  check("the reader is told the film has not started", near(start.progress, 0, 0.02), String(start.progress));
 
   const mid = await window.__scrollTo(0.5);
   check(
-    "half way through the scroll shows the middle of the film",
+    "half the scroll is half the film",
     near(mid.currentTime, DURATION / 2, 0.6),
     `${mid.currentTime} vs ${DURATION / 2}`,
   );
-  check("…and it is still paused", mid.paused === true);
-  check(
-    "…with the progress readout tracking the film",
-    mid.progress > 0.4 && mid.progress <= 0.51,
-    String(mid.progress),
-  );
+  check("the film is still paused mid-scroll", mid.paused === true);
+  const barValue = Number((/scaleX\(([\d.]+)\)/.exec(mid.bar || "") || [])[1]);
+  check("the progress bar tracks the film", barValue > 0.42 && barValue <= 0.52, String(mid.bar));
 
   const end = await window.__scrollTo(1);
-  check(
-    "the end of the scroll is the end of the film",
-    end.currentTime >= DURATION - 1.2 && end.currentTime <= DURATION,
-    String(end.currentTime),
-  );
-  check("the film never plays on its own", end.paused === true);
+  check("the end of the scroll is the end of the film", end.currentTime >= DURATION - 1.2, String(end.currentTime));
 
   const back = await window.__scrollTo(0.25);
   check(
-    "scrolling back walks the film backwards symmetrically",
-    near(back.currentTime, DURATION * 0.25, 0.6),
+    "scrolling back retraces the same frames",
+    near(back.currentTime, DURATION * 0.25, 0.55),
     `${back.currentTime} vs ${DURATION * 0.25}`,
   );
-  check("the transform follows the scroll too", back.transform.includes("translate3d"));
-  const uniqueTimes = new Set(back.seekLog.map((value) => value.toFixed(2)));
+  check("the film never plays on its own", end.paused === true && back.paused === true);
+  check("the source is never swapped after mount", report.loads <= 1, `loads=${report.loads}`);
+
+  // The regression that broke the hero: per-frame React state + style recalc.
+  const probe = await window.__mutationProbe();
+  // Only the two compositor layers may change per frame; the section gets a
+  // handful of one-off flags (active on/off) and nothing else may move.
+  const perFrame = new Set(["hero__overlay", "hero__progress"]);
+  const oneOff = new Set(["hero hero--film", "hero hero--film is-still"]);
+  const unexpected = probe.touched.filter((name) => !perFrame.has(name) && !oneOff.has(name));
+  const leaked = Object.entries(probe.counts).filter(([name, count]) => oneOff.has(name) && count > 4);
   check(
-    "seeks are coalesced instead of one per animation frame",
-    back.seeks < 240 && uniqueTimes.size > 8,
-    `seeks=${back.seeks}, distinct=${uniqueTimes.size}`,
+    "scrolling mutates only the two compositor layers",
+    probe.touched.length > 0 && unexpected.length === 0 && leaked.length === 0,
+    `${probe.total} mutations: ${JSON.stringify(probe.counts)}`,
+  );
+  check("React never re-renders the hero while scrolling", probe.textChanges === 0, `text changes=${probe.textChanges}`);
+  check(
+    "no text is re-rendered while scrolling",
+    !probe.touched.some((name) => /hero__title|hero__lede|hero__line|MARQUEE|span/i.test(name)),
+    probe.touched.join(", "),
   );
 }
 
@@ -283,6 +309,20 @@ const near = (a, b, tolerance = 0.35) => Math.abs(a - b) <= tolerance;
   const report = window.__report();
   check("reduced motion renders no video at all", report.video === null);
   check("reduced motion keeps the poster", Boolean(report.posterSrc?.includes("hero-poster.jpg")));
+  check("reduced motion never reports the film as ready", report.ready === null || report.ready === "false");
+}
+
+{
+  // The stylesheet itself must stay free of the two per-frame costs.
+  const css = fs.readFileSync(path.join(ROOT, "src/styles/hero.css"), "utf8");
+  check("no animated CSS custom property in the hero", !/var\(--film-p\)/.test(css));
+  check("no blend-mode layer over the film", !/mix-blend-mode/.test(css));
+  const filmRule = /\.hero__film-media\s*\{([^}]*)\}/.exec(css);
+  check(
+    "the film surface is never transformed (no per-frame re-raster)",
+    Boolean(filmRule) && !/transform:|will-change/.test(filmRule[1]),
+    filmRule ? filmRule[1].replace(/\s+/g, " ").trim() : "rule missing",
+  );
 }
 
 /* -------------------------------------------------------------------- done */

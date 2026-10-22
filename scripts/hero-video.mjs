@@ -21,7 +21,7 @@
  *
  * `--scrub` is the mode the hero uses: every frame is a keyframe so the scroll
  * can seek anywhere instantly, in both directions. Output:
- *   public/film/{hero-scrub-1440.mp4, hero-scrub-1280.mp4,
+ *   public/film/{hero-scrub-1152.mp4, hero-scrub-896.mp4,
  *                hero-poster.jpg, hero-poster-blur.jpg}
  */
 import { spawn } from "node:child_process";
@@ -261,8 +261,8 @@ async function finish(master, meta) {
   };
 
   if (scrub) {
-    await encodeScrub("scrub 1440×810 (all keyframes)", 1440, 810, crf - 3, "hero-scrub-1440.mp4");
-    await encodeScrub("scrub 1280×720 (all keyframes)", 1280, 720, crf, "hero-scrub-1280.mp4");
+    await encodeScrub("scrub 1152×648 (all keyframes)", 1152, 648, crf, "hero-scrub-1152.mp4");
+    await encodeScrub("scrub 896×504 (all keyframes)", 896, 504, crf + 2, "hero-scrub-896.mp4");
   } else {
     await encode("desktop 1920×1080", 1920, 1080, crf, "4M");
     await encode("mobile 1280×720", 1280, 720, crf - 1, "1500k");
@@ -271,7 +271,7 @@ async function finish(master, meta) {
   await run(
     [
       "-hide_banner", "-y", "-loglevel", "error",
-      "-ss", (total * 0.02).toFixed(2), "-i", path.join(OUT, scrub ? "hero-scrub-1440.mp4" : "hero-1920.mp4"),
+      "-ss", (total * 0.02).toFixed(2), "-i", path.join(OUT, scrub ? "hero-scrub-1152.mp4" : "hero-1920.mp4"),
       "-frames:v", "1", "-vf", "scale=1600:-2:flags=lanczos", "-q:v", "4",
       path.join(OUT, "hero-poster.jpg"),
     ],
@@ -288,7 +288,7 @@ async function finish(master, meta) {
   );
 
   const files = scrub
-    ? ["hero-scrub-1440.mp4", "hero-scrub-1280.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"]
+    ? ["hero-scrub-1152.mp4", "hero-scrub-896.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"]
     : ["hero-1920.mp4", "hero-1280.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"];
   let totalBytes = 0;
   console.log("\npublic/film:");

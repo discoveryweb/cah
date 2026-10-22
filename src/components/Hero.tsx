@@ -6,19 +6,23 @@ import { useHeroFilm } from "../hooks/useHeroFilm";
 import { Button, Magnetic, Marquee } from "./ui";
 
 /** Bump when the film files change: the URLs are cached for a day. */
-const VERSION = "2026-10-23b";
+const VERSION = "2026-10-23c";
 
 /**
- * The hero film is scrubbed, not played: every frame is a keyframe, so the
- * scroll position maps 1:1 onto the timeline in both directions.
- * `npm run film:video -- <clip> --scrub-encode` writes these files.
+ * The hero film is scrubbed by the scroll, never played: every frame is a
+ * keyframe so the timeline can be placed anywhere in either direction.
+ * Two sizes, chosen synchronously on the first render so the element never
+ * reloads (a reload mid-scroll is what made the picture jump scenes).
  */
 const FILM = {
-  desktop: `/film/hero-scrub-1440.mp4?v=${VERSION}`,
-  mobile: `/film/hero-scrub-1280.mp4?v=${VERSION}`,
+  desktop: `/film/hero-scrub-1152.mp4?v=${VERSION}`,
+  mobile: `/film/hero-scrub-896.mp4?v=${VERSION}`,
   poster: `/film/hero-poster.jpg?v=${VERSION}`,
   posterBlur: `/film/hero-poster-blur.jpg?v=${VERSION}`,
 };
+
+const preferredSource = () =>
+  typeof window !== "undefined" && window.matchMedia("(min-width: 901px)").matches ? FILM.desktop : FILM.mobile;
 
 export function Hero({ onOrder }: { onOrder: () => void }) {
   const content = useContent();
@@ -27,45 +31,34 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
 
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const mediaRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [reducedMotion, setReducedMotion] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [progress, setProgress] = useState(0);
-  // Start light: phones pick the smaller file on their first render.
-  const [source, setSource] = useState(FILM.mobile);
+  const [source, setSource] = useState(preferredSource);
   const triedFallback = useRef(false);
   const debug = useFilmDebug();
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const wide = window.matchMedia("(min-width: 901px)");
     const decide = () => setReducedMotion(reduce.matches);
-    const pick = () => setSource(wide.matches ? FILM.desktop : FILM.mobile);
     decide();
-    pick();
     reduce.addEventListener("change", decide);
-    wide.addEventListener("change", pick);
-    return () => {
-      reduce.removeEventListener("change", decide);
-      wide.removeEventListener("change", pick);
-    };
+    return () => reduce.removeEventListener("change", decide);
   }, []);
 
-  /** The engine reports 0–1 as the reader walks through the film. */
-  const handleProgress = useCallback((value: number) => {
-    setProgress((current) => (Math.abs(current - value) < 0.004 ? current : value));
-  }, []);
+  /** Written by the engine on the section; React never re-renders for it. */
+  const handleReady = useCallback(() => {}, []);
 
   useHeroFilm({
-    sectionRef: trackRef,
-    mediaRef,
+    trackRef,
     overlayRef,
+    progressRef,
+    sectionRef,
     videoRef,
-    onProgress: handleProgress,
+    onReady: handleReady,
   });
 
   /** A broken encode leaves the poster in place instead of an empty panel. */
@@ -84,15 +77,14 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
     <section
       id="home"
       ref={sectionRef}
-      className={`hero hero--film${ready && !still ? " is-scrubbing" : ""}${still ? " is-still" : ""}`}
+      className={`hero hero--film${still ? " is-still" : ""}`}
       aria-labelledby="hero-title"
       data-film="scrub"
-      data-film-progress={progress.toFixed(3)}
     >
       <div className="hero__track" ref={trackRef}>
         <div className="hero__stage">
           <div className="hero__film" aria-hidden="true">
-            <div className="hero__film-media" ref={mediaRef}>
+            <div className="hero__film-media">
               <img
                 className="hero__poster hero__poster--blur"
                 src={FILM.posterBlur}
@@ -115,23 +107,20 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
                   ref={videoRef}
                   className="hero__video"
                   src={source}
-                  poster={FILM.poster}
                   muted
                   playsInline
                   preload="auto"
                   disablePictureInPicture
                   disableRemotePlayback
                   tabIndex={-1}
-                  onLoadedData={() => setReady(true)}
                   onError={handleError}
                 />
               )}
             </div>
             <div className="hero__film-scrim" />
-            <div className="hero__film-grain" />
           </div>
 
-          {debug && <FilmDebugOverlay videoRef={videoRef} progress={progress} reducedMotion={reducedMotion} />}
+          {debug && <FilmDebugOverlay videoRef={videoRef} />}
 
           <div className="hero__overlay" ref={overlayRef}>
             <div className="hero__inner frame">
@@ -194,10 +183,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
             </div>
           </div>
 
-          {/* How far through the film the reader is; it replaces a play state. */}
-          <div className="hero__progress" aria-hidden="true">
-            <i style={{ transform: `scaleX(${progress.toFixed(4)})` }} />
-          </div>
+          <i className="hero__progress" ref={progressRef} aria-hidden="true" />
         </div>
       </div>
 
@@ -218,23 +204,14 @@ function useFilmDebug() {
   return enabled;
 }
 
-function FilmDebugOverlay({
-  videoRef,
-  progress,
-  reducedMotion,
-}: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  progress: number;
-  reducedMotion: boolean;
-}) {
+function FilmDebugOverlay({ videoRef }: { videoRef: React.RefObject<HTMLVideoElement | null> }) {
   const [info, setInfo] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    const tick = () => {
+    const id = window.setInterval(() => {
       const v = videoRef.current;
+      const track = document.querySelector(".hero__track");
       setInfo({
-        progress: Number(progress.toFixed(3)),
-        reducedMotion,
         videoElement: Boolean(v),
         src: v?.getAttribute("src") ?? null,
         readyState: v?.readyState ?? null,
@@ -244,12 +221,11 @@ function FilmDebugOverlay({
         paused: v?.paused ?? null,
         buffered: v && v.buffered.length ? Number(v.buffered.end(v.buffered.length - 1).toFixed(2)) : null,
         error: v?.error ? `${v.error.code}: ${v.error.message || "media error"}` : null,
+        track: track ? `${Math.round(track.getBoundingClientRect().top)}px top` : null,
       });
-    };
-    tick();
-    const id = window.setInterval(tick, 400);
+    }, 400);
     return () => window.clearInterval(id);
-  }, [videoRef, progress, reducedMotion]);
+  }, [videoRef]);
 
   return (
     <pre className="hero__debug" dir="ltr">

@@ -1,111 +1,119 @@
 import { useEffect, type RefObject } from "react";
 
-export type FilmMode = "ambient" | "scrub";
-
 type Options = {
-  /** The scroll distance that maps to the whole clip (the tall track). */
-  sectionRef: RefObject<HTMLElement | null>;
-  /** The element that receives the parallax/zoom transform. */
-  mediaRef: RefObject<HTMLElement | null>;
-  /** The element whose `--film-p` drives the copy fade. */
+  /** The tall track whose scroll distance maps onto the clip. */
+  trackRef: RefObject<HTMLElement | null>;
+  /** The overlay that fades as the film advances (opacity/transform only). */
   overlayRef: RefObject<HTMLElement | null>;
+  /** The thin progress bar; scaled with a compositor-only transform. */
+  progressRef: RefObject<HTMLElement | null>;
+  /** The section element, used for one-shot `data-film-*` flags. */
+  sectionRef: RefObject<HTMLElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
-  /** 0–1 progress driven by the scroll; reported for UI affordances. */
-  onProgress?: (progress: number) => void;
+  /** Called once when the film can be shown (never during scrolling). */
+  onReady?: () => void;
 };
 
 const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
 
-/** Frame-accurate scrub needs every frame to be seekable; we allow ~1 frame of drift. */
-const FRAME_SLOP = 1 / 45;
-
 /**
- * Scroll-scrubbed film.
+ * Scroll-scrubbed film, built to be cheap enough to hold 60 fps.
  *
- * The clip is not played: its timeline is a function of the scroll position, so
- * scrolling down walks the film forwards and scrolling up walks it backwards,
- * frame for frame. The default `scrub` implementation in browsers is jumpy —
- * it issues a seek per scroll event and paints whatever finished decoding last —
- * so this engine does three things instead:
+ * The previous implementation updated React state and a CSS custom property on
+ * every frame; both invalidate a large subtree, so the browser recalculated
+ * styles for the whole hero and re-rasterised the video surface at a new scale
+ * on every scroll tick. That is what produced the lag and the shimmering, and
+ * the lag is what made the film appear to jump to another scene (the scroll
+ * ran ahead while the decoder was still catching up).
  *
- *  1. Reads `scrollY` once per animation frame and eases it with a filter whose
- *     strength is expressed in time, so 60 Hz, 120 Hz and 144 Hz feel identical.
- *  2. Writes only `currentTime` (no React state, no layout reads) and coalesces
- *     seeks: one in flight at a time, then the freshest target.
- *  3. Applies "frame snapping": a seek is skipped until the target has moved at
- *     least ~1 frame, which removes the duplicate-frame judder you get when the
- *     element is asked to display a frame it is already on.
+ * This engine touches nothing React owns. Each animation frame it:
+ *   • reads `scrollY` once,
+ *   • eases it with a time-based filter (identical at 60/120/144 Hz),
+ *   • writes at most three compositor-friendly properties (two on the overlay,
+ *     one on the progress bar) and one `video.currentTime`,
+ *   • and nothing else. No state, no custom properties, no layout reads.
  *
- * The encode is all-keyframe (`-g 1`), so each seek is a decode of a single
- * frame rather than a GOP walk; that is what makes the motion feel continuous.
+ * Seeks are coalesced (one in flight, latest target wins, ~1 frame of snapping),
+ * and the clip is never played — only seeked, in both directions.
  */
-export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProgress }: Options) {
+export function useHeroFilm({ trackRef, overlayRef, progressRef, sectionRef, videoRef, onReady }: Options) {
   useEffect(() => {
-    const section = sectionRef.current;
-    const media = mediaRef.current;
+    const track = trackRef.current;
     const video = videoRef.current;
-    if (!section || !media || !video) return;
+    if (!track || !video) return;
 
     const overlay = overlayRef.current;
+    const bar = progressRef.current;
+    const section = sectionRef.current;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let frame = 0;
     let lastTime = 0;
     let target = 0;
     let eased = -1;
-    let scrollTop = 0;
+    let paintedP = -1;
+    let trackTop = 0;
     let travel = 1;
     let duration = 0;
     let ready = false;
+    let announced = false;
+    let disposed = false;
+    /** One seek in flight; `wanted` is always the freshest target. */
     let seeking = false;
     let wanted = 0;
-    let painted = -1;
-    let reported = -1;
-    let disposed = false;
+    let paintedFrame = -1;
+    let seekStarted = 0;
+    /** Buffered fraction of the clip; scrubbing is only pleasant when it is high. */
+    let bufferedTo = 0;
+    let activeFlag = false;
+    const startedAt = performance.now();
     const timers: number[] = [];
 
-    const later = (fn: () => void, ms: number) => {
-      timers.push(window.setTimeout(fn, ms));
-    };
+    const FRAME = 1 / 30;
 
-    /** The clip is not a video to watch: keep it paused and only seek it. */
+    /** The clip is something to scrub, never something to watch. */
     const freeze = () => {
       video.pause();
-      video.autoplay = false;
-      if (!video.loop) video.loop = false;
+      video.playbackRate = 1;
     };
 
     const measure = () => {
-      const rect = section.getBoundingClientRect();
-      // Absolute top, so the maths holds at any scroll offset.
-      scrollTop = rect.top + window.scrollY;
+      const rect = track.getBoundingClientRect();
+      trackTop = rect.top + window.scrollY;
       travel = Math.max(1, rect.height - window.innerHeight);
       duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
     };
 
-    const paint = (progress: number) => {
-      if (reduceMotion) return;
-      // A little lift and push-in: the film itself is the main motion.
-      media.style.transform = `translate3d(0, ${(-progress * 2.4).toFixed(3)}vh, 0) scale(${(1 + progress * 0.05).toFixed(4)})`;
-      if (overlay) overlay.style.setProperty("--film-p", progress.toFixed(4));
+    const paintChrome = (progress: number) => {
+      // Skip identical values: writing a style is cheap, but doing it 120 times a
+      // second for a fraction of a percent is still wasted work.
+      if (Math.abs(progress - paintedP) < 0.0015) return;
+      paintedP = progress;
+      if (overlay) {
+        overlay.style.opacity = String(Math.max(0, 1 - progress * 1.05));
+        overlay.style.transform = `translate3d(0, ${(-progress * 2.4).toFixed(2)}vh, 0)`;
+      }
+      if (bar) bar.style.transform = `scaleX(${progress.toFixed(4)})`;
     };
 
-    /**
-     * Frame snapping with sub-frame easing. `wanted` is the exact time the
-     * scroll asks for; we only issue a seek once it is at least one frame away
-     * from what is on screen.
-     */
+    /** Frame-snapped, coalesced seeking. */
     const seek = () => {
       if (!ready || duration <= 0 || disposed) return;
-      if (Math.abs(wanted - painted) < FRAME_SLOP) return;
-      if (seeking) return; // the `seeked` handler picks up the newest target
+      // Stalled seek (some browsers never fire `seeked` when they get busy):
+      // give up on it after 800 ms and use the freshest target.
+      if (seeking && performance.now() - seekStarted > 800) seeking = false;
+      if (seeking) return;
 
-      const time = Math.min(duration - 0.04, Math.max(0, wanted));
-      if (Math.abs(video.currentTime - time) < FRAME_SLOP && !video.seeking) {
-        painted = time;
-        return;
-      }
+      // Snap to the encode's frame grid (30 fps): asking for a timestamp in the
+      // middle of a frame lets the decoder pick either neighbour, which reads as
+      // a wobble between two frames.
+      const index = Math.max(0, Math.min(Math.round(duration / FRAME) - 1, Math.round(wanted / FRAME)));
+      if (index === paintedFrame) return;
+      const time = index * FRAME;
+
       seeking = true;
+      seekStarted = performance.now();
+      paintedFrame = index;
       try {
         video.currentTime = time;
       } catch {
@@ -115,38 +123,68 @@ export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProg
 
     const onSeeked = () => {
       seeking = false;
-      painted = video.currentTime;
-      // A newer target may have arrived while this seek was in flight.
-      if (Math.abs(wanted - painted) >= FRAME_SLOP) seek();
+    };
+
+    /**
+     * Reveal the film only once enough of it is buffered to seek through: a
+     * half-downloaded clip stalls mid-scroll and then jumps to the frame the
+     * network finally produced, which reads as "the picture changed scene".
+     * After a few seconds we show it anyway — a poster is worse than a stall.
+     */
+    const showFilm = (force = false) => {
+      if (announced || disposed) return;
+      const coverage = duration > 0 ? bufferedTo / duration : 0;
+      if (!force && coverage < 0.8 && performance.now() - startedAt < 3200) return;
+      announced = true;
+      section?.setAttribute("data-film-ready", "true");
+      onReady?.();
     };
 
     const onLoaded = () => {
       ready = true;
       measure();
-      // Decode one frame immediately so the hero never shows the bare poster.
-      wanted = eased > 0 ? eased * duration : 0;
+      if (!duration) return;
+      // Place the film at the reader's current position, not at zero: scrolling
+      // while the clip was still loading must not snap it back to the start.
+      wanted = clamp01((window.scrollY - trackTop) / travel) * (duration - 0.04);
       seek();
+      showFilm();
     };
 
-    const render = (time: number) => {
-      const delta = Math.min(64, Math.max(8, time - lastTime || 16.7));
+    const onBuffered = () => {
+      if (!video.buffered.length || !duration) return;
+      bufferedTo = video.buffered.end(video.buffered.length - 1);
+      showFilm();
+    };
+
+    const loop = (time: number) => {
+      const delta = Math.min(50, Math.max(6, time - lastTime || 16.7));
       lastTime = time;
 
-      const current = clamp01((window.scrollY - scrollTop) / travel);
-      if (current !== target) target = current;
+      if (!disposed) {
+        const rect = track.getBoundingClientRect();
+        // A single cheap read per frame; no `scrollY` fallback needed because the
+        // rect is accurate even inside scrolling containers.
+        const progress = clamp01(-rect.top / travel);
+        if (progress !== target) target = progress;
+      }
 
-      // Time-based smoothing: identical feel at any refresh rate, and no
-      // overshoot, so reversing mid-scroll mirrors the forward path exactly.
-      const follow = 1 - Math.pow(0.0009, delta / 1000);
+      // Time-constant easing (~60 ms). Exact at any refresh rate, no overshoot,
+      // so reversing the scroll retraces the same frames.
+      const follow = 1 - Math.exp(-delta / 60);
       eased = eased < 0 ? target : eased + (target - eased) * follow;
-      if (Math.abs(target - eased) < 0.0004) eased = target;
+      const settled = Math.abs(target - eased) < 0.0004;
+      if (settled) eased = target;
 
-      paint(eased);
-      // The readout follows the eased value (what is on screen), not the raw
-      // scroll position, so the bar agrees with the frame being shown.
-      if (Math.abs(eased - reported) > 0.004) {
-        reported = eased;
-        onProgress?.(eased);
+      paintChrome(eased);
+
+      // While the film is on screen the fixed header sits over a surface that
+      // changes every frame; a backdrop blur there would re-blur on each frame.
+      const isActive = target > 0.002 && target < 0.995;
+      if (isActive !== activeFlag) {
+        activeFlag = isActive;
+        if (isActive) section?.setAttribute("data-film-active", "true");
+        else section?.removeAttribute("data-film-active");
       }
 
       if (duration > 0) {
@@ -154,67 +192,30 @@ export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProg
         seek();
       }
 
-      if (eased !== target) {
-        frame = window.requestAnimationFrame(render);
-      } else {
-        frame = 0;
-        flush();
-        if (duration > 0) {
-          wanted = target * (duration - 0.04);
-          seek();
-        }
-      }
-    };
-
-    /** After settling, push the final value so the UI matches the last frame. */
-    const flush = () => {
-      if (Math.abs(eased - reported) > 0.0005) {
-        reported = eased;
-        onProgress?.(eased);
-      }
+      frame = settled ? 0 : window.requestAnimationFrame(loop);
     };
 
     const wake = () => {
-      if (frame) return;
+      if (frame || disposed) return;
       lastTime = 0;
-      frame = window.requestAnimationFrame(render);
+      frame = window.requestAnimationFrame(loop);
     };
 
     /* ------------------------------------------------------------- wiring */
 
     freeze();
     measure();
-    paint(0);
+    paintChrome(0);
 
-    // The whole clip must be buffered for instant seeking. `preload="auto"` is on
-    // the element; asking to play once is the reliable way to make some browsers
-    // actually fetch every byte, after which we pause and seek ourselves.
-    const prime = () => {
+    const onMeta = () => {
+      measure();
       freeze();
-      const attempt = video.play();
-      if (attempt && typeof attempt.then === "function") {
-        attempt.then(
-          () => {
-            freeze();
-            video.currentTime = 0;
-          },
-          () => {
-            freeze();
-          },
-        );
-      }
     };
-
-    const onCanPlay = () => {
-      ready = true;
-      freeze();
-      prime();
-    };
-
-    video.addEventListener("loadedmetadata", measure);
+    video.addEventListener("loadedmetadata", onMeta);
     video.addEventListener("loadeddata", onLoaded);
-    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("canplay", onLoaded);
     video.addEventListener("seeked", onSeeked);
+    video.addEventListener("progress", onBuffered);
     video.addEventListener("durationchange", measure);
 
     const onResize = () => {
@@ -232,19 +233,22 @@ export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProg
             wake();
           })
         : null;
-    observer?.observe(section);
+    observer?.observe(track);
 
-    // Late layout (fonts, images, the preloader unlocking the page) changes the
-    // hero's height; re-measure a few times and on the first paint after load.
-    later(() => {
-      measure();
-      wake();
-    }, 300);
-    later(() => {
-      measure();
-      wake();
-    }, 1200);
-    window.addEventListener("load", onResize, { once: true });
+    // The preloader and fonts change the layout after first paint; re-measure so
+    // the mapping never drifts by a few hundred pixels.
+    for (const delay of [400, 1200, 2400, 3600]) {
+      timers.push(window.setTimeout(() => showFilm(delay >= 3600), delay));
+    }
+
+    for (const delay of [250, 900, 1800]) {
+      timers.push(
+        window.setTimeout(() => {
+          measure();
+          wake();
+        }, delay),
+      );
+    }
 
     wake();
 
@@ -252,18 +256,20 @@ export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProg
       disposed = true;
       for (const timer of timers) window.clearTimeout(timer);
       window.cancelAnimationFrame(frame);
-      video.removeEventListener("loadedmetadata", measure);
+      video.removeEventListener("loadedmetadata", onMeta);
       video.removeEventListener("loadeddata", onLoaded);
-      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("canplay", onLoaded);
       video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("progress", onBuffered);
       video.removeEventListener("durationchange", measure);
       window.removeEventListener("scroll", wake);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
-      window.removeEventListener("load", onResize);
       observer?.disconnect();
-      media.style.removeProperty("transform");
-      overlay?.style.removeProperty("--film-p");
+      overlay?.style.removeProperty("opacity");
+      overlay?.style.removeProperty("transform");
+      bar?.style.removeProperty("transform");
+      if (reduceMotion) section?.removeAttribute("data-film-ready");
     };
-  }, [sectionRef, mediaRef, overlayRef, videoRef, onProgress]);
+  }, [trackRef, overlayRef, progressRef, sectionRef, videoRef, onReady]);
 }

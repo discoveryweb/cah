@@ -43,12 +43,16 @@
       var(--paper-deep);
   }
 
+  /**
+   * The frame is drawn once and never re-scaled. A per-frame transform here made
+   * the browser re-rasterise the video surface on every scroll tick, which is
+   * what shimmered and lagged. The small constant overscan only hides the
+   * edges of the cover crop.
+   */
   .hero__film-media {
     position: absolute;
-    inset: -6% 0;
-    transform-origin: 50% 45%;
-    will-change: transform;
-    backface-visibility: hidden;
+    inset: 0;
+    overflow: hidden;
   }
 
   .hero__poster,
@@ -58,7 +62,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 50% 45%;
+    object-position: 50% 50%;
   }
 
   .hero__poster {
@@ -76,7 +80,7 @@
    * Until the first frame is decoded (and in reduced-motion mode) the poster
    * drifts slowly, so the hero never looks like a frozen still.
    */
-  .hero:not(.is-scrubbing) .hero__poster--full {
+  .hero:not([data-film-ready="true"]) .hero__poster--full {
     animation: film-drift 28s ease-in-out infinite alternate;
   }
 
@@ -91,15 +95,23 @@
 
   .hero__video {
     opacity: 0;
-    filter: saturate(0.96) contrast(1.03) brightness(0.9);
-    transition: opacity 500ms var(--ease);
-    /* Seeks are cheap because every frame is a keyframe; never let the browser
-       try to smooth them with its own interpolation. */
-    will-change: auto;
+    filter: saturate(0.96) contrast(1.03) brightness(0.92);
+    transition: opacity 420ms var(--ease);
+    /* Decoded frame changes are the paint; no extra compositing hints needed. */
   }
 
-  .hero.is-scrubbing .hero__video {
+  .hero[data-film-ready="true"] .hero__video {
     opacity: 1;
+  }
+
+  .hero[data-film-ready="true"] .hero__poster {
+    opacity: 0;
+    transition: opacity 700ms var(--ease);
+  }
+
+  /* Once the film is on screen the drifting poster is dead weight. */
+  .hero[data-film-ready="true"] .hero__poster--full {
+    animation: none;
   }
 
   /**
@@ -170,19 +182,8 @@
     pointer-events: none;
   }
 
-  .hero__film-grain {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    opacity: 0.16;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-    pointer-events: none;
-  }
-
   /* ---------- Overlay ---------- */
   .hero__overlay {
-    --film-p: 0;
     position: relative;
     z-index: 3;
     display: grid;
@@ -190,9 +191,10 @@
     grid-template-rows: minmax(0, 1fr);
     padding-top: calc(var(--header-h) + clamp(12px, 1.8vw, 24px));
     padding-bottom: clamp(20px, 3.2vw, 44px);
-    opacity: calc(1 - var(--film-p) * 0.9);
-    transform: translate3d(0, calc(var(--film-p) * -3.2vh), 0);
-    will-change: transform, opacity;
+    /* The engine writes opacity/transform directly: compositor-only, no style
+       recalculation for the subtree underneath. */
+    will-change: opacity, transform;
+    transform: translate3d(0, 0, 0);
   }
 
   .hero__inner {
@@ -290,7 +292,7 @@
     font-weight: 760;
     line-height: 1.07;
     letter-spacing: -0.045em;
-    text-shadow: 0 2px 18px rgba(4, 2, 18, 0.55), 0 18px 60px rgba(4, 2, 18, 0.5);
+    text-shadow: 0 2px 24px rgba(4, 2, 18, 0.6);
   }
 
   .hero__line {
@@ -524,11 +526,6 @@
     transition: opacity 700ms var(--ease);
   }
 
-  .hero.is-scrubbing .hero__poster--full,
-  .hero.is-scrubbing .hero__poster--blur {
-    opacity: 0;
-  }
-
   /* Poster-only fallback: reduced motion. */
   .hero.is-still .hero__film-media {
     transform: none !important;
@@ -548,21 +545,19 @@
     bottom: clamp(14px, 2.4vw, 26px);
     left: var(--gutter);
     height: 1px;
-    overflow: hidden;
-    background: rgba(220, 210, 255, 0.16);
-    pointer-events: none;
-  }
-
-  .hero__progress i {
-    display: block;
-    height: 100%;
     background: linear-gradient(90deg, transparent, var(--vermilion-soft));
     transform: scaleX(0);
     transform-origin: left center;
-    transition: transform 180ms linear;
+    pointer-events: none;
+    opacity: 0.75;
   }
 
   .hero.is-still .hero__progress {
+    display: none;
+  }
+
+  /* The poster is the final state when motion is off or the film failed. */
+  .hero.is-still .hero__video {
     display: none;
   }
 }
