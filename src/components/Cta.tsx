@@ -18,7 +18,7 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
             همیشه پذیرای همکاری‌های تازه
           </span>
           <span className="cta__index" dir="ltr">
-            <Numeral value={6} className="numeral--section" />
+            <Numeral value={5} className="numeral--section" />
             <span aria-hidden="true">—</span> CONTACT / START A PROJECT
           </span>
         </Reveal>

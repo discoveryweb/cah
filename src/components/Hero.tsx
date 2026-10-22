@@ -22,7 +22,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
               TEHRAN, IR — 35.6892° N / 51.3890° E
             </span>
             <span className="hero__meta-index" dir="ltr">
-              I / VI
+              I / V
             </span>
           </div>
         </div>

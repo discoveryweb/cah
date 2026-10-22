@@ -7,7 +7,6 @@ import { Hero } from "./components/Hero";
 import { Intro } from "./components/Intro";
 import { OrderModal } from "./components/OrderModal";
 import { Preloader } from "./components/Preloader";
-import { Process } from "./components/Process";
 import { Services } from "./components/Services";
 import { ChapterRail, BackToTop, ScrollProgress } from "./components/SiteChrome";
 import { Studio } from "./components/Studio";
@@ -38,7 +37,6 @@ export default function App() {
         <Intro />
         <Work onOrder={() => openOrder()} />
         <Services onOrder={openOrder} />
-        <Process />
         <Studio />
         <Cta onOrder={() => openOrder()} />
       </main>

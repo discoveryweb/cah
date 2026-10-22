@@ -44,7 +44,7 @@ function StudioLedger() {
           STUDIO PROFILE
         </span>
         <span className="studio__sheet-index">
-          <Numeral value={5} />
+          <Numeral value={4} />
         </span>
       </header>
 
@@ -144,7 +144,7 @@ export function Studio() {
 
       <div className="frame">
         <SectionHead
-          index="V"
+          index="IV"
           label="استودیو"
           latin="The Studio"
           id="studio-title"
@@ -160,7 +160,7 @@ export function Studio() {
         <div className="studio__spread">
           <span className="studio__rail" aria-hidden="true">
             <span dir="ltr">CAHEN — STUDIO NOTES</span>
-            <span dir="ltr">V / 06</span>
+            <span dir="ltr">IV / 05</span>
           </span>
 
           <div className="studio__manifesto">

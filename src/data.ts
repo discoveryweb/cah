@@ -9,7 +9,6 @@ export const NAV_LINKS = [
   { id: "home", label: "خانه", latin: "Index" },
   { id: "work", label: "کارها", latin: "Work" },
   { id: "services", label: "توانمندی‌ها", latin: "Services" },
-  { id: "process", label: "فرایند", latin: "Process" },
   { id: "studio", label: "استودیو", latin: "Studio" },
   { id: "contact", label: "تماس", latin: "Contact" },
 ] as const;
@@ -136,33 +135,6 @@ export const WORK = [
   },
 ] as const;
 
-export const PROCESS_STEPS = [
-  {
-    number: "01",
-    latin: "DISCOVER",
-    title: "اول، گوش می‌دهیم",
-    text: "با پرسش‌های درست، هدف کسب‌وکار، مخاطب و مسئلهٔ اصلی را شفاف می‌کنیم. این مرحله با یک نقشهٔ روشن تمام می‌شود، نه با یک حدس.",
-  },
-  {
-    number: "02",
-    latin: "DEFINE",
-    title: "بعد، مسئله را می‌سازیم",
-    text: "یافته‌ها را به یک تعریف دقیق تبدیل می‌کنیم: چه چیزی باید تغییر کند، برای چه کسی و با چه معیاری موفق است.",
-  },
-  {
-    number: "03",
-    latin: "DESIGN",
-    title: "حالا، فرم شکل می‌گیرد",
-    text: "ساختار، تجربه و زبان بصری را می‌سازیم. طرح‌ها را در بستر واقعی می‌بینیم و با بازخوردهای کوتاه و دقیق، تیزشان می‌کنیم.",
-  },
-  {
-    number: "04",
-    latin: "BUILD",
-    title: "در نهایت، زنده‌اش می‌کنیم",
-    text: "با کدی که خودمان نوشته‌ایم، طرح را به محصولی سریع، دسترس‌پذیر و پایدار تبدیل می‌کنیم؛ سپس برای رشد آماده‌اش می‌کنیم.",
-  },
-] as const;
-
 export const SERVICES = [
   {
     number: "01",
@@ -204,13 +176,6 @@ export const SERVICES = [
     suited: "برند در حال رشد",
     option: "هویت بصری و برندینگ",
   },
-] as const;
-
-export const STATS = [
-  { value: "۲۶", label: "پروژهٔ منتشرشده", latin: "PROJECTS SHIPPED" },
-  { value: "۹", label: "صنعت متفاوت", latin: "INDUSTRIES" },
-  { value: "۰۴", label: "حوزهٔ تخصصی", latin: "DISCIPLINES" },
-  { value: "∞", label: "وسواس در جزئیات", latin: "ATTENTION TO DETAIL" },
 ] as const;
 
 export const CONTACT = {

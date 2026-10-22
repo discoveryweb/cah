@@ -9,7 +9,6 @@ import { Brand, Numeral } from "./ui";
 const SEARCH_INDEX = [
   { keys: ["کار", "پروژه", "نمونه", "soma", "orbit", "aura", "پرتفولیو"], id: "work" },
   { keys: ["خدمت", "توانمندی", "طراحی", "توسعه", "برند", "هویت", "محصول"], id: "services" },
-  { keys: ["فرایند", "روش", "مراحل", "process", "پروسه"], id: "process" },
   { keys: ["استودیو", "درباره", "تیم", "cahen", "کاهن", "ما"], id: "studio" },
   { keys: ["تماس", "همکاری", "پروژه", "مشاوره", "contact", "ایمیل"], id: "contact" },
 ];
@@ -293,7 +292,7 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
             </div>
 
             <span className="menu__eyebrow" dir="ltr">
-              INDEX — I / VI
+              INDEX — I / V
             </span>
 
             <nav aria-label="منوی اصلی" className="menu__list">
