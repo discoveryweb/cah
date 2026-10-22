@@ -28,36 +28,7 @@ export function Intro() {
         />
 
         <div className="intro__identity">
-          <Reveal className="intro__identity-copy" delay={60}>
-            <span className="intro__identity-label" dir="ltr">
-              IDENTITY / MARK — I
-            </span>
-            <h3 className="intro__identity-title">
-              نشانِ ما، از <span className="accent">ذرات</span> ساخته شده.
-            </h3>
-            <p className="intro__identity-text">
-              نشان کاهن یک تصویر ثابت نیست؛ از نزدیک به ۹٬۰۰۰ ذره ساخته می‌شود. هر ذره رنگ و
-              روشنایی همان نقطه از نشان را دارد، با اشاره‌گر جابه‌جا می‌شود و بعد با یک فنر نرم به
-              جای خودش برمی‌گردد. همان ایده‌ای که در کارمان دنبال می‌کنیم: نظم، بدون ایستایی.
-            </p>
-
-            <ul className="intro__identity-facts">
-              <li>
-                <span dir="ltr">I</span>
-                <p>۹٬۰۰۰ ذره در فضای سه‌بعدی، با رنگ‌بندی بنفشِ خودِ نشان</p>
-              </li>
-              <li>
-                <span dir="ltr">II</span>
-                <p>دوربینِ کمی چرخیده و پلیتِ مایل؛ حرکت با اشاره‌گر</p>
-              </li>
-              <li>
-                <span dir="ltr">III</span>
-                <p>نسخهٔ ثابت و بی‌حرکت برای دستگاه‌های ضعیف و کاهش حرکت</p>
-              </li>
-            </ul>
-          </Reveal>
-
-          <Reveal className="intro__identity-stage" variant="scale" delay={120}>
+          <Reveal className="intro__identity-stage" variant="scale" delay={60}>
             <MarkStage />
             <figcaption className="intro__identity-caption">
               <span>نشان کاهن — پرتره‌ای از ذرات</span>

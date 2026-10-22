@@ -586,8 +586,6 @@
      ========================================================= */
   .intro__identity {
     position: relative;
-    display: grid;
-    gap: clamp(22px, 3vw, 44px);
     margin-top: clamp(26px, 3.4vw, 44px);
     padding-block: clamp(26px, 3.4vw, 46px) clamp(22px, 3vw, 38px);
     border-top: 1px solid var(--line);
@@ -598,93 +596,22 @@
     position: absolute;
     z-index: -1;
     inset: 0;
-    background: radial-gradient(ellipse at 78% 40%, rgba(96, 62, 210, 0.16), transparent 62%);
+    background: radial-gradient(ellipse at 50% 45%, rgba(96, 62, 210, 0.18), transparent 62%);
     content: "";
     pointer-events: none;
   }
 
-  @media (min-width: 980px) {
-    .intro__identity {
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-      align-items: center;
-      gap: clamp(30px, 3.8vw, 60px);
-    }
-  }
-
-  .intro__identity-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-inline: clamp(2px, 1vw, 14px);
-  }
-
-  .intro__identity-label {
-    color: var(--vermilion-soft);
-    font-family: var(--font-mono);
-    font-size: 8.5px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-  }
-
-  .intro__identity-title {
-    color: var(--ink);
-    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
-    font-weight: 660;
-    line-height: 1.45;
-    letter-spacing: -0.03em;
-  }
-
-  .intro__identity-title .accent {
-    color: var(--vermilion-soft);
-  }
-
-  .intro__identity-text {
-    max-width: 44ch;
-    color: var(--fg-soft);
-    font-size: 13px;
-    line-height: 2.05;
-  }
-
-  .intro__identity-facts {
-    display: grid;
-    gap: 0;
-    margin-top: 6px;
-    border-top: 1px solid var(--line);
-  }
-
-  .intro__identity-facts li {
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1fr);
-    gap: 10px;
-    align-items: baseline;
-    padding-block: 10px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .intro__identity-facts span {
-    color: var(--vermilion);
-    font-family: var(--font-serif);
-    font-size: 13px;
-    font-style: italic;
-  }
-
-  .intro__identity-facts p {
-    color: var(--fg-soft);
-    font-size: 12px;
-    line-height: 1.8;
-  }
-
   .intro__identity-stage {
     display: flex;
+    width: 100%;
+    max-width: 620px;
     flex-direction: column;
-    gap: 10px;
-    min-width: 0;
+    gap: 12px;
+    margin-inline: auto;
   }
 
   .intro__identity-stage .mark-stage {
     width: 100%;
-    max-width: 560px;
-    margin-inline: auto;
   }
 
   .intro__identity-caption {
@@ -692,6 +619,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    padding-inline: clamp(2px, 1vw, 8px);
     color: var(--fg-mute);
     font-family: var(--font-mono);
     font-size: 8.5px;
