@@ -26,8 +26,11 @@ const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
  * keeps the film smooth at 120 Hz as well as on a 60 Hz laptop: no per-scroll
  * layout reads, no layout-triggering properties, no React re-renders.
  *
- * `ambient` plays the clip on loop while the hero is on screen.
- * `scrub` pauses it and drives `currentTime` from the same eased progress.
+ * `ambient` plays the clip while the hero is on screen. The encoded files fade
+ * from black and back to black at both ends, so the browser's `loop` restart is
+ * invisible even though the film begins and ends on different shots.
+ *
+ * `scrub` pauses the clip and drives `currentTime` from the same eased progress.
  */
 export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, mode = "ambient", disabled = false }: Options) {
   useEffect(() => {

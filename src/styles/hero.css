@@ -60,6 +60,16 @@
     transform: scale(1.01);
   }
 
+  /* 29 KB blurred thumbnail paints instantly, then the sharp poster lands. */
+  .hero__poster--blur {
+    filter: blur(14px) saturate(0.94) brightness(0.9);
+    transform: scale(1.06);
+  }
+
+  .hero.is-playing .hero__poster--full {
+    opacity: 1;
+  }
+
   .hero__video {
     opacity: 0;
     filter: saturate(0.96) contrast(1.03) brightness(0.9);

@@ -14,9 +14,16 @@ const FILM = {
   desktop: "/film/hero-1920.mp4",
   mobile: "/film/hero-1280.mp4",
   poster: "/film/hero-poster.jpg",
+  posterBlur: "/film/hero-poster-blur.jpg",
   /** "ambient" loops the clip; "scrub" drives it from the scroll position. */
   mode: "ambient" as FilmMode,
 };
+
+/**
+ * The delivered film cuts from a dark starfield to a lit room, so a hard `loop`
+ * would jump. Both files therefore fade from black and back to black (baked in
+ * at encode time), which makes the restart invisible.
+ */
 
 export function Hero({ onOrder }: { onOrder: () => void }) {
   const content = useContent();
@@ -37,11 +44,17 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const wide = window.matchMedia("(min-width: 901px)");
     const decide = () => setPosterOnly(reduce.matches || isLowEndDevice());
+    const pick = () => setSource(wide.matches ? FILM.desktop : FILM.mobile);
     decide();
-    setSource(window.matchMedia("(max-width: 900px)").matches ? FILM.mobile : FILM.desktop);
+    pick();
     reduce.addEventListener("change", decide);
-    return () => reduce.removeEventListener("change", decide);
+    wide.addEventListener("change", pick);
+    return () => {
+      reduce.removeEventListener("change", decide);
+      wide.removeEventListener("change", pick);
+    };
   }, []);
 
   useHeroFilm({
@@ -66,7 +79,15 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
           <div className="hero__film" aria-hidden="true">
             <div className="hero__film-media" ref={mediaRef}>
               <img
-                className="hero__poster"
+                className="hero__poster hero__poster--blur"
+                src={FILM.posterBlur}
+                alt=""
+                width={1600}
+                height={900}
+                aria-hidden="true"
+              />
+              <img
+                className="hero__poster hero__poster--full"
                 src={FILM.poster}
                 alt=""
                 width={1600}
@@ -90,6 +111,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
                   onError={() => setPlaying(false)}
                 />
               )}
+
             </div>
             <div className="hero__film-scrim" />
             <div className="hero__film-grain" />

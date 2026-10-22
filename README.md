@@ -20,18 +20,23 @@ a single `requestAnimationFrame` loop (`src/hooks/useHeroFilm.ts`) that reads th
 scroll position once per frame and eases it with a frame-rate independent filter,
 so it behaves the same at 60 Hz and 144 Hz and never triggers a React re-render.
 
-Bundled defaults live in `public/film/`. Replace them with the real clip:
+`public/film/` holds the delivered CAHEN film. To reprocess it, or use a new clip:
 
 ```bash
-npm run film:video -- path/to/clip.mp4                 # 16:9 cover crop, no audio
-npm run film:video -- clip.mp4 --duration 12 --fps 30  # trim to 12s
-npm run film:video -- clip.mov --fit contain           # letterbox instead of crop
-npm run film:placeholder                               # rebuild a branded stand-in
+npm run film:video -- inbox/uploads/<file>.mp4 \
+  --start 0.35 --duration 14.6 --fps 60 --badge 1014,642,262,52
 ```
 
-That writes `hero-1920.mp4` (desktop), `hero-1280.mp4` (≤900px screens),
-`hero-poster.jpg` (first paint, and the fallback when motion is off), and
-optionally `hero-scrub.mp4` (`--scrub`, every frame a keyframe).
+The pipeline trims, strips audio, removes the burned-in corner badge
+(`delogo`, optional), cover-crops to 16:9, interpolates to 60 fps, encodes
+1920×1080 + 1280×720, fades both ends to black so `loop` restarts invisibly, and
+writes the poster plus a 29 KB blurred thumbnail. Result: 4.6 MB desktop, 2.2 MB
+mobile (each gzipped by the CDN where the browser accepts it).
+
+Other flags: `--fit contain` (letterbox), `--no-interpolate`, `--crf 32`,
+`--placeholder` (regenerate the branded stand-in). A second `FILM.mode`,
+`"scrub"`, drives the clip's timeline from the scroll position instead of
+looping.
 
 Deliberate choices, all visible in `src/components/Hero.tsx`:
 
@@ -39,14 +44,18 @@ Deliberate choices, all visible in `src/components/Hero.tsx`:
   the poster is `fetchPriority="high"` and paints before a single video byte.
 - Phones never download the 1920 file; the `src` is chosen by media query.
 - `prefers-reduced-motion`, save-data or a ≤2-core device renders the poster only
-  and skips the video element entirely.
+  and skips the video element entirely. A 29 KB blurred thumbnail paints first,
+  then the sharp poster (`fetchPriority="high"`) replaces it.
+- Both encodes fade to black at each end, and the clip is 60 fps, so the loop
+  restart is a beat of darkness rather than a visible jump between two shots.
 - Playback pauses off-screen and in hidden tabs; the scroll transform keeps
   working (it is transform/opacity only, no layout).
 - `FILM.mode = "scrub"` in `Hero.tsx` switches from a looping clip to one whose
   timeline follows the scroll position (needs `--scrub`). Ambient is the default
   because it looks smoother on mid-range phones.
-- Audio is stripped at encode time: an audible hero would need a click first, and
-  an unbounded video payload is the easiest way to ruin first paint.
+- Audio is stripped at encode time: an audible hero would need a click first.
+- The burned-in "CAHEN" badge in the delivered clip is removed with `delogo`
+  rather than covered with a second badge, so no double-branding appears.
 
 ## Content and visual identity
 
