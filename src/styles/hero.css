@@ -44,10 +44,9 @@
   }
 
   /**
-   * The frame is drawn once and never re-scaled. A per-frame transform here made
-   * the browser re-rasterise the video surface on every scroll tick, which is
-   * what shimmered and lagged. The small constant overscan only hides the
-   * edges of the cover crop.
+   * The frame is painted once and never re-scaled: a per-frame transform here
+   * made the browser re-rasterise the video surface on every scroll tick, which
+   * is what shimmered and lagged. Overlay fades use opacity only.
    */
   .hero__film-media {
     position: absolute;
