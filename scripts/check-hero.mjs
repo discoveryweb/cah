@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 /**
- * Guards the hero film against the failure modes that are invisible in code
- * review but obvious to a visitor:
+ * Guards the scroll-scrubbed hero film. These are the failures a visitor sees
+ * but a code review cannot: the film playing on its own, the timeline not
+ * following the scroll, a dead zone at the start, or the film running backwards
+ * only when the page is scrolled up.
  *
- *   1. no <video> element at all (the low-end-device gate used to remove it)
- *   2. a paused clip showing frame zero, which is black (fade from black)
- *   3. a browser refusing autoplay and nothing ever starting the film
- *   4. the scroll transform never being applied
- *
- * Runs the real React component in jsdom, with the media element stubbed, so it
- * needs no browser. `npm run hero:check`.
+ * Runs the real React component in jsdom with a stubbed media element (seeks are
+ * recorded, not decoded), so it needs no browser. `npm run hero:check`.
  */
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -19,6 +16,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const WORK = path.join(ROOT, "node_modules", ".hero-check");
+const DURATION = 13.4;
 
 const ENTRY = `
 import { createRoot } from "react-dom/client";
@@ -31,18 +29,42 @@ act(() => {
   root.render(<ContentProvider><Hero onOrder={() => {}} /></ContentProvider>);
 });
 
-window.__scrollTest = async () => {
+/**
+ * Pretend the tall track is 2400px in a 900px viewport, then scroll to a
+ * fraction of the scrub distance and report what the film did.
+ */
+window.__scrollTo = async (fraction, settle = 2600) => {
   const track = document.querySelector(".hero__track");
-  const media = document.querySelector(".hero__film-media");
-  if (!track || !media) return "";
+  if (!track) return null;
+  const height = 2400;
+  const travel = height - 900;
   track.getBoundingClientRect = () => ({
-    top: -150, height: 1200, bottom: 1050, left: 0, right: 1440, width: 1440, x: 0, y: -150,
+    top: -travel * fraction, height, bottom: height - travel * fraction,
+    left: 0, right: 1440, width: 1440, x: 0, y: -travel * fraction,
     toJSON: () => ({}),
   });
-  Object.defineProperty(window, "scrollY", { value: 150, configurable: true });
+  Object.defineProperty(window, "scrollY", { value: travel * fraction, configurable: true });
   window.dispatchEvent(new Event("scroll"));
-  await new Promise((resolve) => setTimeout(resolve, 220));
-  return media.style.transform;
+  // The engine eases with a ~1s time constant: settle before asserting.
+  await new Promise((resolve) => setTimeout(resolve, settle));
+  const video = document.querySelector("video");
+  const media = document.querySelector(".hero__film-media");
+  return {
+    fraction,
+    currentTime: video ? Number(video.currentTime.toFixed(3)) : null,
+    paused: video ? video.paused : null,
+    transform: media ? media.style.transform : null,
+    overlayOpacity: document.querySelector(".hero__overlay")
+      ? getComputedStyle(document.querySelector(".hero__overlay")).opacity
+      : null,
+    overlayVar: document.querySelector(".hero__overlay")
+      ? document.querySelector(".hero__overlay").style.getPropertyValue("--film-p")
+      : null,
+    progress: Number(document.querySelector(".hero").getAttribute("data-film-progress")),
+    className: document.querySelector(".hero").className,
+    seeks: window.__seeks.length,
+    seekLog: window.__seeks.slice(),
+  };
 };
 
 window.__report = () => {
@@ -51,21 +73,24 @@ window.__report = () => {
   const poster = document.querySelector(".hero__poster--full");
   return {
     className: hero ? hero.className : "",
-    state: hero ? hero.getAttribute("data-film-state") : null,
+    mode: hero ? hero.getAttribute("data-film") : null,
+    progress: hero ? Number(hero.getAttribute("data-film-progress")) : null,
+    trackHeight: document.querySelector(".hero__track")
+      ? getComputedStyle(document.querySelector(".hero__track")).height
+      : null,
     video: video
       ? {
           src: video.getAttribute("src"),
           autoplay: video.autoplay,
           muted: video.muted,
-          loop: video.loop,
-          playsInline: video.playsInline,
+          controls: video.controls,
+          preload: video.getAttribute("preload"),
           poster: video.getAttribute("poster"),
         }
       : null,
     posterSrc: poster ? poster.getAttribute("src") : null,
-    playButton: Boolean(document.querySelector(".hero__play")),
-    plays: window.__events.filter((e) => e === "play").length,
-    refusals: window.__events.filter((e) => e === "play:refused").length,
+    seeks: window.__seeks.slice(),
+    played: window.__events.filter((e) => e === "play").length,
   };
 };
 `;
@@ -87,10 +112,7 @@ await build({
 
 const script = fs.readFileSync(path.join(WORK, "bundle.js"), "utf8");
 
-/**
- * @param {{ cores?: number, reducedMotion?: boolean, refuseAutoplay?: boolean }} options
- */
-async function mount({ cores = 8, reducedMotion = false, refuseAutoplay = false } = {}) {
+async function mount({ reducedMotion = false } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, {
     runScripts: "outside-only",
     pretendToBeVisual: true,
@@ -98,19 +120,9 @@ async function mount({ cores = 8, reducedMotion = false, refuseAutoplay = false 
   });
   const { window } = dom;
 
-  // React warns that jsdom is not a test runner; the harness is one.
   window.IS_REACT_ACT_ENVIRONMENT = true;
-  const quiet = (method) => {
-    const original = window.console[method].bind(window.console);
-    window.console[method] = (...args) => {
-      const text = args.map(String).join(" ");
-      if (text.includes("act(") || text.includes("not configured to support act")) return;
-      original(...args);
-    };
-  };
-  quiet("error");
-  quiet("warn");
   window.__events = [];
+  window.__seeks = [];
   window.fetch = () => Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
   window.matchMedia = (query) => ({
     matches: query.includes("prefers-reduced-motion") ? reducedMotion : query.includes("min-width: 901px"),
@@ -122,48 +134,71 @@ async function mount({ cores = 8, reducedMotion = false, refuseAutoplay = false 
     removeListener: () => {},
     dispatchEvent: () => false,
   });
-  Object.defineProperty(window.navigator, "hardwareConcurrency", { value: cores, configurable: true });
+
+  const quiet = (method) => {
+    const original = window.console[method].bind(window.console);
+    window.console[method] = (...args) => {
+      const text = args.map(String).join(" ");
+      if (text.includes("act(")) return;
+      original(...args);
+    };
+  };
+  quiet("error");
+  quiet("warn");
+
   window.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
-  window.IntersectionObserver = class {
-    constructor(callback) {
-      this.callback = callback;
-    }
-    observe(target) {
-      this.callback([{ isIntersecting: true, target }], this);
-    }
-    unobserve() {}
-    disconnect() {}
-  };
 
-  let refusals = refuseAutoplay ? 2 : 0;
+  /* A video that only reports metadata: any play() must not stick. */
+  let currentTime = 0;
+  Object.defineProperty(window.HTMLMediaElement.prototype, "duration", {
+    configurable: true,
+    get: () => DURATION,
+  });
+  Object.defineProperty(window.HTMLMediaElement.prototype, "readyState", { configurable: true, get: () => 4 });
+  Object.defineProperty(window.HTMLMediaElement.prototype, "seeking", { configurable: true, get: () => false });
+  Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
+    configurable: true,
+    get: () => window.__paused,
+  });
+  window.__paused = true;
+
+  Object.defineProperty(window.HTMLMediaElement.prototype, "currentTime", {
+    configurable: true,
+    get: () => currentTime,
+    set(value) {
+      currentTime = value;
+      window.__seeks.push(Number(value.toFixed(3)));
+      this.dispatchEvent(new window.Event("seeked"));
+    },
+  });
   window.HTMLMediaElement.prototype.play = function play() {
-    window.__events.push(refusals > 0 ? "play:refused" : "play");
-    if (refusals > 0) {
-      refusals -= 1;
-      return Promise.reject(new window.DOMException("autoplay blocked", "NotAllowedError"));
-    }
-    Object.defineProperty(this, "paused", { value: false, configurable: true });
+    window.__events.push("play");
+    // Report success, then behave like a video that stops immediately: the
+    // scrubber must keep it paused regardless.
+    window.__paused = false;
     this.dispatchEvent(new window.Event("playing"));
     return Promise.resolve();
   };
   window.HTMLMediaElement.prototype.pause = function pause() {
     window.__events.push("pause");
-    Object.defineProperty(this, "paused", { value: true, configurable: true });
+    window.__paused = true;
   };
   window.HTMLMediaElement.prototype.load = function load() {
     window.__events.push("load");
   };
-  Object.defineProperty(window.HTMLMediaElement.prototype, "duration", { configurable: true, get: () => 14.57 });
-  Object.defineProperty(window.HTMLMediaElement.prototype, "readyState", { configurable: true, get: () => 4 });
   window.requestAnimationFrame = (callback) => setTimeout(() => callback(Date.now()), 0);
   window.cancelAnimationFrame = (id) => clearTimeout(id);
 
   window.eval(script);
-  await new Promise((resolve) => setTimeout(resolve, 140));
+  const video = window.document.querySelector("video");
+  video?.dispatchEvent(new window.Event("loadedmetadata"));
+  video?.dispatchEvent(new window.Event("loadeddata"));
+  video?.dispatchEvent(new window.Event("canplay"));
+  await new Promise((resolve) => setTimeout(resolve, 120));
   return window;
 }
 
@@ -173,72 +208,81 @@ const check = (label, ok, detail = "") => {
   console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok || !detail ? "" : ` — ${detail}`}`);
 };
 
+const near = (a, b, tolerance = 0.35) => Math.abs(a - b) <= tolerance;
+
 /* ---------------------------------------------------------------- scenarios */
 
 {
-  const window = await mount({ cores: 8 });
+  const window = await mount();
   const report = window.__report();
-  const transform = await window.__scrollTest();
 
+  check("the hero is in scrub mode", report.mode === "scrub");
   check(
-    "the film is a real <video>, not a poster swap",
-    Boolean(report.video) && report.video.src.includes("/film/hero-1920.mp4"),
-    JSON.stringify(report.video),
+    "the film is the all-keyframe scrub encode",
+    Boolean(report.video?.src?.includes("/film/hero-scrub-1920".replace("1920", "1440"))),
+    String(report.video?.src),
   );
-  check(
-    "it is muted, inline, looping and autoplaying",
-    Boolean(report.video?.autoplay && report.video?.muted && report.video?.loop && report.video?.playsInline),
-    JSON.stringify(report.video),
-  );
-  check("playback is requested on mount", report.plays >= 1, `plays=${report.plays}`);
-  check("the hero reports itself as playing", report.state === "playing", `state=${report.state}`);
-  check("the video layer is revealed (is-playing)", report.className.includes("is-playing"));
-  check(
-    "the poster is always underneath, with a versioned URL",
-    report.posterSrc?.includes("/film/hero-poster.jpg") && report.posterSrc.includes("?v="),
-    String(report.posterSrc),
-  );
-  check(
-    "scrolling drives a composited transform",
-    transform.includes("translate3d") && transform.includes("scale(1.0"),
-    transform,
-  );
-  check("no play button when autoplay works", report.playButton === false);
-}
+  check("the video element is muted, inline and has no controls", Boolean(report.video?.muted && !report.video?.controls));
+  check("it is not asked to autoplay", report.video?.autoplay === false, JSON.stringify(report.video));
+  check("it is preloaded fully, so seeks are instant", report.video?.preload === "auto");
+  check("the poster is behind it, versioned", Boolean(report.posterSrc?.includes("hero-poster.jpg?v=")));
 
-{
-  // The bug: a 2-core/2 GB machine used to get no video element at all.
-  const window = await mount({ cores: 2 });
-  const report = window.__report();
+  // The track must be tall enough to make the scrub feel deliberate. jsdom has
+  // no CSS engine, so read the declaration straight from the stylesheet.
+  const css = fs.readFileSync(path.join(ROOT, "src/styles/hero.css"), "utf8");
+  const trackRule = /\.hero__track \{[^}]*height:\s*(\d+)svh/.exec(css);
   check(
-    "a low-end device still gets the film (2 cores)",
-    Boolean(report.video) && report.state === "playing",
-    `state=${report.state}`,
+    "the scroll track is several screens tall",
+    Boolean(trackRule) && Number(trackRule[1]) >= 250,
+    trackRule ? trackRule[0].replace(/\s+/g, " ") : "height not found",
   );
-  check("…and is not permanently frozen", report.className.includes("is-playing"));
+
+  const start = await window.__scrollTo(0);
+  check("at the top the film is at its first frame", near(start.currentTime, 0, 0.1), String(start.currentTime));
+  check("at the top it is paused, not playing", start.paused === true);
+  check("the reader is told the film has not started", near(start.progress, 0, 0.02), String(start.progress));
+
+  const mid = await window.__scrollTo(0.5);
+  check(
+    "half way through the scroll shows the middle of the film",
+    near(mid.currentTime, DURATION / 2, 0.6),
+    `${mid.currentTime} vs ${DURATION / 2}`,
+  );
+  check("…and it is still paused", mid.paused === true);
+  check(
+    "…with the progress readout tracking the film",
+    mid.progress > 0.4 && mid.progress <= 0.51,
+    String(mid.progress),
+  );
+
+  const end = await window.__scrollTo(1);
+  check(
+    "the end of the scroll is the end of the film",
+    end.currentTime >= DURATION - 1.2 && end.currentTime <= DURATION,
+    String(end.currentTime),
+  );
+  check("the film never plays on its own", end.paused === true);
+
+  const back = await window.__scrollTo(0.25);
+  check(
+    "scrolling back walks the film backwards symmetrically",
+    near(back.currentTime, DURATION * 0.25, 0.6),
+    `${back.currentTime} vs ${DURATION * 0.25}`,
+  );
+  check("the transform follows the scroll too", back.transform.includes("translate3d"));
+  const uniqueTimes = new Set(back.seekLog.map((value) => value.toFixed(2)));
+  check(
+    "seeks are coalesced instead of one per animation frame",
+    back.seeks < 240 && uniqueTimes.size > 8,
+    `seeks=${back.seeks}, distinct=${uniqueTimes.size}`,
+  );
 }
 
 {
   const window = await mount({ reducedMotion: true });
   const report = window.__report();
-  check("reduced motion renders no video element", report.video === null);
+  check("reduced motion renders no video at all", report.video === null);
   check("reduced motion keeps the poster", Boolean(report.posterSrc?.includes("hero-poster.jpg")));
-  check("reduced motion does not claim to be playing", !report.className.includes("is-playing"));
-}
-
-{
-  const window = await mount({ refuseAutoplay: true });
-  const before = window.__report();
-  check("a refused autoplay never shows a black frame", before.state === "loading", `state=${before.state}`);
-  check("a refused autoplay offers an explicit play control", before.playButton === true);
-  check("the poster is visible while blocked", Boolean(before.posterSrc?.includes("hero-poster.jpg")));
-
-  window.dispatchEvent(new window.Event("wheel"));
-  window.dispatchEvent(new window.Event("scroll"));
-  await new Promise((resolve) => setTimeout(resolve, 140));
-  const after = window.__report();
-  check("the first gesture starts the film", after.state === "playing", `state=${after.state}`);
-  check("the play control disappears once playing", after.playButton === false);
 }
 
 /* -------------------------------------------------------------------- done */

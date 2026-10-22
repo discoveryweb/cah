@@ -79,7 +79,8 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 # The hero film is not fingerprinted, so it gets a short, revalidated cache:
-# fast repeat visits, and a replaced film is live within minutes.
+# fast repeat visits, and a replaced film is live within minutes. Scrubbing needs
+# byte ranges, and the file is served compressed only if the CDN supports it.
 [[headers]]
   for = "/film/*"
   [headers.values]

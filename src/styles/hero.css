@@ -9,10 +9,14 @@
     color: var(--ink);
   }
 
+  /**
+   * The track's extra height is the scrub distance: one viewport of pinning
+   * plus ~2.4 screens of scroll maps onto the whole clip.
+   */
   .hero__track {
     position: relative;
-    height: 132svh;
-    min-height: 760px;
+    height: 340svh;
+    min-height: 1500px;
   }
 
   .hero__stage {
@@ -24,6 +28,8 @@
     overflow: hidden;
     isolation: isolate;
     background: var(--paper-deep);
+    /* The film is full-bleed: scrims and the film itself reach the edges. */
+    border-radius: 0;
   }
 
   /* ---------- Film layers ---------- */
@@ -67,10 +73,10 @@
   }
 
   /**
-   * While the clip is not playing — still loading, autoplay refused, or motion
-   * reduced — the poster drifts slowly so the hero never looks frozen.
+   * Until the first frame is decoded (and in reduced-motion mode) the poster
+   * drifts slowly, so the hero never looks like a frozen still.
    */
-  .hero:not(.is-playing) .hero__poster--full {
+  .hero:not(.is-scrubbing) .hero__poster--full {
     animation: film-drift 28s ease-in-out infinite alternate;
   }
 
@@ -83,17 +89,16 @@
     }
   }
 
-  .hero.is-playing .hero__poster--full {
-    opacity: 1;
-  }
-
   .hero__video {
     opacity: 0;
     filter: saturate(0.96) contrast(1.03) brightness(0.9);
-    transition: opacity 1100ms var(--ease);
+    transition: opacity 500ms var(--ease);
+    /* Seeks are cheap because every frame is a keyframe; never let the browser
+       try to smooth them with its own interpolation. */
+    will-change: auto;
   }
 
-  .hero.is-playing .hero__video {
+  .hero.is-scrubbing .hero__video {
     opacity: 1;
   }
 
@@ -514,17 +519,17 @@
 }
 
 @layer components {
-  /* Scroll-scrub mode: the clip advances with the page instead of looping. */
-  .hero[data-film="scrub"] .hero__video {
-    opacity: 1;
-  }
-
+  /* Scroll-scrub mode: the clip advances with the page, in both directions. */
   .hero[data-film="scrub"] .hero__poster {
-    opacity: 0;
-    transition: opacity 600ms var(--ease);
+    transition: opacity 700ms var(--ease);
   }
 
-  /* Poster-only fallbacks: reduced motion, save-data, very small devices. */
+  .hero.is-scrubbing .hero__poster--full,
+  .hero.is-scrubbing .hero__poster--blur {
+    opacity: 0;
+  }
+
+  /* Poster-only fallback: reduced motion. */
   .hero.is-still .hero__film-media {
     transform: none !important;
     will-change: auto;
@@ -534,13 +539,39 @@
     opacity: 1;
     transform: none;
   }
+
+  /* ---------- Scrub progress ---------- */
+  .hero__progress {
+    position: absolute;
+    z-index: 4;
+    right: var(--gutter);
+    bottom: clamp(14px, 2.4vw, 26px);
+    left: var(--gutter);
+    height: 1px;
+    overflow: hidden;
+    background: rgba(220, 210, 255, 0.16);
+    pointer-events: none;
+  }
+
+  .hero__progress i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--vermilion-soft));
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 180ms linear;
+  }
+
+  .hero.is-still .hero__progress {
+    display: none;
+  }
 }
 
 @layer components {
   @media (max-width: 1023px) {
     .hero__track {
-      height: 118svh;
-      min-height: 660px;
+      height: 280svh;
+      min-height: 1300px;
     }
 
     .hero__title {
@@ -558,15 +589,16 @@
   }
 
   @media (max-width: 767px) {
+    /* Mobile keeps the pinned stage but needs less scroll travel per frame. */
     .hero__track {
-      height: auto;
-      min-height: 0;
+      height: 260svh;
+      min-height: 1200px;
     }
 
     .hero__stage {
-      position: relative;
+      position: sticky;
       height: 100svh;
-      min-height: 620px;
+      min-height: 560px;
     }
 
     .hero__inner {

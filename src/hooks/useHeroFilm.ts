@@ -3,210 +3,174 @@ import { useEffect, type RefObject } from "react";
 export type FilmMode = "ambient" | "scrub";
 
 type Options = {
-  /** The whole hero section (used for geometry and visibility). */
+  /** The scroll distance that maps to the whole clip (the tall track). */
   sectionRef: RefObject<HTMLElement | null>;
-  /** The element that receives the scroll transform (the video wrapper). */
+  /** The element that receives the parallax/zoom transform. */
   mediaRef: RefObject<HTMLElement | null>;
-  /** The overlay that fades as the hero is scrolled past. */
+  /** The element whose `--film-p` drives the copy fade. */
   overlayRef: RefObject<HTMLElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
-  mode?: FilmMode;
-  /** Skip the engine entirely (poster-only fallback). */
-  disabled?: boolean;
-  /**
-   * Reports playback state: "playing" once frames move, "blocked" when the
-   * browser refused autoplay (the UI can then offer an explicit play control),
-   * "idle" after a normal pause.
-   */
-  onState?: (state: "playing" | "idle" | "blocked") => void;
+  /** 0–1 progress driven by the scroll; reported for UI affordances. */
+  onProgress?: (progress: number) => void;
 };
 
 const clamp01 = (value: number) => (value < 0 ? 0 : value > 1 ? 1 : value);
 
-/** Events that count as the user gesture browsers ask for before autoplay. */
-const GESTURES = ["pointerdown", "touchstart", "wheel", "keydown", "scroll"] as const;
+/** Frame-accurate scrub needs every frame to be seekable; we allow ~1 frame of drift. */
+const FRAME_SLOP = 1 / 45;
 
 /**
- * Scroll-linked motion for the full-bleed hero film.
+ * Scroll-scrubbed film.
  *
- * Everything runs on one `requestAnimationFrame` loop that reads the scroll
- * position once per frame, eases it towards a target with a frame-rate
- * independent filter, and writes a single composited transform. That is what
- * keeps the film smooth at 120 Hz as well as on a 60 Hz laptop: no per-scroll
- * layout reads, no layout-triggering properties, no React re-renders.
+ * The clip is not played: its timeline is a function of the scroll position, so
+ * scrolling down walks the film forwards and scrolling up walks it backwards,
+ * frame for frame. The default `scrub` implementation in browsers is jumpy —
+ * it issues a seek per scroll event and paints whatever finished decoding last —
+ * so this engine does three things instead:
  *
- * `ambient` plays the clip while the hero is on screen. Autoplay is attempted
- * aggressively — on mount, on every readiness event, and again on the first
- * user gesture — because embedded previews and strict browser profiles often
- * refuse `play()` until the page has been interacted with. The encoded files
- * fade from black and back to black, so the browser's `loop` restart is
- * invisible even though the film begins and ends on different shots.
+ *  1. Reads `scrollY` once per animation frame and eases it with a filter whose
+ *     strength is expressed in time, so 60 Hz, 120 Hz and 144 Hz feel identical.
+ *  2. Writes only `currentTime` (no React state, no layout reads) and coalesces
+ *     seeks: one in flight at a time, then the freshest target.
+ *  3. Applies "frame snapping": a seek is skipped until the target has moved at
+ *     least ~1 frame, which removes the duplicate-frame judder you get when the
+ *     element is asked to display a frame it is already on.
  *
- * `scrub` pauses the clip and drives `currentTime` from the same eased progress.
+ * The encode is all-keyframe (`-g 1`), so each seek is a decode of a single
+ * frame rather than a GOP walk; that is what makes the motion feel continuous.
  */
-export function useHeroFilm({
-  sectionRef,
-  mediaRef,
-  overlayRef,
-  videoRef,
-  mode = "ambient",
-  disabled = false,
-  onState,
-}: Options) {
+export function useHeroFilm({ sectionRef, mediaRef, overlayRef, videoRef, onProgress }: Options) {
   useEffect(() => {
     const section = sectionRef.current;
     const media = mediaRef.current;
-    if (!section || !media || disabled) return;
-
     const video = videoRef.current;
+    if (!section || !media || !video) return;
+
     const overlay = overlayRef.current;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let frame = 0;
     let lastTime = 0;
     let target = 0;
     let eased = -1;
-    let visible = true;
-    let stageTop = 0;
-    let travel = 0;
+    let scrollTop = 0;
+    let travel = 1;
     let duration = 0;
-    let gestureBound = false;
+    let ready = false;
+    let seeking = false;
+    let wanted = 0;
+    let painted = -1;
+    let reported = -1;
     let disposed = false;
-
     const timers: number[] = [];
+
     const later = (fn: () => void, ms: number) => {
       timers.push(window.setTimeout(fn, ms));
     };
 
+    /** The clip is not a video to watch: keep it paused and only seek it. */
+    const freeze = () => {
+      video.pause();
+      video.autoplay = false;
+      if (!video.loop) video.loop = false;
+    };
+
     const measure = () => {
       const rect = section.getBoundingClientRect();
-      stageTop = rect.top + window.scrollY;
+      // Absolute top, so the maths holds at any scroll offset.
+      scrollTop = rect.top + window.scrollY;
       travel = Math.max(1, rect.height - window.innerHeight);
-      duration = Number.isFinite(video?.duration) && video?.duration ? video.duration : 0;
+      duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
     };
 
     const paint = (progress: number) => {
-      // 4vh of lift and a 6% push-in over the whole scroll; subtle on purpose.
-      media.style.transform = `translate3d(0, ${(-progress * 4).toFixed(3)}vh, 0) scale(${(1 + progress * 0.06).toFixed(4)})`;
+      if (reduceMotion) return;
+      // A little lift and push-in: the film itself is the main motion.
+      media.style.transform = `translate3d(0, ${(-progress * 2.4).toFixed(3)}vh, 0) scale(${(1 + progress * 0.05).toFixed(4)})`;
       if (overlay) overlay.style.setProperty("--film-p", progress.toFixed(4));
     };
 
-    /* ---------------------------------------------------------- playback */
+    /**
+     * Frame snapping with sub-frame easing. `wanted` is the exact time the
+     * scroll asks for; we only issue a seek once it is at least one frame away
+     * from what is on screen.
+     */
+    const seek = () => {
+      if (!ready || duration <= 0 || disposed) return;
+      if (Math.abs(wanted - painted) < FRAME_SLOP) return;
+      if (seeking) return; // the `seeked` handler picks up the newest target
 
-    const unbindGestures = () => {
-      if (!gestureBound) return;
-      for (const event of GESTURES) window.removeEventListener(event, onGesture, true);
-      gestureBound = false;
-    };
-
-    const bindGestures = () => {
-      if (gestureBound || !video || disposed) return;
-      gestureBound = true;
-      for (const event of GESTURES) window.addEventListener(event, onGesture, { capture: true, passive: true });
-    };
-
-    function onGesture() {
-      attemptPlay(true);
-    }
-
-    /** `fromGesture` unlocks playback that a strict autoplay policy refused. */
-    function attemptPlay(fromGesture = false) {
-      if (!video || mode !== "ambient" || disposed) return;
-      if (document.hidden || !visible) return;
-      // Some browsers only honour the property, not the JSX attribute.
-      video.muted = true;
-      video.defaultMuted = true;
-      if (video.readyState === 0) {
-        try {
-          video.load();
-        } catch {
-          /* ignore */
-        }
+      const time = Math.min(duration - 0.04, Math.max(0, wanted));
+      if (Math.abs(video.currentTime - time) < FRAME_SLOP && !video.seeking) {
+        painted = time;
+        return;
       }
-      let result: Promise<void> | undefined;
+      seeking = true;
       try {
-        result = video.play() as Promise<void> | undefined;
+        video.currentTime = time;
       } catch {
-        result = undefined;
-      }
-      if (result && typeof result.then === "function") {
-        // The promise is the only reliable signal: `playing` can fire before the
-        // listener is attached, and some browsers resolve without firing it.
-        result.then(
-          () => {
-            if (!video || video.paused) return;
-            unbindGestures();
-            onState?.("playing");
-          },
-          () => {
-            // A refused play() is almost always the autoplay policy: wait for the
-            // visitor's first interaction and try once more, and let the UI offer
-            // an explicit control in the meantime.
-            onState?.(fromGesture ? "idle" : "blocked");
-            if (!fromGesture) bindGestures();
-          },
-        );
-      }
-    }
-
-    const sync = () => {
-      if (mode !== "ambient" || !video) return;
-      if (visible && !document.hidden) attemptPlay();
-      else if (!video.paused) video.pause();
-    };
-
-    const onMeta = () => {
-      duration = Number.isFinite(video?.duration) && video?.duration ? video.duration : 0;
-      if (mode === "scrub") video?.pause();
-      else {
-        try {
-          video!.currentTime = 0;
-        } catch {
-          /* not seekable yet */
-        }
-        attemptPlay();
+        seeking = false;
       }
     };
 
-    const onPlaying = () => {
-      unbindGestures();
-      onState?.("playing");
-      // Belt and braces: some browsers fire `playing` but drop the frame.
-      if (video && video.paused) attemptPlay();
+    const onSeeked = () => {
+      seeking = false;
+      painted = video.currentTime;
+      // A newer target may have arrived while this seek was in flight.
+      if (Math.abs(wanted - painted) >= FRAME_SLOP) seek();
     };
 
-    const onPause = () => onState?.("idle");
-    const onVisibility = () => sync();
-
-    /* ------------------------------------------------------------ scroll */
+    const onLoaded = () => {
+      ready = true;
+      measure();
+      // Decode one frame immediately so the hero never shows the bare poster.
+      wanted = eased > 0 ? eased * duration : 0;
+      seek();
+    };
 
     const render = (time: number) => {
       const delta = Math.min(64, Math.max(8, time - lastTime || 16.7));
       lastTime = time;
-      const current = clamp01((window.scrollY - stageTop) / travel);
+
+      const current = clamp01((window.scrollY - scrollTop) / travel);
       if (current !== target) target = current;
 
-      // Exponential smoothing expressed in time, so 120 Hz and 60 Hz agree.
-      const follow = 1 - Math.pow(0.0016, delta / 1000);
+      // Time-based smoothing: identical feel at any refresh rate, and no
+      // overshoot, so reversing mid-scroll mirrors the forward path exactly.
+      const follow = 1 - Math.pow(0.0009, delta / 1000);
       eased = eased < 0 ? target : eased + (target - eased) * follow;
-      if (Math.abs(target - eased) < 0.0002) eased = target;
+      if (Math.abs(target - eased) < 0.0004) eased = target;
 
       paint(eased);
+      // The readout follows the eased value (what is on screen), not the raw
+      // scroll position, so the bar agrees with the frame being shown.
+      if (Math.abs(eased - reported) > 0.004) {
+        reported = eased;
+        onProgress?.(eased);
+      }
 
-      if (mode === "scrub" && video && duration > 0.1) {
-        const wanted = Math.min(duration - 0.05, eased * (duration - 0.05));
-        if (Math.abs(video.currentTime - wanted) > 1 / 48 && !video.seeking) {
-          try {
-            video.currentTime = wanted;
-          } catch {
-            /* Safari can throw while the buffer is empty */
-          }
-        }
+      if (duration > 0) {
+        wanted = eased * (duration - 0.04);
+        seek();
       }
 
       if (eased !== target) {
         frame = window.requestAnimationFrame(render);
       } else {
         frame = 0;
+        flush();
+        if (duration > 0) {
+          wanted = target * (duration - 0.04);
+          seek();
+        }
+      }
+    };
+
+    /** After settling, push the final value so the UI matches the last frame. */
+    const flush = () => {
+      if (Math.abs(eased - reported) > 0.0005) {
+        reported = eased;
+        onProgress?.(eased);
       }
     };
 
@@ -218,57 +182,88 @@ export function useHeroFilm({
 
     /* ------------------------------------------------------------- wiring */
 
+    freeze();
     measure();
     paint(0);
-    sync();
-    // A second and third chance for browsers that need the element in the
-    // layout before they will start decoding.
-    later(sync, 800);
-    later(sync, 2600);
 
-    const resizeObserver = new ResizeObserver(() => {
+    // The whole clip must be buffered for instant seeking. `preload="auto"` is on
+    // the element; asking to play once is the reliable way to make some browsers
+    // actually fetch every byte, after which we pause and seek ourselves.
+    const prime = () => {
+      freeze();
+      const attempt = video.play();
+      if (attempt && typeof attempt.then === "function") {
+        attempt.then(
+          () => {
+            freeze();
+            video.currentTime = 0;
+          },
+          () => {
+            freeze();
+          },
+        );
+      }
+    };
+
+    const onCanPlay = () => {
+      ready = true;
+      freeze();
+      prime();
+    };
+
+    video.addEventListener("loadedmetadata", measure);
+    video.addEventListener("loadeddata", onLoaded);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("seeked", onSeeked);
+    video.addEventListener("durationchange", measure);
+
+    const onResize = () => {
       measure();
       wake();
-    });
-    resizeObserver.observe(section);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        visible = entries.some((entry) => entry.isIntersecting);
-        sync();
-        if (visible) wake();
-      },
-      { rootMargin: "10% 0px" },
-    );
-    observer.observe(section);
-
-    video?.addEventListener("loadedmetadata", onMeta);
-    video?.addEventListener("loadeddata", sync);
-    video?.addEventListener("canplay", sync);
-    video?.addEventListener("playing", onPlaying);
-    video?.addEventListener("pause", onPause);
-
+    };
     window.addEventListener("scroll", wake, { passive: true });
-    window.addEventListener("resize", wake);
-    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            measure();
+            wake();
+          })
+        : null;
+    observer?.observe(section);
+
+    // Late layout (fonts, images, the preloader unlocking the page) changes the
+    // hero's height; re-measure a few times and on the first paint after load.
+    later(() => {
+      measure();
+      wake();
+    }, 300);
+    later(() => {
+      measure();
+      wake();
+    }, 1200);
+    window.addEventListener("load", onResize, { once: true });
+
+    wake();
 
     return () => {
       disposed = true;
       for (const timer of timers) window.clearTimeout(timer);
       window.cancelAnimationFrame(frame);
-      unbindGestures();
-      resizeObserver.disconnect();
-      observer.disconnect();
-      video?.removeEventListener("loadedmetadata", onMeta);
-      video?.removeEventListener("loadeddata", sync);
-      video?.removeEventListener("canplay", sync);
-      video?.removeEventListener("playing", onPlaying);
-      video?.removeEventListener("pause", onPause);
+      video.removeEventListener("loadedmetadata", measure);
+      video.removeEventListener("loadeddata", onLoaded);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("durationchange", measure);
       window.removeEventListener("scroll", wake);
-      window.removeEventListener("resize", wake);
-      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      window.removeEventListener("load", onResize);
+      observer?.disconnect();
       media.style.removeProperty("transform");
       overlay?.style.removeProperty("--film-p");
     };
-  }, [sectionRef, mediaRef, overlayRef, videoRef, mode, disabled, onState]);
+  }, [sectionRef, mediaRef, overlayRef, videoRef, onProgress]);
 }

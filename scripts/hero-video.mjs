@@ -16,10 +16,13 @@
  *   npm run film:video -- clip.mp4 --start 0.4 --duration 14.5 --fps 60
  *   npm run film:video -- clip.mp4 --badge 1014,642,262,52   # delogo x,y,w,h
  *   npm run film:video -- clip.mp4 --no-interpolate --fit contain
+ *   npm run film:video -- clip.mp4 --scrub                   # all-keyframe scrub cut
  *   npm run film:video -- --placeholder                      # branded stand-in
  *
- * Output: public/film/{hero-1920.mp4, hero-1280.mp4, hero-poster.jpg,
- *         hero-poster-blur.jpg}
+ * `--scrub` is the mode the hero uses: every frame is a keyframe so the scroll
+ * can seek anywhere instantly, in both directions. Output:
+ *   public/film/{hero-scrub-1440.mp4, hero-scrub-1280.mp4,
+ *                hero-poster.jpg, hero-poster-blur.jpg}
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -50,6 +53,10 @@ const interpolate = !has("no-interpolate");
 const fit = String(flag("fit", "cover"));
 const badge = flag("badge", null);
 const crf = Number(flag("crf", 30)) || 30;
+/** All-keyframe encode for the scroll-scrubbed hero. */
+const scrub = has("scrub");
+const scrubFps = Number(flag("scrub-fps", 30)) || 30;
+let scrubDuration = 0;
 
 function findFfmpeg() {
   const env = process.env.FFMPEG_BIN;
@@ -177,6 +184,11 @@ async function main() {
 
   const meta = await probe(input);
   console.log(`Input: ${path.basename(input)} — ${meta.width}×${meta.height}, ${meta.duration.toFixed(2)}s`);
+  if (scrub && !start && !duration) {
+    // The scrub cut starts on the first visible beat of the film; a near-black
+    // first screen would leave the hero empty until the reader scrolls.
+    console.log("Scrub mode defaults to --start 0.75 --duration 13.4 (skip the black intro).");
+  }
 
   const trim = [];
   if (start) trim.push("-ss", String(start));
@@ -202,10 +214,35 @@ async function main() {
   await finish(master, { ...meta, duration: duration || meta.duration - start });
 }
 
+/**
+ * All-keyframe encode for scroll scrubbing. Intra-only means a seek decodes a
+ * single frame instead of walking from the previous keyframe, which is the
+ * difference between a smooth scrub and a slideshow. It costs ~3× the bitrate.
+ */
+async function encodeScrub(label, W, H, quality, filename) {
+  await run(
+    [
+      "-hide_banner", "-y", "-loglevel", "error",
+      "-i", path.join(WORK, "master.mp4"), "-an",
+      "-vf", `fps=${scrubFps},scale=${W}:${H}:flags=lanczos,setsar=1,fade=t=out:st=${Math.max(
+        0.2,
+        (scrubDuration || 13.4) - 0.45,
+      ).toFixed(2)}:d=0.45`,
+      "-c:v", "libx264", "-profile:v", "high", "-preset", "slow",
+      "-crf", String(quality),
+      "-g", "1", "-keyint_min", "1", "-sc_threshold", "0",
+      "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+      path.join(OUT, filename),
+    ],
+    label,
+  );
+}
+
 /** Encode the two delivery sizes plus posters, then report. */
 async function finish(master, meta) {
   const total = meta.duration || 14;
   const fadeOutAt = Math.max(0.2, total - 0.72);
+  scrubDuration = total;
 
   const encode = async (label, W, H, quality, rate) => {
     const file = path.join(OUT, W >= 1600 ? "hero-1920.mp4" : "hero-1280.mp4");
@@ -223,13 +260,18 @@ async function finish(master, meta) {
     );
   };
 
-  await encode("desktop 1920×1080", 1920, 1080, crf, "4M");
-  await encode("mobile 1280×720", 1280, 720, crf - 1, "1500k");
+  if (scrub) {
+    await encodeScrub("scrub 1440×810 (all keyframes)", 1440, 810, crf - 3, "hero-scrub-1440.mp4");
+    await encodeScrub("scrub 1280×720 (all keyframes)", 1280, 720, crf, "hero-scrub-1280.mp4");
+  } else {
+    await encode("desktop 1920×1080", 1920, 1080, crf, "4M");
+    await encode("mobile 1280×720", 1280, 720, crf - 1, "1500k");
+  }
 
   await run(
     [
       "-hide_banner", "-y", "-loglevel", "error",
-      "-ss", (total * 0.34).toFixed(2), "-i", path.join(OUT, "hero-1920.mp4"),
+      "-ss", (total * 0.02).toFixed(2), "-i", path.join(OUT, scrub ? "hero-scrub-1440.mp4" : "hero-1920.mp4"),
       "-frames:v", "1", "-vf", "scale=1600:-2:flags=lanczos", "-q:v", "4",
       path.join(OUT, "hero-poster.jpg"),
     ],
@@ -245,7 +287,9 @@ async function finish(master, meta) {
     "poster thumbnail",
   );
 
-  const files = ["hero-1920.mp4", "hero-1280.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"];
+  const files = scrub
+    ? ["hero-scrub-1440.mp4", "hero-scrub-1280.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"]
+    : ["hero-1920.mp4", "hero-1280.mp4", "hero-poster.jpg", "hero-poster-blur.jpg"];
   let totalBytes = 0;
   console.log("\npublic/film:");
   for (const name of files) {

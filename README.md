@@ -13,57 +13,48 @@ Create a production build with `npm run build`; run the TypeScript check on its 
 
 ## The hero film
 
-The first screen is a full-bleed film, not a still. It is pinned while the
-first ~30% of a viewport scrolls: the clip drifts up, pushes in slightly and the
-copy fades out, then the page releases into the next section. All of that runs on
-a single `requestAnimationFrame` loop (`src/hooks/useHeroFilm.ts`) that reads the
-scroll position once per frame and eases it with a frame-rate independent filter,
-so it behaves the same at 60 Hz and 144 Hz and never triggers a React re-render.
+The first screen is a full-bleed film **scrubbed by the scroll**, not a video
+that plays. Scrolling down walks the clip forwards, scrolling up walks it
+backwards, frame for frame; the hero stays pinned for ~2.4 screens of scroll and
+then releases into the page.
 
-`public/film/` holds the delivered CAHEN film. To reprocess it, or use a new clip:
+Why it is built this way:
+
+- **Every frame is a keyframe.** `ffmpeg` produces an intra-only encode
+  (`-g 1 -keyint_min 1 -sc_threshold 0`). A seek then decodes one frame instead of
+  walking back to the previous keyframe — the difference between a smooth scrub
+  and a slideshow. Cost: ~3× bitrate (7.8 MB for 13.4 s at 1440×810).
+- **One rAF loop, no React state.** `src/hooks/useHeroFilm.ts` reads `scrollY`
+  once per frame, eases it with a time-based filter (identical feel at 60, 120
+  and 144 Hz), and writes only `video.currentTime` plus one composited
+  `transform`. Nothing re-renders while scrolling.
+- **Coalesced seeks.** One seek can be in flight; the newest target is applied on
+  `seeked`. Targets closer than ~1 frame are skipped, which removes the
+  duplicate-frame judder browsers produce when asked for the frame they already
+  show.
+- **Symmetric both ways.** The easing has no overshoot and no directional
+  history, so scrolling up retraces exactly the frames seen on the way down.
+- **The clip is never played.** It is paused on mount and `autoplay` is off; the
+  only thing moving the timeline is the scroll position.
+- **The poster stays underneath** (with a 14 KB blurred thumbnail for first
+  paint) and fades out when the first frame is decoded, so the hero is never an
+  empty panel — important because the clip opens on black.
+- `prefers-reduced-motion` skips the video entirely and keeps the poster.
+
+Rebuild the film after replacing the source clip:
 
 ```bash
 npm run film:video -- inbox/uploads/<file>.mp4 \
-  --start 0.35 --duration 14.6 --fps 60 --badge 1014,642,262,52
+  --scrub --start 0.75 --duration 13.4 --badge 1014,642,262,52
 ```
 
-The pipeline trims, strips audio, removes the burned-in corner badge
-(`delogo`, optional), cover-crops to 16:9, interpolates to 60 fps, encodes
-1920×1080 + 1280×720, fades both ends to black so `loop` restarts invisibly, and
-writes the poster plus a 29 KB blurred thumbnail. Result: 4.6 MB desktop, 2.2 MB
-mobile (each gzipped by the CDN where the browser accepts it).
+`--scrub` writes `public/film/hero-scrub-1440.mp4` (desktop) and
+`hero-scrub-1280.mp4` (≤900px), plus the poster and its blurred thumbnail. Other
+flags: `--fit contain`, `--no-interpolate`, `--crf 27`, `--scrub-fps 30`,
+`--placeholder`.
 
-Other flags: `--fit contain` (letterbox), `--no-interpolate`, `--crf 32`,
-`--placeholder` (regenerate the branded stand-in). A second `FILM.mode`,
-`"scrub"`, drives the clip's timeline from the scroll position instead of
-looping.
-
-Deliberate choices, all visible in `src/components/Hero.tsx`:
-
-- Muted, `playsInline`, `loop`, `preload="auto"` — the film is the LCP element, so
-  the poster is `fetchPriority="high"` and paints before a single video byte.
-- Phones never download the 1920 file; the `src` is chosen by media query.
-- `prefers-reduced-motion` renders the poster only and skips the video element.
-  Everything else gets the film: an earlier build also skipped it on ≤2-core or
-  ≤2 GB devices, which silently removed the video on many machines.
-- Autoplay is attempted on mount, on every readiness event and again on the first
-  gesture, because embedded previews (cross-origin iframes) usually refuse
-  `play()` until the page has been interacted with. If it is still refused, a
-  small "پخش فیلم" control appears and the poster keeps drifting slowly, so the
-  hero never shows an empty black panel (frame zero of the clip is black).
-- A 29 KB blurred thumbnail paints first, then the sharp poster
-  (`fetchPriority="high"`) replaces it; both film files carry a `?v=` stamp so a
-  replaced clip is never served from cache.
-- Both encodes fade to black at each end, and the clip is 60 fps, so the loop
-  restart is a beat of darkness rather than a visible jump between two shots.
-- Playback pauses off-screen and in hidden tabs; the scroll transform keeps
-  working (it is transform/opacity only, no layout).
-- `FILM.mode = "scrub"` in `Hero.tsx` switches from a looping clip to one whose
-  timeline follows the scroll position (needs `--scrub`). Ambient is the default
-  because it looks smoother on mid-range phones.
-- Audio is stripped at encode time: an audible hero would need a click first.
-- The burned-in "CAHEN" badge in the delivered clip is removed with `delogo`
-  rather than covered with a second badge, so no double-branding appears.
+Diagnostics: open `/?film=debug` to print the media state (src, duration,
+currentTime, seeking, buffered, decode error) while scrolling.
 
 ## Content and visual identity
 
@@ -116,13 +107,19 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Four checks run entirely offline: `npm run hero:check` (18 assertions — the film
-element exists even on a 2-core device, autoplay refusal is recovered by a
-gesture, reduced motion keeps the poster, the scroll transform is applied), `npm run admin:check` (API/security, 63 assertions), `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 21 assertions) and `npm run netlify:check` (bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API, 23 assertions). Each runs in `npm run verify`.
+Five checks run entirely offline:
 
-If the film ever looks static, open `/?film=debug`: it prints the real element
-state (src, readyState, paused, decode error, whether the poster loaded) so an
-autoplay block is never mistaken for a missing file.
+- `npm run hero:check` — 20 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; seeks are coalesced; reduced motion keeps the poster.
+- `npm run admin:check` — 63 assertions over the API and the security model.
+- `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
+- `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
+- `npm run typecheck` — the TypeScript build, also part of `npm run build`.
+
+All of them run in `npm run verify`.
+
+If the film ever looks static, open `/?film=debug`: it prints the real media
+state (src, duration, currentTime, seeking, buffered, decode error) so a broken
+seek is never mistaken for a missing file.
 
 The panel is fully closed while these variables are missing: `/api/admin/session` reports `configured: false`, the UI shows the exact variables to set, and every login attempt returns `503`. There is no setup screen and no default password to guess.
 

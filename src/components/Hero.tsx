@@ -2,41 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUpLeft } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { RichText, renderRichText } from "../content/RichText";
-import { useHeroFilm, type FilmMode } from "../hooks/useHeroFilm";
+import { useHeroFilm } from "../hooks/useHeroFilm";
 import { Button, Magnetic, Marquee } from "./ui";
 
-/**
- * The hero film. `npm run film:video -- <clip>` writes exactly these files;
- * `hero-1280` is served to narrow screens so phones never pull the 1080p file.
- */
-const VERSION = "2026-10-23a";
+/** Bump when the film files change: the URLs are cached for a day. */
+const VERSION = "2026-10-23b";
 
+/**
+ * The hero film is scrubbed, not played: every frame is a keyframe, so the
+ * scroll position maps 1:1 onto the timeline in both directions.
+ * `npm run film:video -- <clip> --scrub-encode` writes these files.
+ */
 const FILM = {
-  desktop: `/film/hero-1920.mp4?v=${VERSION}`,
-  mobile: `/film/hero-1280.mp4?v=${VERSION}`,
+  desktop: `/film/hero-scrub-1440.mp4?v=${VERSION}`,
+  mobile: `/film/hero-scrub-1280.mp4?v=${VERSION}`,
   poster: `/film/hero-poster.jpg?v=${VERSION}`,
   posterBlur: `/film/hero-poster-blur.jpg?v=${VERSION}`,
-  /** "ambient" loops the clip; "scrub" drives it from the scroll position. */
-  mode: "ambient" as FilmMode,
 };
-
-/**
- * The delivered film cuts from a dark starfield to a lit room, so a hard `loop`
- * would jump. Both files therefore fade from black and back to black (baked in
- * at encode time), which makes the restart invisible. Because frame zero is
- * black, the video layer only appears once it is genuinely playing — the poster
- * stays underneath until then, so the hero never shows an empty black panel.
- */
-
-/** `?film=debug` prints the real playback state on the page. */
-function useFilmDebug() {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setEnabled(new URLSearchParams(window.location.search).get("film") === "debug");
-  }, []);
-  return enabled;
-}
 
 export function Hero({ onOrder }: { onOrder: () => void }) {
   const content = useContent();
@@ -50,29 +32,13 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const live = playing && !reducedMotion;
-  // Start light: phones pick the 1280 file on their first render, desktops swap
-  // to 1920 only after mount, so the large file is never requested twice.
-  const [source, setSource] = useState(FILM.mobile);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [progress, setProgress] = useState(0);
+  // Start light: phones pick the smaller file on their first render.
+  const [source, setSource] = useState(FILM.mobile);
   const triedFallback = useRef(false);
   const debug = useFilmDebug();
-
-  /**
-   * If the browser refuses this encode (rare codec/profile combinations), try
-   * the other file once; if that also fails, keep the drifting poster instead of
-   * leaving an empty black panel.
-   */
-  const handleError = useCallback(() => {
-    if (!triedFallback.current) {
-      triedFallback.current = true;
-      setSource((current) => (current === FILM.desktop ? FILM.mobile : FILM.desktop));
-      return;
-    }
-    setFailed(true);
-    setPlaying(false);
-  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -89,28 +55,9 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
     };
   }, []);
 
-  const [blocked, setBlocked] = useState(false);
-
-  // Stable identity: the film engine must not restart on every render.
-  const handleFilmState = useCallback((state: "playing" | "idle" | "blocked") => {
-    if (state === "blocked") {
-      setBlocked(true);
-      setPlaying(false);
-      return;
-    }
-    setPlaying(state === "playing");
-    if (state === "playing") setBlocked(false);
-  }, []);
-
-  /** An explicit click is a real user gesture, so this always succeeds. */
-  const startFilm = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = true;
-    const result = video.play();
-    if (result && typeof result.catch === "function") {
-      result.catch(() => setBlocked(true));
-    }
+  /** The engine reports 0–1 as the reader walks through the film. */
+  const handleProgress = useCallback((value: number) => {
+    setProgress((current) => (Math.abs(current - value) < 0.004 ? current : value));
   }, []);
 
   useHeroFilm({
@@ -118,19 +65,29 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
     mediaRef,
     overlayRef,
     videoRef,
-    mode: FILM.mode,
-    disabled: reducedMotion,
-    onState: handleFilmState,
+    onProgress: handleProgress,
   });
+
+  /** A broken encode leaves the poster in place instead of an empty panel. */
+  const handleError = useCallback(() => {
+    if (!triedFallback.current) {
+      triedFallback.current = true;
+      setSource((current) => (current === FILM.desktop ? FILM.mobile : FILM.desktop));
+      return;
+    }
+    setFailed(true);
+  }, []);
+
+  const still = reducedMotion || failed;
 
   return (
     <section
       id="home"
       ref={sectionRef}
-      className={`hero hero--film${live ? " is-playing" : ""}${reducedMotion || failed ? " is-still" : ""}`}
+      className={`hero hero--film${ready && !still ? " is-scrubbing" : ""}${still ? " is-still" : ""}`}
       aria-labelledby="hero-title"
-      data-film={FILM.mode}
-      data-film-state={reducedMotion ? "reduced" : failed ? "fallback" : live ? "playing" : "loading"}
+      data-film="scrub"
+      data-film-progress={progress.toFixed(3)}
     >
       <div className="hero__track" ref={trackRef}>
         <div className="hero__stage">
@@ -153,22 +110,19 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
                 fetchPriority="high"
                 decoding="async"
               />
-              {!reducedMotion && !failed && (
+              {!still && (
                 <video
                   ref={videoRef}
                   className="hero__video"
                   src={source}
                   poster={FILM.poster}
-                  autoPlay
                   muted
-                  loop={FILM.mode === "ambient"}
                   playsInline
                   preload="auto"
                   disablePictureInPicture
                   disableRemotePlayback
                   tabIndex={-1}
-                  onPlaying={() => setPlaying(true)}
-                  onPause={() => setPlaying(false)}
+                  onLoadedData={() => setReady(true)}
                   onError={handleError}
                 />
               )}
@@ -177,14 +131,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
             <div className="hero__film-grain" />
           </div>
 
-          {debug && <FilmDebugOverlay videoRef={videoRef} reducedMotion={reducedMotion} />}
-
-          {blocked && !reducedMotion && !failed && (
-            <button className="hero__play" type="button" onClick={startFilm}>
-              <span className="hero__play-icon" aria-hidden="true" />
-              پخش فیلم
-            </button>
-          )}
+          {debug && <FilmDebugOverlay videoRef={videoRef} progress={progress} reducedMotion={reducedMotion} />}
 
           <div className="hero__overlay" ref={overlayRef}>
             <div className="hero__inner frame">
@@ -246,6 +193,11 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
               </div>
             </div>
           </div>
+
+          {/* How far through the film the reader is; it replaces a play state. */}
+          <div className="hero__progress" aria-hidden="true">
+            <i style={{ transform: `scaleX(${progress.toFixed(4)})` }} />
+          </div>
         </div>
       </div>
 
@@ -256,16 +208,23 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
   );
 }
 
-/**
- * Diagnostics for the film. Open `/?film=debug` to see why a browser refuses to
- * play: autoplay policy, a decode error, or a missing file all look identical
- * to the visitor otherwise.
- */
+/** `?film=debug` prints the real media state; useful when a browser misbehaves. */
+function useFilmDebug() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setEnabled(new URLSearchParams(window.location.search).get("film") === "debug");
+  }, []);
+  return enabled;
+}
+
 function FilmDebugOverlay({
   videoRef,
+  progress,
   reducedMotion,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  progress: number;
   reducedMotion: boolean;
 }) {
   const [info, setInfo] = useState<Record<string, unknown>>({});
@@ -273,26 +232,24 @@ function FilmDebugOverlay({
   useEffect(() => {
     const tick = () => {
       const v = videoRef.current;
-      const p = document.querySelector(".hero__poster--full") as HTMLImageElement | null;
       setInfo({
+        progress: Number(progress.toFixed(3)),
         reducedMotion,
         videoElement: Boolean(v),
         src: v?.getAttribute("src") ?? null,
         readyState: v?.readyState ?? null,
-        networkState: v?.networkState ?? null,
-        paused: v?.paused ?? null,
         currentTime: v ? Number(v.currentTime.toFixed(2)) : null,
         duration: v && Number.isFinite(v.duration) ? Number(v.duration.toFixed(2)) : null,
+        seeking: v?.seeking ?? null,
+        paused: v?.paused ?? null,
+        buffered: v && v.buffered.length ? Number(v.buffered.end(v.buffered.length - 1).toFixed(2)) : null,
         error: v?.error ? `${v.error.code}: ${v.error.message || "media error"}` : null,
-        posterLoaded: p ? `${p.complete}/${p.naturalWidth}px` : "missing",
-        hardwareConcurrency: navigator.hardwareConcurrency,
-        autoplayAllowed: navigator.userAgent.includes("Chrome") ? "see paused/error" : "n/a",
       });
     };
     tick();
-    const id = window.setInterval(tick, 500);
+    const id = window.setInterval(tick, 400);
     return () => window.clearInterval(id);
-  }, [videoRef, reducedMotion]);
+  }, [videoRef, progress, reducedMotion]);
 
   return (
     <pre className="hero__debug" dir="ltr">
