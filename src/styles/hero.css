@@ -80,9 +80,9 @@
 
   @media (min-width: 1024px) {
     .hero__grid {
-      grid-template-columns: minmax(0, 1.62fr) minmax(320px, 0.78fr);
-      align-items: end;
-      gap: clamp(38px, 4.6vw, 84px);
+      grid-template-columns: minmax(0, 1.52fr) minmax(320px, 0.88fr);
+      align-items: stretch;
+      gap: clamp(38px, 4.4vw, 78px);
     }
   }
 
@@ -743,15 +743,29 @@
   }
 
   @media (min-width: 1024px) {
+    .hero__main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero__main .hero__bottom {
+      margin-top: auto;
+    }
+
+    .hero__aside {
+      align-self: start;
+    }
+
     .hero__mark {
-      max-width: 384px;
+      max-width: 352px;
       margin-inline: auto;
       border-radius: 30px;
     }
 
     .hero__aside .hero__figure {
-      width: 104%;
-      margin-inline-start: -2%;
+      width: 100%;
+      aspect-ratio: 1.5;
+      margin-top: 16px;
     }
   }
 
