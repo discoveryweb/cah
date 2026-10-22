@@ -25,7 +25,9 @@ Create a production build with `npm run build`; run the TypeScript check on its 
 
 ## Collaboration form and SMS notifications
 
-The collaboration dialog requires a name and phone number; email, service, and project description are optional. Submissions are posted to the same-origin `/api/collaboration` endpoint. The server sends one notification SMS to the fixed manager number; the visitor cannot select or change that recipient.
+The collaboration dialog requires a name and phone number; email, service, and project description are optional. Submissions are posted to the same-origin `/api/collaboration` endpoint. Every accepted order is stored first, then its full details are sent by SMS to the fixed manager number; the visitor cannot select or change that recipient.
+
+Orders live in the shared storage layer (max 500, newest first) and appear in the panel's **سفارش‌ها / Orders** tab with the delivery status of each SMS part. When Melipayamak settings are missing or a send fails, the order keeps its `pending`/`failed` status and an owner or editor can re-send it from that tab — the form never drops a lead because of notification problems. Duplicate submissions from the same phone within two minutes are acknowledged without creating a second record.
 
 Configure a private local `.env` file using `.env.example` (never add real credentials to `VITE_*` variables or commit `.env`):
 
@@ -37,7 +39,9 @@ The server follows National Messagek's [SendSimpleSMS2 REST documentation](https
 
 ## Admin panel (`/shenataisoni`)
 
-The control room edits every text block, work sample, link and image on the site. It has **no built-in account**: the owner's credentials come from server-side environment variables and are read at request time. Nothing is stored in the repository, in `localStorage`, or in the browser bundle.
+The control room edits every text block, work sample, link and image on the site, and manages orders and team access. It has **no built-in account**: the first owner's credentials come from server-side environment variables and are read at request time. Nothing is stored in the repository, in `localStorage`, or in the browser bundle.
+
+Owners can add, disable and remove administrators from *مدیران* without touching the server: new accounts receive a one-time password shown once to the creating owner, are stored only as scrypt hashes, and are forced to choose a new password at first sign-in. Role changes and removals revoke that account's sessions immediately, and the last active owner cannot be demoted or deleted. Accounts declared through environment variables stay read-only in the panel (shown as `ENV`) so deployment-level credentials cannot be weakened from the browser.
 
 ### Environment variables
 
@@ -58,6 +62,8 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
+Two checks run entirely offline: `npm run admin:check` (API/security, 63 assertions) and `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 19 assertions).
+
 The panel is fully closed while these variables are missing: `/api/admin/session` reports `configured: false`, the UI shows the exact variables to set, and every login attempt returns `503`. There is no setup screen and no default password to guess.
 
 ### Security model
@@ -69,6 +75,7 @@ The panel is fully closed while these variables are missing: `/api/admin/session
 - Every state-changing request must be same-origin (`Origin` / `Sec-Fetch-Site`), which blocks cross-site form posts (CSRF).
 - Uploads are re-typed from their magic bytes (never from the declared `Content-Type`), renamed to random hex names, capped at 6 MB, restricted to JPEG/PNG/WebP/AVIF/GIF, and served with `nosniff` plus `Content-Security-Policy: default-src 'none'; sandbox`.
 - Only the public read-only `/api/content` and `/media/*` endpoints are reachable without a session. The old `/api/admin/setup` and `/api/admin/admins` routes were removed.
+- Panel-managed accounts never leave the server as hashes: `scrypt$…` strings are stripped from every response, one-time passwords are returned once to the creating owner, and the admin state only exposes `{id, email, name, role, active, source, mustChangePassword, createdAt, lastLoginAt}`. The last active owner is protected against demotion/deletion, and changing a role or password revokes the affected sessions.
 - Responses are `no-store`; the API answers with `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, COOP/CORP and a restrictive `Permissions-Policy`.
 
 ### Deployment

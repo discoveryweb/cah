@@ -2,11 +2,14 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import path from "node:path";
 import {
   getDummyHash,
+  hashPassword,
   loadAdminConfig,
   normaliseEmail,
+  passwordIssue,
   publicAccount,
   verifyPassword,
 } from "./admin-config.mjs";
+import { deleteOrder, readOrders, retryOrder, retryPendingOrders, smsSummary } from "./orders.mjs";
 import { createFsStorage } from "./storage-fs.mjs";
 
 const SESSION_COOKIE = "cahen_admin";
@@ -226,6 +229,7 @@ const emptyStore = () => ({
   media: [],
   lastLogins: {},
   sessions: [],
+  accounts: [],
 });
 
 export function createAdminApi({ root = process.cwd(), storage, env = process.env } = {}) {
@@ -267,6 +271,7 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
     if (!Array.isArray(store.activity)) store.activity = [];
     if (!Array.isArray(store.media)) store.media = [];
     if (!Array.isArray(store.sessions)) store.sessions = [];
+    if (!Array.isArray(store.accounts)) store.accounts = [];
     // The old document carried local password hashes; they are never used now.
     delete store.admins;
     return store;
@@ -392,13 +397,46 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
     }
   };
 
+  const envView = (account) => ({
+    ...publicAccount(account),
+    source: "env",
+    mustChangePassword: false,
+    createdAt: null,
+  });
+
+  const panelView = (store, record) => ({
+    id: record.id,
+    email: record.email,
+    name: record.name,
+    role: record.role,
+    active: record.active !== false,
+    source: "panel",
+    mustChangePassword: Boolean(record.mustChangePassword),
+    createdAt: record.createdAt ?? null,
+    lastLoginAt: store.lastLogins?.[record.id] ?? record.lastLoginAt ?? null,
+  });
+
+  const findStoredAccount = (store, predicate) =>
+    (store.accounts || []).find((entry) => entry && predicate(entry)) ?? null;
+
+  async function resolveAccount(config, store, payload) {
+    const envAccount = config.accounts.find((entry) => entry.id === payload.sub);
+    if (envAccount) {
+      if (envAccount.email !== payload.email) return null;
+      return { ...envView(envAccount), hash: envAccount.hash };
+    }
+    const record = findStoredAccount(store, (entry) => entry.id === payload.sub);
+    if (!record || record.email !== payload.email || record.active === false) return null;
+    return { ...panelView(store, record), hash: record.hash };
+  }
+
   async function getSession(request, config, store) {
     if (!config.ready) return null;
     const token = parseCookies(headerValue(request, "cookie")).get(SESSION_COOKIE);
     const payload = unsign(config, token);
     if (!payload || !payload.sid) return null;
-    const account = config.accounts.find((entry) => entry.id === payload.sub);
-    if (!account || account.email !== payload.email) return null;
+    const account = await resolveAccount(config, store, payload);
+    if (!account) return null;
     // Signed tokens are only accepted while their server-side record exists, so
     // logout and revocation take effect immediately.
     const record = (store.sessions || []).find(
@@ -408,7 +446,7 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
     return { account, payload };
   }
 
-  async function requireAccount(request, config, minimum) {
+  async function requireAccount(request, config, minimum, { allowPendingPassword = false } = {}) {
     if (!config.ready) {
       throw new ApiError(
         503,
@@ -419,6 +457,13 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
     const store = await readStore();
     const session = await getSession(request, config, store);
     if (!session) throw new ApiError(401, "unauthenticated", "ابتدا وارد شوید.");
+    if (session.account.mustChangePassword && !allowPendingPassword) {
+      throw new ApiError(
+        403,
+        "password_change_required",
+        "پیش از ادامه، گذرواژهٔ یک‌بارمصرف خود را تغییر دهید."
+      );
+    }
     if (minimum && ROLE_RANK[session.account.role] < ROLE_RANK[minimum]) {
       throw new ApiError(403, "forbidden", "برای این کار دسترسی ندارید.");
     }
@@ -426,9 +471,33 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
   }
 
   const adminPayload = (store, account) => ({
-    ...publicAccount(account),
-    lastLoginAt: store.lastLogins?.[account.id] ?? null,
+    id: account.id,
+    email: account.email,
+    name: account.name,
+    role: account.role,
+    active: account.active !== false,
+    source: account.source ?? "env",
+    mustChangePassword: Boolean(account.mustChangePassword),
+    createdAt: account.createdAt ?? null,
+    lastLoginAt: store.lastLogins?.[account.id] ?? account.lastLoginAt ?? null,
   });
+
+  const listAccounts = (config, store) => [
+    ...config.accounts.map((entry) => adminPayload(store, envView(entry))),
+    ...(store.accounts || []).map((entry) => adminPayload(store, panelView(store, entry))),
+  ];
+
+  const oneTimePassword = () => {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    const bytes = randomBytes(20);
+    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  };
+
+  const revokeSessions = (store, accountId, exceptSid = null) => {
+    store.sessions = (store.sessions || []).filter(
+      (entry) => entry.sub !== accountId || (exceptSid && entry.sid === exceptSid)
+    );
+  };
 
   async function serveMedia(request, response, rawName) {
     let decoded = rawName;
@@ -497,19 +566,28 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
     ];
     assertLoginAllowed(keys, now);
 
-    const account = config.accounts.find((entry) => entry.email === email);
+    const store = await readStore();
+    const envAccount = config.accounts.find((entry) => entry.email === email);
+    const record = envAccount
+      ? null
+      : findStoredAccount(store, (entry) => entry.email === email);
+    const account = envAccount
+      ? { ...envView(envAccount), hash: envAccount.hash }
+      : record
+        ? { ...panelView(store, record), hash: record.hash }
+        : null;
+
     // Unknown emails still pay for one scrypt derivation, so the response time
-    // does not reveal whether an address exists.
+    // does not reveal whether an address exists. Disabled accounts verify too.
     const hash = account ? account.hash : await getDummyHash();
     const valid = await verifyPassword(password, hash);
 
-    if (!account || !valid) {
+    if (!account || !valid || account.active === false) {
       registerFailure(keys, now);
       throw new ApiError(401, "invalid_credentials", "ایمیل یا گذرواژه نادرست است.");
     }
 
     clearFailures(keys);
-    const store = await readStore();
     const expiresAt = now + config.sessionTtlMs;
     const sid = randomBytes(18).toString("base64url");
     const token = sign(config, {
@@ -530,20 +608,29 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
       ok: true,
       admin: adminPayload(store, account),
       expiresAt: new Date(expiresAt).toISOString(),
+      mustChangePassword: Boolean(account.mustChangePassword),
     });
   }
 
   async function handleState(request, response, config) {
-    const { account, payload, store } = await requireAccount(request, config);
+    const { account, payload, store } = await requireAccount(request, config, null, {
+      allowPendingPassword: true,
+    });
+    const orders = await readOrders(activeStorage);
     json(response, 200, {
       ok: true,
       admin: adminPayload(store, account),
-      accounts: config.accounts.map((entry) => adminPayload(store, entry)),
+      accounts: listAccounts(config, store),
       content: store.content,
       updatedAt: store.contentUpdatedAt,
       updatedBy: store.contentUpdatedBy,
       media: store.media,
       activity: store.activity.slice(0, 60),
+      orderStats: {
+        total: orders.items.length,
+        pending: orders.items.filter((entry) => entry.sms?.status !== "sent").length,
+      },
+      sms: smsSummary(env),
       session: {
         expiresAt: new Date(payload.exp).toISOString(),
         sessionHours: Math.round(config.sessionTtlMs / 3_600_000),
@@ -666,6 +753,202 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
           exportedAt: new Date().toISOString(),
           content: store.content,
         });
+        return true;
+      }
+
+      if (pathname === "/api/admin/password" && method === "POST") {
+        const { account, payload, store } = await requireAccount(request, config, null, {
+          allowPendingPassword: true,
+        });
+        const body = await readJson(request);
+        const current = typeof body.currentPassword === "string" ? body.currentPassword : "";
+        const next = typeof body.newPassword === "string" ? body.newPassword : "";
+        if (!(await verifyPassword(current, account.hash))) {
+          throw new ApiError(400, "invalid_password", "گذرواژهٔ فعلی نادرست است.");
+        }
+        if (account.source !== "panel") {
+          throw new ApiError(409, "env_account", "گذرواژهٔ این حساب از محیط سرور خوانده می‌شود.");
+        }
+        const issue = passwordIssue(next, account.email);
+        if (issue) throw new ApiError(400, "weak_password", issue);
+        const record = findStoredAccount(store, (entry) => entry.id === account.id);
+        if (!record) throw new ApiError(404, "not_found", "حساب پیدا نشد.");
+        record.hash = await hashPassword(next);
+        record.mustChangePassword = false;
+        record.passwordChangedAt = new Date().toISOString();
+        revokeSessions(store, account.id, payload.sid);
+        logActivity(store, account.email, "account.password", "تغییر گذرواژه");
+        await writeStore(store);
+        json(response, 200, { ok: true, admin: adminPayload(store, panelView(store, record)) });
+        return true;
+      }
+
+      if (pathname === "/api/admin/accounts" && method === "POST") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        const body = await readJson(request);
+        const email = normaliseEmail(body.email);
+        const name = String(body.name ?? "").trim().slice(0, 80);
+        const role = typeof body.role === "string" ? body.role : "";
+        if (!/^[^\s@]{1,64}@[^\s@.]+(\.[^\s@.]+)+$/.test(email) || email.length > 254) {
+          throw new ApiError(400, "invalid_email", "ایمیل معتبر نیست.");
+        }
+        if (!name) throw new ApiError(400, "invalid_name", "نام را وارد کنید.");
+        if (!ROLES.has(role)) throw new ApiError(400, "invalid_role", "نقش معتبر نیست.");
+        if (config.accounts.some((entry) => entry.email === email) ||
+            findStoredAccount(store, (entry) => entry.email === email)) {
+          throw new ApiError(409, "duplicate_email", "این ایمیل قبلاً ثبت شده است.");
+        }
+        if ((store.accounts || []).length >= 50) {
+          throw new ApiError(409, "too_many_accounts", "تعداد حساب‌ها به سقف رسیده است.");
+        }
+        const invited = body.mode !== "password";
+        const password = invited
+          ? oneTimePassword()
+          : typeof body.password === "string"
+            ? body.password
+            : "";
+        if (!invited) {
+          const issue = passwordIssue(password, email);
+          if (issue) throw new ApiError(400, "weak_password", issue);
+        }
+        const now = new Date().toISOString();
+        const record = {
+          id: sha256(`cahen:${email}`).slice(0, 16),
+          email,
+          name,
+          role,
+          hash: await hashPassword(password),
+          active: true,
+          mustChangePassword: invited,
+          createdAt: now,
+          createdBy: account.email,
+          passwordChangedAt: null,
+        };
+        store.accounts.push(record);
+        logActivity(store, account.email, "account.create", `${email} · ${role}`);
+        await writeStore(store);
+        json(response, 200, {
+          ok: true,
+          account: adminPayload(store, panelView(store, record)),
+          // Handed to the creating owner once; only the salted hash is stored.
+          oneTimePassword: invited ? password : null,
+        });
+        return true;
+      }
+
+      const accountMatch = pathname.match(/^\/api\/admin\/accounts\/([A-Za-z0-9_-]{4,40})$/);
+      if (accountMatch && method === "PATCH") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        const target = findStoredAccount(store, (entry) => entry.id === accountMatch[1]);
+        if (!target) {
+          throw new ApiError(409, "env_account", "این حساب از محیط سرور می‌آید و اینجا قابل تغییر نیست.");
+        }
+        const body = await readJson(request);
+        const activeOwners = [
+          ...config.accounts.filter((entry) => entry.role === "owner"),
+          ...(store.accounts || []).filter((entry) => entry.role === "owner" && entry.active !== false),
+        ].length;
+        const nextRole = ROLES.has(body.role) ? body.role : target.role;
+        const nextActive = typeof body.active === "boolean" ? body.active : target.active !== false;
+        if (target.role === "owner" && (nextRole !== "owner" || !nextActive) && activeOwners <= 1) {
+          throw new ApiError(409, "last_owner", "حداقل یک مدیر ارشد باید فعال بماند.");
+        }
+        if (typeof body.name === "string") {
+          const name = body.name.trim().slice(0, 80);
+          if (!name) throw new ApiError(400, "invalid_name", "نام را وارد کنید.");
+          target.name = name;
+        }
+        const changedRole = nextRole !== target.role;
+        target.role = nextRole;
+        target.active = nextActive;
+        if (!nextActive || changedRole) revokeSessions(store, target.id);
+        logActivity(store, account.email, "account.update", `${target.email} · ${nextRole}`);
+        await writeStore(store);
+        json(response, 200, { ok: true, account: adminPayload(store, panelView(store, target)) });
+        return true;
+      }
+
+      if (accountMatch && method === "DELETE") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        const target = findStoredAccount(store, (entry) => entry.id === accountMatch[1]);
+        if (!target) {
+          throw new ApiError(409, "env_account", "این حساب از محیط سرور می‌آید و اینجا قابل حذف نیست.");
+        }
+        if (target.id === account.id) {
+          throw new ApiError(409, "self_delete", "حساب خودتان را نمی‌توانید حذف کنید.");
+        }
+        const activeOwners = [
+          ...config.accounts.filter((entry) => entry.role === "owner"),
+          ...(store.accounts || []).filter((entry) => entry.role === "owner" && entry.active !== false),
+        ].length;
+        if (target.role === "owner" && target.active !== false && activeOwners <= 1) {
+          throw new ApiError(409, "last_owner", "حداقل یک مدیر ارشد باید فعال بماند.");
+        }
+        store.accounts = store.accounts.filter((entry) => entry.id !== target.id);
+        revokeSessions(store, target.id);
+        delete store.lastLogins?.[target.id];
+        logActivity(store, account.email, "account.delete", target.email);
+        await writeStore(store);
+        json(response, 200, { ok: true });
+        return true;
+      }
+
+      const passwordMatch = pathname.match(
+        /^\/api\/admin\/accounts\/([A-Za-z0-9_-]{4,40})\/password$/
+      );
+      if (passwordMatch && method === "POST") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        const target = findStoredAccount(store, (entry) => entry.id === passwordMatch[1]);
+        if (!target) {
+          throw new ApiError(409, "env_account", "این حساب از محیط سرور می‌آید و اینجا قابل تغییر نیست.");
+        }
+        const password = oneTimePassword();
+        target.hash = await hashPassword(password);
+        target.mustChangePassword = true;
+        target.passwordChangedAt = new Date().toISOString();
+        revokeSessions(store, target.id);
+        logActivity(store, account.email, "account.password", `بازنشانی برای ${target.email}`);
+        await writeStore(store);
+        json(response, 200, { ok: true, oneTimePassword: password });
+        return true;
+      }
+
+      if (pathname === "/api/admin/orders" && method === "GET") {
+        await requireAccount(request, config, "editor");
+        if (smsSummary(env).configured) {
+          await retryPendingOrders(activeStorage, { env }).catch(() => 0);
+        }
+        const document = await readOrders(activeStorage);
+        const requested = Number(url.searchParams.get("limit"));
+        const limit = Math.min(Math.max(Number.isFinite(requested) && requested > 0 ? requested : 100, 1), 500);
+        json(response, 200, {
+          ok: true,
+          orders: document.items.slice(0, limit),
+          total: document.items.length,
+          sms: smsSummary(env),
+        });
+        return true;
+      }
+
+      const orderMatch = pathname.match(/^\/api\/admin\/orders\/([A-Za-z0-9_-]{4,40})\/(retry)$/);
+      if (orderMatch && method === "POST") {
+        const { store } = await requireAccount(request, config, "editor");
+        const updated = await retryOrder(activeStorage, orderMatch[1], { env });
+        if (!updated) throw new ApiError(404, "not_found", "سفارش پیدا نشد.");
+        const actor = (await getSession(request, config, store))?.account.email ?? "system";
+        logActivity(store, actor, "order.retry", `${updated.code} · ${updated.sms?.status ?? "-"}`);
+        await writeStore(store);
+        json(response, 200, { ok: true, order: updated, sms: smsSummary(env) });
+        return true;
+      }
+
+      if (orderMatch && method === "DELETE") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        const removed = await deleteOrder(activeStorage, orderMatch[1]);
+        if (!removed) throw new ApiError(404, "not_found", "سفارش پیدا نشد.");
+        logActivity(store, account.email, "order.delete", orderMatch[1]);
+        await writeStore(store);
+        json(response, 200, { ok: true });
         return true;
       }
 

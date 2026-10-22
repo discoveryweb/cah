@@ -6,11 +6,13 @@ import { defineConfig } from "vite";
 import { createOrderHandler } from "./server/order-api.mjs";
 import { createAdminMiddleware } from "./server/admin-api.mjs";
 import { loadServerEnv } from "./server/env.mjs";
+import { createFsStorage } from "./server/storage-fs.mjs";
 
 loadServerEnv();
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
-const orderHandler = createOrderHandler();
-const adminMiddleware = createAdminMiddleware({ root: projectRoot });
+const storage = createFsStorage({ dataDirectory: path.join(projectRoot, "data") });
+const orderHandler = createOrderHandler({ root: projectRoot, storage });
+const adminMiddleware = createAdminMiddleware({ root: projectRoot, storage });
 
 const apiMiddleware = (
   request: Parameters<typeof orderHandler>[0],
@@ -25,7 +27,7 @@ const apiMiddleware = (
     return;
   }
   if (pathname === "/api/collaboration") {
-    void orderHandler(request, response, next);
+    void orderHandler(request, response);
     return;
   }
   if (pathname.startsWith("/api/")) {

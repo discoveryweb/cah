@@ -1,7 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { AdminStorage } from "./admin-api.d.mts";
 
-export function createOrderHandler(options?: { fetchImpl?: typeof fetch }): (
-  request: IncomingMessage,
-  response: ServerResponse,
-  next?: (error?: Error) => void,
-) => void | Promise<void>;
+export interface OrderHandlerOptions {
+  storage?: AdminStorage;
+  root?: string;
+  env?: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
+}
+
+export declare function createOrderHandler(
+  options?: OrderHandlerOptions
+): (request: IncomingMessage, response: ServerResponse) => Promise<void>;

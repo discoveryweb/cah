@@ -18,7 +18,12 @@ const toHeaderObject = (headers) => {
   return result;
 };
 
-export function createWebHandler(api) {
+/**
+ * `orderHandler` receives public form submissions. It is tried only when the
+ * admin API declines the request, so a single Netlify Function can serve
+ * `/api/*`, `/media/*` and the public `/api/collaboration` endpoint.
+ */
+export function createWebHandler(api, { orderHandler = null } = {}) {
   return async function handleWebRequest(request) {
     const url = new URL(request.url);
     const headers = toHeaderObject(request.headers);
@@ -74,7 +79,21 @@ export function createWebHandler(api) {
       },
     };
 
-    await api.handle(nodeRequest, nodeResponse);
+    const handled = await api.handle(nodeRequest, nodeResponse);
+    if (handled === false && orderHandler && url.pathname === "/api/collaboration") {
+      try {
+        await orderHandler(nodeRequest, nodeResponse);
+      } catch (error) {
+        console.error("[order-handler]", error);
+        if (!chunks.length && statusCode === 200) {
+          statusCode = 500;
+          responseHeaders["content-type"] = "application/json; charset=utf-8";
+          nodeResponse.write(
+            JSON.stringify({ ok: false, code: "server_error", message: "ثبت سفارش انجام نشد." })
+          );
+        }
+      }
+    }
 
     const bodyBuffer = Buffer.concat(chunks);
     return new Response(bodyBuffer.length ? bodyBuffer : null, {

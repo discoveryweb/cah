@@ -4,12 +4,19 @@ import {
   CircleDashed,
   FileText,
   Images,
+  Inbox,
   LayoutGrid,
   Plus,
   Save,
   Users,
 } from "lucide-react";
-import type { ActivityEntry, AdminUser, MediaEntry, SiteContent } from "../content/types";
+import type {
+  ActivityEntry,
+  AdminUser,
+  MediaEntry,
+  SiteContent,
+  SmsSummary,
+} from "../content/types";
 import { formatDate, timeAgo } from "./draft";
 import type { AdminTab } from "./tabs";
 
@@ -21,6 +28,9 @@ interface Props {
   accounts: AdminUser[];
   media: MediaEntry[];
   activity: ActivityEntry[];
+  orderCount: number;
+  pendingOrders: number;
+  sms: SmsSummary | null;
   dirty: boolean;
   disabled: boolean;
   onNavigate: (tab: AdminTab, intent?: "new-work" | "upload") => void;
@@ -43,6 +53,9 @@ export function Dashboard({
   accounts,
   media,
   activity,
+  orderCount,
+  pendingOrders,
+  sms,
   dirty,
   disabled,
   onNavigate,
@@ -53,36 +66,38 @@ export function Dashboard({
   const missingAlt = [...published.map((item) => item.image), content.hero.figure.image, content.about.portrait.image].filter(
     (value) => !value
   ).length;
+  const queuedOrders = pendingOrders;
+  const smsReady = sms === null || sms.configured;
 
   const checks = [
     {
       ok: content.meta.seoDescription.trim().length >= 60,
       label: "توضیح سئو نوشته شده",
-      hint: "برای دیده‌شدن در نتایج جست‌وجو حداقل چند جمله بنویسید.",
+      hint: content.meta.seoDescription.trim() ? "ثبت شده" : "خالی است",
       tab: "links" as AdminTab,
     },
     {
       ok: published.length >= 3,
       label: "حداقل سه نمونه‌کار منتشرشده",
-      hint: "گالری با سه کار به بالا کامل‌تر دیده می‌شود.",
+      hint: `${published.length} از ۳`, 
       tab: "work" as AdminTab,
     },
     {
       ok: missingAlt === 0,
       label: "همهٔ تصاویر اصلی انتخاب شده‌اند",
-      hint: missingAlt ? `${missingAlt} تصویر خالی است.` : "تصویر هیرو، درباره و کارها کامل است.",
+      hint: missingAlt ? `${missingAlt} تصویر خالی` : "کامل",
       tab: "content" as AdminTab,
     },
     {
       ok: content.socials.every((social) => /^https?:\/\//i.test(social.href)),
       label: "نشانی کانال‌ها کامل است",
-      hint: "هر کانال باید با https:// شروع شود.",
+      hint: "نشانی‌ها",
       tab: "links" as AdminTab,
     },
     {
       ok: content.contact.email.includes("@"),
       label: "ایمیل تماس معتبر است",
-      hint: content.contact.email || "ایمیل ثبت نشده.",
+      hint: content.contact.email || "ثبت نشده",
       tab: "links" as AdminTab,
     },
   ];
@@ -100,10 +115,10 @@ export function Dashboard({
           </h1>
           <p>
             {dirty
-              ? "تغییرات ذخیره‌نشده دارید؛ تا پیش از ذخیره، سایت همان نسخهٔ قبلی را نشان می‌دهد."
+              ? "تغییرات ذخیره‌نشده دارید."
               : updatedAt
-                ? `آخرین ذخیره: ${formatDate(updatedAt)}${updatedBy ? ` توسط ${updatedBy}` : ""}.`
-                : "هنوز محتوایی ذخیره نشده است؛ سایت روی نسخهٔ پیش‌فرض است."}
+                ? `آخرین ذخیره: ${formatDate(updatedAt)}${updatedBy ? ` · ${updatedBy}` : ""}`
+                : "نسخهٔ پیش‌فرض"}
           </p>
           <div className="adash-hero__actions">
             <button
@@ -126,6 +141,20 @@ export function Dashboard({
           <strong dir="ltr">{new Intl.DateTimeFormat("fa-IR").format(new Date())}</strong>
         </div>
       </section>
+
+      {!smsReady || queuedOrders > 0 ? (
+        <div className="anote anote--warn" role="status">
+          <Inbox />
+          <span>
+            {!smsReady
+              ? `پیامک تنظیم نشده؛ ${queuedOrders} سفارش در صف ارسال است.`
+              : `${queuedOrders} سفارش هنوز پیامک نشده است.`}
+          </span>
+          <button type="button" className="abtn abtn--ghost abtn--sm" onClick={() => onNavigate("orders")}>
+            سفارش‌ها
+          </button>
+        </div>
+      ) : null}
 
       <div className="astats">
         <button type="button" className="astat" onClick={() => onNavigate("work")}>
@@ -160,6 +189,14 @@ export function Dashboard({
           <span>مدیر فعال</span>
           <small dir="ltr">{accounts.filter((entry) => entry.role === "owner").length} OWNER</small>
         </button>
+        <button type="button" className="astat" onClick={() => onNavigate("orders")}>
+          <span className="astat__icon">
+            <Inbox />
+          </span>
+          <b>{orderCount}</b>
+          <span>سفارش</span>
+          <small dir="ltr">{queuedOrders} QUEUED</small>
+        </button>
       </div>
 
       <div className="agrid agrid--wide">
@@ -189,10 +226,15 @@ export function Dashboard({
                 <span>ویرایش متن‌ها</span>
                 <em>هیرو، درباره، توانمندی‌ها…</em>
               </button>
+              <button type="button" onClick={() => onNavigate("orders")}>
+                <Inbox />
+                <span>سفارش‌ها</span>
+                <em>{queuedOrders > 0 ? `${queuedOrders} در صف` : "همه ارسال شده"}</em>
+              </button>
               <button type="button" onClick={() => onNavigate("team")}>
                 <Users />
                 <span>مدیران و دسترسی</span>
-                <em>نقش‌ها و گذرواژه‌ها</em>
+                <em>نقش‌ها</em>
               </button>
             </div>
 

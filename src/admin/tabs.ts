@@ -7,6 +7,7 @@ export type AdminTab =
   | "links"
   | "media"
   | "team"
+  | "orders"
   | "activity"
   | "settings";
 
@@ -25,6 +26,7 @@ export const ADMIN_TABS: TabMeta[] = [
   { id: "links", label: "لینک‌ها و کانال‌ها", latin: "LINKS", hint: "منو، شبکه‌ها، تماس و سئو" },
   { id: "media", label: "کتابخانهٔ تصاویر", latin: "MEDIA", hint: "بارگذاری و مدیریت رسانه‌ها" },
   { id: "team", label: "مدیران", latin: "TEAM", hint: "دسترسی‌ها و نقش‌ها" },
+  { id: "orders", label: "سفارش‌ها", latin: "ORDERS", hint: "سفارش‌ها و پیامک‌ها" },
   { id: "activity", label: "فعالیت‌ها", latin: "LOG", hint: "تاریخچهٔ تغییرات" },
   { id: "settings", label: "تنظیمات", latin: "SYSTEM", hint: "پشتیبان‌گیری و بازنشانی" },
 ];

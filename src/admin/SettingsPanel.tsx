@@ -3,6 +3,7 @@ import { Download, LogOut, ShieldAlert, Sparkles } from "lucide-react";
 import type { AdminUser, MediaEntry, SiteContent } from "../content/types";
 import { api, ApiFailure } from "./api";
 import { formatBytes, formatDate, ROLE_LABELS } from "./draft";
+import { PasswordForm } from "./PasswordForm";
 import { ConfirmButton, useToast } from "./ui";
 
 interface Props {
@@ -132,6 +133,20 @@ export function SettingsPanel({
               onConfirm={onLogoutAll}
             />
           </div>
+        </div>
+      </section>
+
+      <section className="acard">
+        <div className="acard__head">
+          <div>
+            <span className="aeyebrow" dir="ltr">
+              PASSWORD
+            </span>
+            <h2>گذرواژه</h2>
+          </div>
+        </div>
+        <div className="acard__body acard__body--narrow">
+          <PasswordForm admin={admin} onDone={() => undefined} />
         </div>
       </section>
 

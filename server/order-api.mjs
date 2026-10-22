@@ -1,14 +1,13 @@
+import path from "node:path";
 import { normalizePhoneNumber } from "../src/utils/phone.mjs";
+import { appendOrder, deliverOrder, readOrders, retryPendingOrders } from "./orders.mjs";
+import { createFsStorage } from "./storage-fs.mjs";
 
-const MELIPAYAMAK_ENDPOINT = "https://rest.payamak-panel.com/api/SendSMS/SendSMS";
 const MAX_BODY_BYTES = 12 * 1024;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT = 3;
+const DUPLICATE_WINDOW_MS = 2 * 60 * 1000;
 const rateBuckets = new Map();
-const DOCUMENTED_FAILURE_CODES = new Set([
-  "0", "2", "3", "4", "5", "6", "7", "9", "10", "11", "12", "14", "15", "16", "17", "18", "35",
-  "-108", "-109", "-110",
-]);
 
 class RequestError extends Error {
   constructor(status, code, message, fields) {
@@ -24,18 +23,23 @@ function sendJson(response, status, payload) {
   response.setHeader("Content-Type", "application/json; charset=utf-8");
   response.setHeader("Cache-Control", "no-store");
   response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "no-referrer");
   response.end(JSON.stringify(payload));
 }
 
 async function readJson(request) {
   const advertisedSize = Number(request.headers["content-length"] ?? 0);
-  if (advertisedSize > MAX_BODY_BYTES) throw new RequestError(413, "payload_too_large", "درخواست بیش از حد بزرگ است.");
+  if (advertisedSize > MAX_BODY_BYTES) {
+    throw new RequestError(413, "payload_too_large", "درخواست بیش از حد بزرگ است.");
+  }
 
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) throw new RequestError(413, "payload_too_large", "درخواست بیش از حد بزرگ است.");
+    if (size > MAX_BODY_BYTES) {
+      throw new RequestError(413, "payload_too_large", "درخواست بیش از حد بزرگ است.");
+    }
     chunks.push(chunk);
   }
   try {
@@ -45,10 +49,15 @@ async function readJson(request) {
   }
 }
 
+function headerValue(request, name) {
+  const value = request.headers?.[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
 function isSameOrigin(request) {
-  const origin = request.headers.origin;
+  const origin = headerValue(request, "origin");
   if (!origin) return true;
-  const host = String(request.headers.host ?? "").toLowerCase();
+  const host = String(headerValue(request, "host") ?? "").toLowerCase();
   if (!host) return false;
   try {
     return new URL(origin).host.toLowerCase() === host;
@@ -57,9 +66,16 @@ function isSameOrigin(request) {
   }
 }
 
-function getClientAddress(request) {
-  if (process.env.TRUST_PROXY === "true") {
-    const forwarded = String(request.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
+function getClientAddress(request, env) {
+  const trustProxy =
+    String(env.TRUST_PROXY ?? "").toLowerCase() === "true" ||
+    Boolean(env.NETLIFY) ||
+    Boolean(env.NETLIFY_BLOBS_CONTEXT) ||
+    Boolean(env.SITE_ID);
+  if (trustProxy) {
+    const netlify = headerValue(request, "x-nf-client-connection-ip");
+    if (netlify) return String(netlify).split(",")[0].trim().slice(0, 100);
+    const forwarded = String(headerValue(request, "x-forwarded-for") ?? "").split(",")[0].trim();
     if (forwarded) return forwarded.slice(0, 100);
   }
   return String(request.socket?.remoteAddress ?? "unknown").slice(0, 100);
@@ -85,7 +101,11 @@ function checkRateLimit(address, now = Date.now()) {
 
 function cleanText(value, maxLength) {
   if (typeof value !== "string") return "";
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+  return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function validatePayload(payload) {
@@ -113,104 +133,66 @@ function validatePayload(payload) {
   return { name, phone, email, service, message };
 }
 
-function getConfiguration() {
-  const username = String(process.env.MELIPAYAMAK_USERNAME ?? "").trim();
-  const credential = String(process.env.MELIPAYAMAK_API_KEY || process.env.MELIPAYAMAK_PASSWORD || "").trim();
-  const from = String(process.env.MELIPAYAMAK_FROM ?? "").trim();
-  const managerPhone = normalizePhoneNumber(String(process.env.ORDER_MANAGER_PHONE ?? ""));
-  if (!username || !credential || !from || !managerPhone) return null;
+const isRecentDuplicate = (orders, phone, now = Date.now()) =>
+  orders.items.some(
+    (entry) =>
+      entry.phone === phone &&
+      entry.sms?.status !== "failed" &&
+      now - new Date(entry.at).getTime() < DUPLICATE_WINDOW_MS
+  );
 
-  // Melipayamak examples use the Iranian local form for mobile recipients.
-  const to = managerPhone.startsWith("+98") ? `0${managerPhone.slice(3)}` : managerPhone.slice(1);
-  return { username, credential, from, to };
-}
+export function createOrderHandler({
+  storage,
+  root = process.cwd(),
+  env = process.env,
+  fetchImpl = fetch,
+} = {}) {
+  const activeStorage =
+    storage ?? createFsStorage({ dataDirectory: path.join(root, "data") });
 
-function buildSmsText(lead) {
-  const lines = [
-    "درخواست همکاری جدید CAHEN",
-    `نام: ${lead.name}`,
-    lead.phone ? `شماره: ${lead.phone}` : null,
-    lead.email ? `ایمیل: ${lead.email}` : null,
-    lead.service ? `موضوع: ${lead.service}` : null,
-    lead.message ? `توضیح: ${lead.message}` : null,
-  ];
-  return lines.filter(Boolean).join("\n");
-}
-
-function providerResponseIsSuccessful(responseText) {
-  const text = responseText.trim();
-  if (!text) return false;
-
-  try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === "object") {
-      const status = parsed.RetStatus ?? parsed.retStatus ?? parsed.status;
-      if (status !== undefined) return Number(status) === 1;
-      const value = parsed.Value ?? parsed.value ?? parsed.ReturnValue ?? parsed.returnValue ?? parsed.SendSimpleSMS2Result;
-      if (value !== undefined) return providerResponseIsSuccessful(String(value));
-    }
-  } catch {
-    // The documented REST method may return a plain numeric RecId or an error code.
-  }
-
-  const value = text.match(/^-?\d+$/)?.[0] ?? text.match(/>(-?\d+)</)?.[1];
-  if (!value) return false;
-  if (DOCUMENTED_FAILURE_CODES.has(value)) return false;
-  return Number(value) > 0;
-}
-
-async function sendManagerSms(lead, configuration, fetchImpl = fetch) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
-  timeout.unref?.();
-  const fields = new URLSearchParams({
-    username: configuration.username,
-    password: configuration.credential,
-    to: configuration.to,
-    from: configuration.from,
-    text: buildSmsText(lead),
-    isflash: "false",
-  });
-
-  try {
-    const response = await fetchImpl(MELIPAYAMAK_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", Accept: "application/json, text/plain, */*" },
-      body: fields,
-      signal: controller.signal,
-    });
-    const responseText = await response.text();
-    if (!response.ok || !providerResponseIsSuccessful(responseText)) {
-      const error = new Error("Melipayamak rejected the notification request.");
-      error.code = `provider_${response.status}`;
-      throw error;
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-export function createOrderHandler({ fetchImpl = fetch } = {}) {
-  return async (request, response, next) => {
+  return async (request, response) => {
     try {
       if (request.method !== "POST") {
         response.setHeader("Allow", "POST");
         return sendJson(response, 405, { ok: false, code: "method_not_allowed" });
       }
-      if (!isSameOrigin(request)) return sendJson(response, 403, { ok: false, code: "origin_not_allowed" });
-      if (!String(request.headers["content-type"] ?? "").toLowerCase().includes("application/json")) {
+      if (!isSameOrigin(request)) {
+        return sendJson(response, 403, { ok: false, code: "origin_not_allowed" });
+      }
+      if (!String(headerValue(request, "content-type") ?? "").toLowerCase().includes("application/json")) {
         return sendJson(response, 415, { ok: false, code: "json_required" });
       }
 
       const payload = await readJson(request);
+      // Honeypot field: bots fill it, humans never see it.
       if (cleanText(payload?.website, 160)) return sendJson(response, 200, { ok: true });
-      const lead = validatePayload(payload);
-      const configuration = getConfiguration();
-      if (!configuration) return sendJson(response, 503, { ok: false, code: "not_configured" });
-      if (!checkRateLimit(getClientAddress(request))) return sendJson(response, 429, { ok: false, code: "rate_limited" });
 
-      await sendManagerSms(lead, configuration, fetchImpl);
-      return sendJson(response, 200, { ok: true });
+      const lead = validatePayload(payload);
+      if (!checkRateLimit(getClientAddress(request, env))) {
+        return sendJson(response, 429, { ok: false, code: "rate_limited" });
+      }
+
+      // A configuration added later should heal earlier leads automatically.
+      await retryPendingOrders(activeStorage, { env, fetchImpl }).catch(() => 0);
+
+      const orders = await readOrders(activeStorage);
+      if (isRecentDuplicate(orders, lead.phone)) {
+        return sendJson(response, 200, { ok: true, duplicate: true });
+      }
+
+      const order = await appendOrder(activeStorage, lead);
+
+      // The order is stored before this point; a provider problem only changes
+      // its delivery status, which the panel surfaces with a retry action.
+      const delivered = await deliverOrder(activeStorage, order, { env, fetchImpl }).catch((error) => {
+        console.error("[collaboration-api] delivery failed", error?.code ?? error?.name ?? "unknown");
+        return null;
+      });
+
+      return sendJson(response, 200, {
+        ok: true,
+        queued: delivered ? delivered.sms?.status !== "sent" : true,
+      });
     } catch (error) {
       if (error instanceof RequestError) {
         return sendJson(response, error.status, {
@@ -219,13 +201,8 @@ export function createOrderHandler({ fetchImpl = fetch } = {}) {
           ...(error.fields ? { fields: error.fields } : {}),
         });
       }
-
-      if (error?.name === "AbortError") {
-        console.error("[collaboration-api] SMS provider request timed out");
-      } else {
-        console.error("[collaboration-api] SMS provider request failed", error?.code ?? error?.name ?? "unknown");
-      }
-      return sendJson(response, 502, { ok: false, code: "sms_provider_error" });
+      console.error("[collaboration-api]", error?.code ?? error?.name ?? "unknown");
+      return sendJson(response, 500, { ok: false, code: "server_error" });
     }
   };
 }

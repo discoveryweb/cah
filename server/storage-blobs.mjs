@@ -23,6 +23,11 @@ export function createBlobsStorage({ storeName, client } = {}) {
   };
 
   let writeQueue = Promise.resolve();
+  const jsonQueues = new Map();
+  const documentKey = (key) => {
+    if (!/^[a-z][a-z0-9-]{0,40}$/.test(String(key))) throw new Error("Invalid document key");
+    return `${key}.json`;
+  };
 
   return {
     kind: "blobs",
@@ -43,6 +48,24 @@ export function createBlobsStorage({ storeName, client } = {}) {
     },
     async deleteMedia(name) {
       await getClient().delete(`${MEDIA_PREFIX}${name}`);
+    },
+    async readJson(key) {
+      const value = await getClient().get(documentKey(key), { type: "json" });
+      return value ?? null;
+    },
+    async writeJson(key, value) {
+      await getClient().setJSON(documentKey(key), value);
+    },
+    updateJson(key, updater) {
+      const previous = jsonQueues.get(key) ?? Promise.resolve();
+      const next = previous.then(async () => {
+        const current = await getClient().get(documentKey(key), { type: "json" });
+        const updated = await updater(current ?? null);
+        await getClient().setJSON(documentKey(key), updated);
+        return updated;
+      });
+      jsonQueues.set(key, next.catch(() => undefined));
+      return next;
     },
   };
 }

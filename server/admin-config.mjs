@@ -70,7 +70,7 @@ export const normaliseEmail = (value) => String(value ?? "").trim().toLowerCase(
 
 const accountId = (email) => createHash("sha256").update(`cahen:${email}`).digest("hex").slice(0, 16);
 
-const weakPasswordReason = (password, email) => {
+export const passwordIssue = (password, email) => {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return `گذرواژه باید حداقل ${MIN_PASSWORD_LENGTH} نویسه باشد.`;
   }
@@ -122,7 +122,7 @@ export async function loadAdminConfig(env = process.env) {
       ownerStoredHash = ownerHash;
     }
   } else if (ownerPassword) {
-    const reason = weakPasswordReason(ownerPassword, ownerEmail || "admin@local");
+    const reason = passwordIssue(ownerPassword, ownerEmail || "admin@local");
     if (reason) issues.push(`ADMIN_PASSWORD: ${reason}`);
     else ownerStoredHash = await hashPassword(ownerPassword);
   } else {
@@ -180,7 +180,7 @@ export async function loadAdminConfig(env = process.env) {
         }
         stored = hash;
       } else if (entry.password) {
-        const reason = weakPasswordReason(String(entry.password), email);
+        const reason = passwordIssue(String(entry.password), email);
         if (reason) {
           issues.push(`${label}.password: ${reason}`);
           continue;

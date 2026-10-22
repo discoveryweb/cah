@@ -5,13 +5,15 @@ import { fileURLToPath } from "node:url";
 import { createOrderHandler } from "./server/order-api.mjs";
 import { createAdminApi } from "./server/admin-api.mjs";
 import { loadServerEnv } from "./server/env.mjs";
+import { createFsStorage } from "./server/storage-fs.mjs";
 
 loadServerEnv();
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const distDirectory = path.join(projectRoot, "dist");
-const orderHandler = createOrderHandler();
-const adminApi = createAdminApi({ root: projectRoot });
+const storage = createFsStorage({ dataDirectory: path.join(projectRoot, "data") });
+const orderHandler = createOrderHandler({ root: projectRoot, storage });
+const adminApi = createAdminApi({ root: projectRoot, storage });
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".gif", "image/gif"],
@@ -78,7 +80,7 @@ const server = createServer(async (request, response) => {
     });
     if (handled !== false) return;
   }
-  if (requestUrl.pathname === "/api/collaboration") {
+  if (requestUrl.pathname === "/api/collaboration" && request.method === "POST") {
     await orderHandler(request, response);
     return;
   }

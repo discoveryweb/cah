@@ -7,7 +7,13 @@ import { cn } from "../utils/cn";
 type FieldName = "name" | "phone" | "email" | "service" | "message";
 type Errors = Partial<Record<FieldName, string>>;
 type Status = "idle" | "sending" | "success" | "error";
-type ApiResponse = { ok?: boolean; code?: string; fields?: Errors };
+type ApiResponse = {
+  ok?: boolean;
+  code?: string;
+  fields?: Errors;
+  duplicate?: boolean;
+  queued?: boolean;
+};
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -142,7 +148,11 @@ export function OrderModal({
       }
 
       setStatus("success");
-      setStatusMessage("درخواست شما با موفقیت ثبت شد. به‌زودی با شما تماس می‌گیریم.");
+      setStatusMessage(
+        result.duplicate
+          ? "این درخواست پیش‌تر ثبت شده است؛ به‌زودی با شما تماس می‌گیریم."
+          : "درخواست شما با موفقیت ثبت شد. به‌زودی با شما تماس می‌گیریم."
+      );
       setName("");
       setPhone("");
       setEmail("");

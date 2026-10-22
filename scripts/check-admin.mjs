@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 /**
@@ -19,6 +19,15 @@ const results = [];
 const check = (label, fn) => {
   try {
     fn();
+    results.push(["PASS", label]);
+  } catch (error) {
+    results.push(["FAIL", label, error.message]);
+  }
+};
+
+const checkAsync = async (label, fn) => {
+  try {
+    await fn();
     results.push(["PASS", label]);
   } catch (error) {
     results.push(["FAIL", label, error.message]);
@@ -125,7 +134,17 @@ check("cookie is HttpOnly + SameSite=Strict + Secure", () => {
   assert.match(cookie, /Path=\//);
 });
 check("login payload exposes only the public account", () => {
-  assert.deepEqual(Object.keys(login.payload.admin).sort(), ["active", "email", "id", "lastLoginAt", "name", "role"]);
+  assert.deepEqual(Object.keys(login.payload.admin).sort(), [
+    "active",
+    "createdAt",
+    "email",
+    "id",
+    "lastLoginAt",
+    "mustChangePassword",
+    "name",
+    "role",
+    "source",
+  ]);
 });
 const cookie = login.setCookie[0].split(";")[0];
 
@@ -243,6 +262,150 @@ for (const [pathname, method] of [
   const removed = await call(pathname, { method, cookie, body: {} });
   check(`${method} ${pathname} is gone`, () => assert.equal(removed.response.status, 404));
 }
+
+/* --------------------------- in-panel accounts --------------------------- */
+const created = await call("/api/admin/accounts", {
+  method: "POST",
+  cookie,
+  body: { name: "ویرایشگر تازه", email: "fresh@cahen.studio", role: "editor", mode: "invite" },
+});
+check("owner creates a panel account", () => {
+  assert.equal(created.response.status, 200);
+  assert.equal(created.payload.account.email, "fresh@cahen.studio");
+  assert.equal(created.payload.account.source, "panel");
+  assert.equal(typeof created.payload.oneTimePassword, "string");
+  assert.ok(created.payload.oneTimePassword.length >= 16);
+});
+const oneTimePassword = created.payload.oneTimePassword;
+const panelId = created.payload.account.id;
+check("account payload never contains a hash", () =>
+  assert.ok(!/scrypt\$|hash/i.test(JSON.stringify(created.payload)))
+);
+const storedText = await readFile(path.join(root, "admin.json"), "utf8");
+check("no plaintext password is written to storage", () => {
+  assert.ok(!storedText.includes(oneTimePassword));
+  assert.match(storedText, /scrypt\$/);
+});
+
+const duplicate = await call("/api/admin/accounts", {
+  method: "POST",
+  cookie,
+  body: { name: "تکراری", email: "fresh@cahen.studio", role: "viewer", mode: "invite" },
+});
+check("duplicate email is rejected", () => assert.equal(duplicate.response.status, 409));
+
+const weakAccount = await call("/api/admin/accounts", {
+  method: "POST",
+  cookie,
+  body: { name: "ضعیف", email: "weak@cahen.studio", role: "editor", mode: "password", password: "short" },
+});
+check("panel rejects weak passwords", () => assert.equal(weakAccount.response.status, 400));
+
+const invitedLogin = await call("/api/admin/login", {
+  method: "POST",
+  body: { email: "fresh@cahen.studio", password: oneTimePassword },
+});
+const invitedCookie = invitedLogin.setCookie.join(";").match(/cahen_admin=[^;]+/)?.[0];
+check("invited account can sign in", () => {
+  assert.equal(invitedLogin.response.status, 200);
+  assert.equal(invitedLogin.payload.mustChangePassword, true);
+  assert.ok(invitedCookie);
+});
+await checkAsync("one-time password must be replaced before writing", async () => {
+  const blocked = await call("/api/admin/content", {
+    method: "PUT",
+    cookie: invitedCookie,
+    body: { content: { meta: { brand: "x" } } },
+  });
+  assert.equal(blocked.response.status, 403);
+  assert.equal(blocked.payload.code, "password_change_required");
+});
+await checkAsync("state stays readable while the password is pending", async () => {
+  const state = await call("/api/admin/state", { cookie: invitedCookie });
+  assert.equal(state.response.status, 200);
+});
+
+const rotated = await call("/api/admin/password", {
+  method: "POST",
+  cookie: invitedCookie,
+  body: { currentPassword: oneTimePassword, newPassword: "Editor-Passphrase-1404!" },
+});
+check("the invited account can set its own password", () => assert.equal(rotated.response.status, 200));
+
+const oldPassword = await call("/api/admin/login", {
+  method: "POST",
+  body: { email: "fresh@cahen.studio", password: oneTimePassword },
+});
+check("the one-time password stops working", () => assert.equal(oldPassword.response.status, 401));
+
+const freshLogin = await call("/api/admin/login", {
+  method: "POST",
+  body: { email: "fresh@cahen.studio", password: "Editor-Passphrase-1404!" },
+});
+const freshCookie = freshLogin.setCookie.join(";").match(/cahen_admin=[^;]+/)?.[0];
+check("the new password works", () => {
+  assert.equal(freshLogin.response.status, 200);
+  assert.equal(freshLogin.payload.admin.mustChangePassword, false);
+});
+
+const editorAttempt = await call("/api/admin/accounts", {
+  method: "POST",
+  cookie: editorCookie,
+  body: { name: "نفوذی", email: "editor-made@cahen.studio", role: "owner", mode: "invite" },
+});
+check("editors cannot create accounts", () => assert.equal(editorAttempt.response.status, 403));
+
+const envId = (await call("/api/admin/state", { cookie })).payload.accounts.find(
+  (entry) => entry.source === "env"
+).id;
+const envPatch = await call(`/api/admin/accounts/${envId}`, {
+  method: "PATCH",
+  cookie,
+  body: { role: "viewer" },
+});
+check("environment accounts are read-only in the panel", () => assert.equal(envPatch.response.status, 409));
+
+const demoted = await call(`/api/admin/accounts/${panelId}`, {
+  method: "PATCH",
+  cookie,
+  body: { role: "viewer" },
+});
+check("owner can change a panel role", () => {
+  assert.equal(demoted.response.status, 200);
+  assert.equal(demoted.payload.account.role, "viewer");
+});
+const afterDemotion = await call("/api/admin/state", { cookie: freshCookie });
+check("a role change revokes the old session", () => assert.equal(afterDemotion.response.status, 401));
+
+const selfDelete = await call(`/api/admin/accounts/${envId}`, { method: "DELETE", cookie });
+check("an env account cannot be deleted from the panel", () =>
+  assert.equal(selfDelete.response.status, 409)
+);
+
+/* -------------------------------- orders -------------------------------- */
+const ordersList = await call("/api/admin/orders", { cookie });
+check("owner reads the order list", () => {
+  assert.equal(ordersList.response.status, 200);
+  assert.ok(Array.isArray(ordersList.payload.orders));
+  assert.equal(ordersList.payload.sms.configured, false);
+});
+const viewerOrders = await call("/api/admin/orders", { cookie: freshCookie });
+check("orders need a live session", () => assert.equal(viewerOrders.response.status, 401));
+const orderRetry = await call("/api/admin/orders/ffffffffffffffffffff/retry", {
+  method: "POST",
+  cookie,
+});
+check("unknown order retry is a 404", () => assert.equal(orderRetry.response.status, 404));
+const orderDelete = await call("/api/admin/orders/ffffffffffffffffffff", { method: "DELETE", cookie });
+check("unknown order delete is a 404", () => assert.equal(orderDelete.response.status, 404));
+
+const accountDelete = await call(`/api/admin/accounts/${panelId}`, { method: "DELETE", cookie });
+check("owner deletes a panel account", () => assert.equal(accountDelete.response.status, 200));
+const deletedLogin = await call("/api/admin/login", {
+  method: "POST",
+  body: { email: "fresh@cahen.studio", password: "Editor-Passphrase-1404!" },
+});
+check("deleted accounts can no longer sign in", () => assert.equal(deletedLogin.response.status, 401));
 
 /* -------------------------------- logout -------------------------------- */
 const logout = await call("/api/admin/logout", { method: "POST", cookie });

@@ -9,8 +9,29 @@ export function createFsStorage({ dataDirectory }) {
   const uploadsDirectory = path.join(dataDirectory, "uploads");
   const storePath = path.join(dataDirectory, "admin.json");
   let writeQueue = Promise.resolve();
+  const jsonQueues = new Map();
 
   const ensureDirectories = () => mkdir(uploadsDirectory, { recursive: true });
+  const documentPath = (key) => {
+    if (!/^[a-z][a-z0-9-]{0,40}$/.test(String(key))) throw new Error("Invalid document key");
+    return path.join(dataDirectory, `${key}.json`);
+  };
+
+  const readJson = async (key) => {
+    try {
+      return JSON.parse(await readFile(documentPath(key), "utf8"));
+    } catch {
+      return null;
+    }
+  };
+
+  const writeJson = async (key, value) => {
+    await ensureDirectories();
+    const target = documentPath(key);
+    const temporary = `${target}.${process.pid}.tmp`;
+    await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
+    await rename(temporary, target);
+  };
 
   return {
     kind: "fs",
@@ -45,6 +66,21 @@ export function createFsStorage({ dataDirectory }) {
     },
     async deleteMedia(name) {
       await unlink(path.join(uploadsDirectory, path.basename(name))).catch(() => undefined);
+    },
+    readJson,
+    async writeJson(key, value) {
+      await writeJson(key, value);
+    },
+    updateJson(key, updater) {
+      const previous = jsonQueues.get(key) ?? Promise.resolve();
+      const next = previous.then(async () => {
+        const current = await readJson(key);
+        const updated = await updater(current);
+        await writeJson(key, updated);
+        return updated;
+      });
+      jsonQueues.set(key, next.catch(() => undefined));
+      return next;
     },
   };
 }

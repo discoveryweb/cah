@@ -1,4 +1,12 @@
-import type { ActivityEntry, AdminUser, MediaEntry, SiteContent } from "../content/types";
+import type {
+  ActivityEntry,
+  AdminRole,
+  AdminUser,
+  MediaEntry,
+  OrderRecord,
+  SiteContent,
+  SmsSummary,
+} from "../content/types";
 
 export class ApiFailure extends Error {
   status: number;
@@ -51,6 +59,8 @@ export interface AdminState {
   ok: true;
   admin: AdminUser;
   accounts: AdminUser[];
+  orderStats: { total: number; pending: number };
+  sms: SmsSummary;
   content: SiteContent | null;
   updatedAt: string | null;
   updatedBy: string | null;
@@ -62,10 +72,13 @@ export interface AdminState {
 export const api = {
   session: () => request<SessionInfo>("/api/admin/session"),
   login: (body: { email: string; password: string }) =>
-    request<{ ok: true; admin: AdminUser; expiresAt: string }>("/api/admin/login", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
+    request<{ ok: true; admin: AdminUser; expiresAt: string; mustChangePassword?: boolean }>(
+      "/api/admin/login",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    ),
   logout: () => request<{ ok: true }>("/api/admin/logout", { method: "POST" }),
   logoutAll: () => request<{ ok: true }>("/api/admin/logout?all=1", { method: "POST" }),
   state: () => request<AdminState>("/api/admin/state"),
@@ -95,6 +108,45 @@ export const api = {
       method: "DELETE",
     }),
   exportContent: () => request<{ ok: true; exportedAt: string; content: SiteContent | null }>("/api/admin/export"),
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<{ ok: true; admin: AdminUser }>("/api/admin/password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  createAccount: (body: {
+    email: string;
+    name: string;
+    role: AdminRole;
+    mode: "invite" | "password";
+    password?: string;
+  }) =>
+    request<{ ok: true; account: AdminUser; oneTimePassword: string | null }>("/api/admin/accounts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateAccount: (id: string, body: { name?: string; role?: AdminRole; active?: boolean }) =>
+    request<{ ok: true; account: AdminUser }>(`/api/admin/accounts/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAccount: (id: string) =>
+    request<{ ok: true }>(`/api/admin/accounts/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  resetAccountPassword: (id: string) =>
+    request<{ ok: true; oneTimePassword: string }>(
+      `/api/admin/accounts/${encodeURIComponent(id)}/password`,
+      { method: "POST" }
+    ),
+  orders: () =>
+    request<{ ok: true; orders: OrderRecord[]; total: number; sms: SmsSummary }>(
+      "/api/admin/orders?limit=200"
+    ),
+  retryOrder: (id: string) =>
+    request<{ ok: true; order: OrderRecord; sms: SmsSummary }>(
+      `/api/admin/orders/${encodeURIComponent(id)}/retry`,
+      { method: "POST" }
+    ),
+  deleteOrder: (id: string) =>
+    request<{ ok: true }>(`/api/admin/orders/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
 /** Downscale and re-encode an image in the browser before it is uploaded. */

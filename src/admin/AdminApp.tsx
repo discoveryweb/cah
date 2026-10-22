@@ -5,6 +5,7 @@ import {
   FileText,
   History,
   Images,
+  Inbox,
   LayoutDashboard,
   LayoutGrid,
   Link2,
@@ -20,7 +21,13 @@ import {
 } from "lucide-react";
 import mark from "../assets/cahen-mark.png";
 import { resolveContent } from "../content/ContentProvider";
-import type { ActivityEntry, AdminUser, MediaEntry, SiteContent } from "../content/types";
+import type {
+  ActivityEntry,
+  AdminUser,
+  MediaEntry,
+  SiteContent,
+  SmsSummary,
+} from "../content/types";
 import { ActivityPanel } from "./ActivityPanel";
 import { api, ApiFailure, type SessionInfo } from "./api";
 import { AuthScreen } from "./AuthScreen";
@@ -29,6 +36,8 @@ import { Dashboard } from "./Dashboard";
 import { formatDate, ROLE_LABELS, setPath, validateContent } from "./draft";
 import { LinksPanel } from "./LinksPanel";
 import { MediaLibrary } from "./MediaLibrary";
+import { OrdersPanel } from "./OrdersPanel";
+import { PasswordForm } from "./PasswordForm";
 import { SettingsPanel } from "./SettingsPanel";
 import { ADMIN_TABS, tabFromHash, type AdminTab } from "./tabs";
 import { TeamPanel } from "./TeamPanel";
@@ -42,13 +51,14 @@ const ICONS: Record<AdminTab, typeof LayoutDashboard> = {
   links: Link2,
   media: Images,
   team: Users,
+  orders: Inbox,
   activity: History,
   settings: Settings,
 };
 
 const GROUPS: { label: string; tabs: AdminTab[] }[] = [
   { label: "CONTENT", tabs: ["dashboard", "work", "content", "links"] },
-  { label: "SYSTEM", tabs: ["media", "team", "activity", "settings"] },
+  { label: "SYSTEM", tabs: ["media", "orders", "team", "activity", "settings"] },
 ];
 
 export function AdminApp() {
@@ -77,6 +87,8 @@ function AdminRoot() {
   );
   const [media, setMedia] = useState<MediaEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [orderStats, setOrderStats] = useState({ total: 0, pending: 0 });
+  const [sms, setSms] = useState<SmsSummary | null>(null);
 
   const [tab, setTab] = useState<AdminTab>(() => tabFromHash(window.location.hash));
   const [drawer, setDrawer] = useState(false);
@@ -131,6 +143,8 @@ function AdminRoot() {
       setSessionInfo(state.session);
       setMedia(state.media);
       setActivity(state.activity);
+      setOrderStats(state.orderStats ?? { total: 0, pending: 0 });
+      setSms(state.sms ?? null);
       setUpdatedAt(state.updatedAt);
       setUpdatedBy(state.updatedBy);
       if (adopt || !contentRef.current) {
@@ -303,6 +317,40 @@ function AdminRoot() {
     );
   }
 
+  if (admin.mustChangePassword) {
+    return (
+      <div className="admin">
+        <span className="admin__grain" aria-hidden="true" />
+        <div className="auth">
+          <div className="auth__panel auth__panel--single">
+            <div className="auth__form">
+              <span className="aeyebrow" dir="ltr">
+                NEW PASSWORD
+              </span>
+              <h2>گذرواژهٔ تازه</h2>
+              <p dir="ltr">{admin.email}</p>
+              <PasswordForm
+                admin={admin}
+                submitLabel="ادامه"
+                onDone={(next) => {
+                  setAdmin(next);
+                  setSession((current) => (current ? { ...current, admin: next } : current));
+                  toast("گذرواژه تغییر کرد.");
+                }}
+              />
+              <div className="auth__foot">
+                <button type="button" className="abtn abtn--ghost abtn--sm" onClick={() => void logout()}>
+                  <LogOut />
+                  خروج
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentTab = ADMIN_TABS.find((entry) => entry.id === tab) ?? ADMIN_TABS[0];
 
   return (
@@ -377,6 +425,9 @@ function AdminRoot() {
                     accounts={accounts}
                     media={media}
                     activity={activity}
+                    orderCount={orderStats.total}
+                    pendingOrders={orderStats.pending}
+                    sms={sms}
                     dirty={dirty}
                     disabled={Boolean(disabled)}
                     onNavigate={go}
@@ -428,8 +479,20 @@ function AdminRoot() {
                   />
                 ) : null}
 
+                {tab === "orders" ? (
+                  <OrdersPanel
+                    sms={sms}
+                    viewerBlocked={admin.role === "viewer"}
+                    onChanged={() => void loadState(false)}
+                  />
+                ) : null}
+
                 {tab === "team" ? (
-                  <TeamPanel accounts={accounts} current={admin} />
+                  <TeamPanel
+                    accounts={accounts}
+                    current={admin}
+                    onChanged={() => void loadState(false)}
+                  />
                 ) : null}
 
                 {tab === "activity" ? <ActivityPanel activity={activity} /> : null}

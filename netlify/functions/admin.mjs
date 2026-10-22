@@ -1,4 +1,5 @@
 import { createAdminApi } from "../../server/admin-api.mjs";
+import { createOrderHandler } from "../../server/order-api.mjs";
 import { createBlobsStorage } from "../../server/storage-blobs.mjs";
 import { createWebHandler, normaliseFunctionPath } from "../../server/web-adapter.mjs";
 
@@ -11,11 +12,12 @@ let handlerPromise = null;
  */
 function getHandler() {
   if (!handlerPromise) {
-    const api = createAdminApi({
-      storage: createBlobsStorage(),
-      env: process.env,
-    });
-    handlerPromise = Promise.resolve(createWebHandler(api));
+    // One store instance is shared so orders, content and sessions cannot race
+    // each other through separate per-process caches.
+    const storage = createBlobsStorage();
+    const api = createAdminApi({ storage, env: process.env });
+    const orderHandler = createOrderHandler({ storage, env: process.env });
+    handlerPromise = Promise.resolve(createWebHandler(api, { orderHandler }));
   }
   return handlerPromise;
 }

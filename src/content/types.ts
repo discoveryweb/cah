@@ -173,6 +173,39 @@ export interface AdminUser {
   role: AdminRole;
   active: boolean;
   lastLoginAt: string | null;
+  source?: "env" | "panel";
+  mustChangePassword?: boolean;
+  createdAt?: string | null;
+}
+
+export type SmsStatus = "sent" | "partial" | "failed" | "pending";
+
+export interface OrderSms {
+  status: SmsStatus;
+  attempts: number;
+  parts: number;
+  sentParts: number;
+  error: string | null;
+  lastAttemptAt: string | null;
+  sentAt: string | null;
+  references?: string[];
+}
+
+export interface OrderRecord {
+  id: string;
+  code: string;
+  at: string;
+  name: string;
+  phone: string;
+  email: string;
+  service: string;
+  message: string;
+  sms: OrderSms;
+}
+
+export interface SmsSummary {
+  configured: boolean;
+  missing: string[];
 }
 
 export interface MediaEntry {
