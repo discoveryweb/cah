@@ -168,11 +168,10 @@ export type AdminRole = "owner" | "editor" | "viewer";
 
 export interface AdminUser {
   id: string;
-  username: string;
+  email: string;
   name: string;
   role: AdminRole;
   active: boolean;
-  createdAt: string;
   lastLoginAt: string | null;
 }
 

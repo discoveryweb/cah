@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  LockKeyhole,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 import mark from "../assets/cahen-mark.png";
 import type { AdminUser } from "../content/types";
 import { api, ApiFailure, type SessionInfo } from "./api";
-import { Field, TextInput, useToast } from "./ui";
+import { Field, useToast } from "./ui";
 
 interface Props {
   session: SessionInfo;
@@ -12,48 +21,29 @@ interface Props {
 
 export function AuthScreen({ session, onAuthed }: Props) {
   const toast = useToast();
-  const setup = session.setupRequired;
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [repeat, setRepeat] = useState("");
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capsLock, setCapsLock] = useState(false);
 
-  useEffect(() => {
-    setError(null);
-  }, [setup]);
-
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-
-    if (setup) {
-      if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
-        setError("نام کاربری باید ۳ تا ۳۲ نویسهٔ لاتین کوچک، رقم، نقطه، خط تیره یا زیرخط باشد.");
-        return;
-      }
-      if (password.length < 8) {
-        setError("گذرواژه باید حداقل ۸ نویسه باشد.");
-        return;
-      }
-      if (password !== repeat) {
-        setError("دو گذرواژه یکسان نیستند.");
-        return;
-      }
+    if (!email.trim() || !password) {
+      setError("ایمیل و گذرواژه را وارد کنید.");
+      return;
     }
-
     setBusy(true);
     try {
-      const result = setup
-        ? await api.setup({ username, password, name: name.trim() || username })
-        : await api.login({ username: username.trim().toLowerCase(), password });
-      toast(setup ? "حساب مالک ساخته شد. خوش آمدید." : "خوش آمدید.");
+      const result = await api.login({ email: email.trim().toLowerCase(), password });
+      toast("خوش آمدید.");
       onAuthed(result.admin);
     } catch (caught) {
-      setError(caught instanceof ApiFailure ? caught.message : "ارتباط با سرور برقرار نشد.");
+      setError(
+        caught instanceof ApiFailure ? caught.message : "ارتباط با سرور برقرار نشد."
+      );
     } finally {
       setBusy(false);
     }
@@ -78,114 +68,138 @@ export function AuthScreen({ session, onAuthed }: Props) {
             </div>
             <div className="auth__aside-foot">
               <span dir="ltr">SHENATAISONI · ADMIN</span>
-              <span dir="ltr">EST. 1404 — TEHRAN</span>
+              <span dir="ltr">SECURED · SERVER-SIDE SESSION</span>
             </div>
           </aside>
 
-          <form className="auth__form" onSubmit={submit}>
-            <span className="aeyebrow" dir="ltr">
-              {setup ? "FIRST RUN / OWNER SETUP" : "SECURE SIGN IN"}
-            </span>
-            <h2>{setup ? "ساخت حساب مالک" : "ورود به پنل"}</h2>
-            <p>
-              {setup
-                ? "این نخستین اجراست. یک حساب مالک بسازید؛ بعد از این، همهٔ دسترسی‌ها از همین پنل مدیریت می‌شوند."
-                : "نام کاربری و گذرواژهٔ خود را وارد کنید."}
-            </p>
+          {session.configured ? (
+            <form className="auth__form" onSubmit={submit} autoComplete="on">
+              <span className="aeyebrow" dir="ltr">
+                SECURE SIGN IN
+              </span>
+              <h2>ورود به پنل</h2>
+              <p>با ایمیل و گذرواژهٔ تعریف‌شده در متغیرهای محیطی سرور وارد شوید.</p>
 
-            {error ? (
-              <p className="auth__error" role="alert">
-                {error}
-              </p>
-            ) : null}
+              {error ? (
+                <p className="auth__error" role="alert">
+                  {error}
+                </p>
+              ) : null}
 
-            {setup ? (
-              <Field label="نام نمایشی" hint="مثلاً «سارا احمدی» یا نام استودیو.">
-                <TextInput
-                  value={name}
-                  onChange={setName}
-                  placeholder="نام شما"
-                  autoComplete="name"
-                  disabled={busy}
-                />
-              </Field>
-            ) : null}
-
-            <Field label="نام کاربری" hint={setup ? "لاتین کوچک؛ همین نام برای ورود استفاده می‌شود." : undefined}>
-              <TextInput
-                value={username}
-                onChange={(value) => setUsername(setup ? value.toLowerCase() : value)}
-                ltr
-                placeholder="studio"
-                autoComplete="username"
-                disabled={busy}
-              />
-            </Field>
-
-            <Field label="گذرواژه" hint={setup ? "حداقل ۸ نویسه؛ ترکیبی از حرف و رقم." : undefined}>
-              <div style={{ position: "relative", display: "flex" }}>
+              <Field label="ایمیل" hint="همان ایمیلی که در ADMIN_EMAIL تنظیم شده است.">
                 <input
                   className="ainput"
-                  style={{ paddingInlineEnd: 44 }}
-                  type={reveal ? "text" : "password"}
-                  value={password}
                   dir="ltr"
-                  autoComplete={setup ? "new-password" : "current-password"}
-                  onChange={(event) => setPassword(event.target.value)}
-                  onKeyUp={(event) =>
-                    setCapsLock(event.getModifierState ? event.getModifierState("CapsLock") : false)
-                  }
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
                   disabled={busy}
-                />
-                <button
-                  type="button"
-                  className="abtn abtn--ghost abtn--icon abtn--sm"
-                  style={{ position: "absolute", insetInlineEnd: 4, top: 4 }}
-                  onClick={() => setReveal((current) => !current)}
-                  aria-label={reveal ? "پنهان‌کردن گذرواژه" : "نمایش گذرواژه"}
-                >
-                  {reveal ? <EyeOff /> : <Eye />}
-                </button>
-              </div>
-            </Field>
-
-            {capsLock ? <p className="afield__hint">Caps Lock روشن است.</p> : null}
-
-            {setup ? (
-              <Field label="تکرار گذرواژه">
-                <TextInput
-                  value={repeat}
-                  onChange={setRepeat}
-                  type="password"
-                  ltr
-                  autoComplete="new-password"
-                  disabled={busy}
+                  placeholder="you@studio.com"
                 />
               </Field>
-            ) : null}
 
-            <button type="submit" className="abtn abtn--primary" disabled={busy} style={{ minHeight: 44 }}>
-              {busy ? (
-                <LoaderCircle style={{ animation: "spin 1s linear infinite" }} />
-              ) : setup ? (
+              <Field label="گذرواژه">
+                <div style={{ position: "relative", display: "flex" }}>
+                  <input
+                    className="ainput"
+                    style={{ paddingInlineEnd: 44 }}
+                    type={reveal ? "text" : "password"}
+                    value={password}
+                    dir="ltr"
+                    autoComplete="current-password"
+                    onChange={(event) => setPassword(event.target.value)}
+                    onKeyUp={(event) =>
+                      setCapsLock(event.getModifierState ? event.getModifierState("CapsLock") : false)
+                    }
+                    required
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    className="abtn abtn--ghost abtn--icon abtn--sm"
+                    style={{ position: "absolute", insetInlineEnd: 4, top: 4 }}
+                    onClick={() => setReveal((current) => !current)}
+                    aria-label={reveal ? "پنهان‌کردن گذرواژه" : "نمایش گذرواژه"}
+                  >
+                    {reveal ? <EyeOff /> : <Eye />}
+                  </button>
+                </div>
+              </Field>
+
+              {capsLock ? <p className="afield__hint">Caps Lock روشن است.</p> : null}
+
+              <button type="submit" className="abtn abtn--primary" disabled={busy} style={{ minHeight: 44 }}>
+                {busy ? <LoaderCircle style={{ animation: "spin 1s linear infinite" }} /> : <LockKeyhole />}
+                ورود
+              </button>
+
+              <p className="afield__hint" style={{ lineHeight: 1.9 }}>
+                نشست شما {session.sessionHours} ساعت معتبر است. گذرواژه در پنل قابل تغییر نیست و فقط از
+                طریق متغیرهای محیطی سرور مدیریت می‌شود.
+              </p>
+
+              <div className="auth__foot">
+                <a href="/" className="abtn abtn--ghost abtn--sm">
+                  <ArrowLeft />
+                  بازگشت به سایت
+                </a>
+                <span dir="ltr">SESSION {session.sessionHours}H</span>
+              </div>
+            </form>
+          ) : (
+            <div className="auth__form">
+              <span className="aeyebrow" dir="ltr">
+                CONFIGURATION REQUIRED
+              </span>
+              <h2>
+                <ShieldAlert style={{ width: 20, height: 20, verticalAlign: "-3px", marginInlineEnd: 8 }} />
+                پنل هنوز پیکربندی نشده
+              </h2>
+              <p>
+                برای امنیت، هیچ حساب پیش‌فرض یا گذرواژهٔ داخلی وجود ندارد. این متغیرها را در تنظیمات
+                محیطی سرور (برای Netlify در Site configuration → Environment variables) تعریف کنید و
+                دوباره مستقر کنید:
+              </p>
+              <ul className="aenvlist" dir="ltr">
+                <li><code>ADMIN_EMAIL</code></li>
+                <li><code>ADMIN_PASSWORD_HASH</code> <span>← npm run admin:hash</span></li>
+                <li><code>ADMIN_SESSION_SECRET</code> <span>← ۳۲+ نویسهٔ تصادفی</span></li>
+                <li><code>ADMIN_NAME</code> <span>optional</span></li>
+              </ul>
+
+              <div className="anote">
                 <ShieldCheck />
-              ) : (
-                <LockKeyhole />
-              )}
-              {setup ? "ساخت حساب و ورود" : "ورود"}
-            </button>
+                <span>
+                  گذرواژهٔ خام را در متغیرها نگه ندارید؛ از هش scrypt استفاده کنید. متغیرها فقط سمت سرور
+                  خوانده می‌شوند و هرگز با پیشوند <code dir="ltr">VITE_</code> تعریف نمی‌شوند.
+                </span>
+              </div>
 
-            <div className="auth__foot">
-              <a href="/" className="abtn abtn--ghost abtn--sm">
-                <ArrowLeft />
-                بازگشت به سایت
-              </a>
-              <a href="/#contact" className="abtn abtn--ghost abtn--sm">
-                پشتیبانی
-                <ArrowUpRight />
-              </a>
+              {session.issues.length > 0 ? (
+                <ul className="aissues">
+                  {session.issues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="auth__foot">
+                <a href="/" className="abtn abtn--ghost abtn--sm">
+                  <ArrowLeft />
+                  بازگشت به سایت
+                </a>
+                <a href="/#contact" className="abtn abtn--ghost abtn--sm">
+                  پشتیبانی
+                  <ArrowUpRight />
+                </a>
+              </div>
             </div>
-          </form>
+          )}
         </div>
       </div>
     </div>

@@ -71,7 +71,10 @@ function AdminRoot() {
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [updatedBy, setUpdatedBy] = useState<string | null>(null);
-  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [accounts, setAccounts] = useState<AdminUser[]>([]);
+  const [sessionInfo, setSessionInfo] = useState<{ expiresAt: string; sessionHours: number } | null>(
+    null
+  );
   const [media, setMedia] = useState<MediaEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
 
@@ -105,7 +108,14 @@ function AdminRoot() {
             ? error.message
             : "ارتباط با سرور برقرار نشد. مطمئن شوید سرور در حال اجراست."
         );
-        setSession({ ok: true, setupRequired: false, admin: null });
+        setSession({
+          ok: true,
+          configured: false,
+          issues: ["ارتباط با سرور برقرار نشد."],
+          sessionHours: 8,
+          admin: null,
+          expiresAt: null,
+        });
       });
     return () => {
       alive = false;
@@ -117,7 +127,8 @@ function AdminRoot() {
     try {
       const state = await api.state();
       setAdmin(state.admin);
-      setAdmins(state.admins);
+      setAccounts(state.accounts);
+      setSessionInfo(state.session);
       setMedia(state.media);
       setActivity(state.activity);
       setUpdatedAt(state.updatedAt);
@@ -218,18 +229,31 @@ function AdminRoot() {
     setContent((current) => (current ? setPath(current, path, value) : current));
   }, []);
 
-  const logout = async () => {
-    try {
-      await api.logout();
-    } catch {
-      // Even if the request fails the local session is dropped.
-    }
+  const dismissSession = (message: string) => {
     setAdmin(null);
     setContent(null);
     setSavedSnapshot("");
     setSession((current) => (current ? { ...current, admin: null } : current));
-    toast("از پنل خارج شدید.");
+    toast(message);
   };
+
+  const logout = async (allDevices = false) => {
+    try {
+      if (allDevices) await api.logoutAll();
+      else await api.logout();
+    } catch {
+      // Even if the request fails the local session is dropped.
+    }
+    dismissSession(allDevices ? "همهٔ نشست‌ها بسته شد." : "از پنل خارج شدید.");
+  };
+
+  useEffect(() => {
+    const onUnauthorized = () => dismissSession("نشست شما پایان یافت؛ دوباره وارد شوید.");
+    window.addEventListener("cahen:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("cahen:unauthorized", onUnauthorized);
+    // dismissSession only touches stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]);
 
   /* -------------------------------- views ------------------------------- */
 
@@ -269,7 +293,11 @@ function AdminRoot() {
         session={session}
         onAuthed={(next) => {
           setAdmin(next);
-          setSession({ ok: true, setupRequired: false, admin: next });
+          setSession((current) =>
+            current
+              ? { ...current, admin: next, configured: true, issues: [], expiresAt: null }
+              : current
+          );
         }}
       />
     );
@@ -346,7 +374,7 @@ function AdminRoot() {
                     admin={admin}
                     updatedAt={updatedAt}
                     updatedBy={updatedBy}
-                    admins={admins}
+                    accounts={accounts}
                     media={media}
                     activity={activity}
                     dirty={dirty}
@@ -401,12 +429,7 @@ function AdminRoot() {
                 ) : null}
 
                 {tab === "team" ? (
-                  <TeamPanel
-                    admins={admins}
-                    current={admin}
-                    onRefresh={() => loadState(false)}
-                    disabled={Boolean(disabled)}
-                  />
+                  <TeamPanel accounts={accounts} current={admin} />
                 ) : null}
 
                 {tab === "activity" ? <ActivityPanel activity={activity} /> : null}
@@ -418,11 +441,13 @@ function AdminRoot() {
                     media={media}
                     updatedAt={updatedAt}
                     updatedBy={updatedBy}
+                    session={sessionInfo ?? { expiresAt: new Date().toISOString(), sessionHours: 8 }}
                     dirty={dirty}
                     onReset={async () => {
                       await loadState(true);
                     }}
                     onLogout={() => void logout()}
+                    onLogoutAll={() => void logout(true)}
                   />
                 ) : null}
               </>
@@ -509,7 +534,7 @@ function AdminRoot() {
               <div className="admin-user__type">
                 <b>{admin.name}</b>
                 <span dir="ltr">
-                  {admin.username} · {ROLE_LABELS[admin.role]}
+                  {admin.email} · {ROLE_LABELS[admin.role]}
                 </span>
               </div>
               <button

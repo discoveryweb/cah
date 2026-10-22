@@ -1,19 +1,27 @@
-import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { createReadStream, existsSync } from "node:fs";
-import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
-import { promisify } from "node:util";
-
-const scrypt = promisify(scryptCallback);
+import {
+  getDummyHash,
+  loadAdminConfig,
+  normaliseEmail,
+  publicAccount,
+  verifyPassword,
+} from "./admin-config.mjs";
+import { createFsStorage } from "./storage-fs.mjs";
 
 const SESSION_COOKIE = "cahen_admin";
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-const MAX_JSON_BYTES = 2 * 1024 * 1024;
-const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
-const LOGIN_WINDOW_MS = 10 * 60 * 1000;
-const LOGIN_LIMIT = 8;
+const MAX_JSON_BYTES = 1024 * 1024;
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_BLOCK_MS = 15 * 60 * 1000;
+const IP_LOGIN_LIMIT = 12;
+const EMAIL_LOGIN_LIMIT = 6;
+const MAX_TRACKED_KEYS = 4000;
 
-const IMAGE_TYPES = new Map([
+const ROLES = new Set(["owner", "editor", "viewer"]);
+const ROLE_RANK = { owner: 3, editor: 2, viewer: 1 };
+
+const IMAGE_EXTENSIONS = new Map([
   ["image/jpeg", ".jpg"],
   ["image/png", ".png"],
   ["image/webp", ".webp"],
@@ -21,26 +29,38 @@ const IMAGE_TYPES = new Map([
   ["image/gif", ".gif"],
 ]);
 
-const ROLES = new Set(["owner", "editor", "viewer"]);
-const ROLE_RANK = { owner: 3, editor: 2, viewer: 1 };
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 class ApiError extends Error {
-  constructor(status, code, message = code) {
+  constructor(status, code, message = code, headers = {}) {
     super(message);
     this.status = status;
     this.code = code;
+    this.headers = headers;
   }
 }
+
+const applySecurityHeaders = (response) => {
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "no-referrer");
+  response.setHeader("X-Frame-Options", "DENY");
+  response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  response.setHeader("Vary", "Origin, Cookie");
+};
 
 const json = (response, status, payload) => {
   response.statusCode = status;
   response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Cache-Control", "no-store, max-age=0");
   response.end(JSON.stringify(payload));
 };
 
 const fail = (response, error) => {
+  applySecurityHeaders(response);
   if (error instanceof ApiError) {
+    for (const [key, value] of Object.entries(error.headers)) response.setHeader(key, value);
     json(response, error.status, { ok: false, code: error.code, message: error.message });
     return;
   }
@@ -50,51 +70,101 @@ const fail = (response, error) => {
 
 function parseCookies(header = "") {
   const cookies = new Map();
-  for (const part of header.split(";")) {
+  for (const part of String(header).split(";")) {
     const index = part.indexOf("=");
     if (index < 0) continue;
-    cookies.set(part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim()));
+    const key = part.slice(0, index).trim();
+    if (!key) continue;
+    try {
+      cookies.set(key, decodeURIComponent(part.slice(index + 1).trim()));
+    } catch {
+      // Ignore malformed cookie values.
+    }
   }
   return cookies;
 }
 
 async function readBody(request, limit) {
-  const advertised = Number(request.headers["content-length"] ?? 0);
-  if (advertised > limit) throw new ApiError(413, "payload_too_large");
+  const advertised = Number(request.headers?.["content-length"] ?? 0);
+  if (Number.isFinite(advertised) && advertised > limit) {
+    throw new ApiError(413, "payload_too_large", "حجم درخواست بیش از حد مجاز است.");
+  }
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > limit) throw new ApiError(413, "payload_too_large");
+    if (size > limit) throw new ApiError(413, "payload_too_large", "حجم درخواست بیش از حد مجاز است.");
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
 }
 
+const headerValue = (request, name) => {
+  const value = request.headers?.[name];
+  return Array.isArray(value) ? value[0] : value;
+};
+
 async function readJson(request) {
+  const contentType = String(headerValue(request, "content-type") ?? "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+  if (contentType && contentType !== "application/json") {
+    throw new ApiError(415, "unsupported_media_type", "بدنهٔ درخواست باید JSON باشد.");
+  }
   const buffer = await readBody(request, MAX_JSON_BYTES);
   if (!buffer.length) return {};
+  let parsed;
   try {
-    const parsed = JSON.parse(buffer.toString("utf8"));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new ApiError(400, "invalid_payload");
-    }
-    return parsed;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(400, "invalid_json");
+    parsed = JSON.parse(buffer.toString("utf8"));
+  } catch {
+    throw new ApiError(400, "invalid_json", "بدنهٔ درخواست معتبر نیست.");
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ApiError(400, "invalid_payload", "بدنهٔ درخواست معتبر نیست.");
+  }
+  return parsed;
 }
 
-function sameOrigin(request) {
-  const origin = request.headers.origin;
-  if (!origin) return true;
-  const host = String(request.headers.host ?? "").toLowerCase();
-  if (!host) return false;
-  try {
-    return new URL(origin).host.toLowerCase() === host;
-  } catch {
-    return false;
+const requestHost = (request, trustForwardedHost) => {
+  if (trustForwardedHost) {
+    const forwarded = String(headerValue(request, "x-forwarded-host") ?? "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase();
+    if (forwarded) return forwarded;
+  }
+  return String(headerValue(request, "host") ?? "")
+    .trim()
+    .toLowerCase();
+};
+
+/**
+ * Same-site check for every state-changing request. Browsers send Origin for
+ * POST/PUT/DELETE and `Sec-Fetch-Site` on modern clients; a request carrying
+ * neither is rejected instead of trusted.
+ */
+function assertSameOrigin(request, trustForwardedHost) {
+  const fetchSite = String(headerValue(request, "sec-fetch-site") ?? "").toLowerCase();
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
+    throw new ApiError(403, "bad_origin", "درخواست از مبدأ مجاز ارسال نشده است.");
+  }
+  const origin = headerValue(request, "origin");
+  const host = requestHost(request, trustForwardedHost);
+  if (origin) {
+    let originHost = "";
+    try {
+      originHost = new URL(String(origin)).host.toLowerCase();
+    } catch {
+      throw new ApiError(403, "bad_origin", "درخواست از مبدأ مجاز ارسال نشده است.");
+    }
+    if (!host || originHost !== host) {
+      throw new ApiError(403, "bad_origin", "درخواست از مبدأ مجاز ارسال نشده است.");
+    }
+    return;
+  }
+  if (!fetchSite) {
+    throw new ApiError(403, "bad_origin", "درخواست از مبدأ مجاز ارسال نشده است.");
   }
 }
 
@@ -103,7 +173,7 @@ const isPlainObject = (value) =>
 
 /** Reject prototype-polluting keys before anything is stored or merged. */
 function assertSafeContent(value, depth = 0) {
-  if (depth > 12) throw new ApiError(400, "content_too_deep");
+  if (depth > 12) throw new ApiError(400, "content_too_deep", "ساختار محتوا بیش از حد تودرتو است.");
   if (Array.isArray(value)) {
     value.forEach((item) => assertSafeContent(item, depth + 1));
     return;
@@ -111,493 +181,552 @@ function assertSafeContent(value, depth = 0) {
   if (!isPlainObject(value)) return;
   for (const key of Object.keys(value)) {
     if (key === "__proto__" || key === "constructor" || key === "prototype") {
-      throw new ApiError(400, "invalid_content");
+      throw new ApiError(400, "invalid_content", "ساختار محتوا معتبر نیست.");
     }
     assertSafeContent(value[key], depth + 1);
   }
 }
 
-const hashPassword = async (password) => {
-  const salt = randomBytes(16);
-  const derived = await scrypt(password, salt, 64);
-  return `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`;
+function detectImageType(buffer) {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(PNG_SIGNATURE)) return "image/png";
+  if (buffer.length >= 6) {
+    const head = buffer.subarray(0, 6).toString("ascii");
+    if (head === "GIF87a" || head === "GIF89a") return "image/gif";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  if (buffer.length >= 12) {
+    const brand = buffer.subarray(4, 12).toString("ascii");
+    if (brand === "ftypavif" || brand === "ftypavis") return "image/avif";
+  }
+  return null;
+}
+
+const sha256 = (value) => createHash("sha256").update(String(value)).digest("hex");
+
+const safeMediaName = (value) => {
+  const name = path.basename(String(value ?? ""));
+  return /^[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(name) ? name : null;
 };
 
-const verifyPassword = async (password, stored) => {
-  const [scheme, saltHex, hashHex] = String(stored ?? "").split("$");
-  if (scheme !== "scrypt" || !saltHex || !hashHex) return false;
-  const expected = Buffer.from(hashHex, "hex");
-  const derived = await scrypt(password, Buffer.from(saltHex, "hex"), expected.length);
-  return expected.length === derived.length && timingSafeEqual(expected, derived);
-};
+const emptyStore = () => ({
+  version: 2,
+  content: null,
+  contentUpdatedAt: null,
+  contentUpdatedBy: null,
+  activity: [],
+  media: [],
+  lastLogins: {},
+  sessions: [],
+});
 
-const slugId = () => randomBytes(8).toString("hex");
+export function createAdminApi({ root = process.cwd(), storage, env = process.env } = {}) {
+  const activeStorage = storage ?? createFsStorage({ dataDirectory: path.join(root, "data") });
 
-export function createAdminApi({ root }) {
-  const dataDirectory = path.join(root, "data");
-  const uploadsDirectory = path.join(dataDirectory, "uploads");
-  const storePath = path.join(dataDirectory, "admin.json");
-  const secretPath = path.join(dataDirectory, "session-secret");
+  let configPromise = null;
+  const getConfig = () => {
+    if (!configPromise) configPromise = loadAdminConfig(env);
+    return configPromise;
+  };
 
-  let writeQueue = Promise.resolve();
-  let secretCache = null;
-  const loginAttempts = new Map();
+  const loginFailures = new Map();
 
-  async function ensureDirectories() {
-    await mkdir(uploadsDirectory, { recursive: true });
-  }
+  // Headers such as X-Forwarded-For and X-Nf-Client-Connection-Ip are only
+  // trustworthy when a proxy we control sets them; otherwise a client could
+  // spoof its address and dodge the login throttle.
+  const trustProxyHeaders =
+    String(env.TRUST_PROXY ?? "").toLowerCase() === "true" ||
+    Boolean(env.NETLIFY) ||
+    Boolean(env.NETLIFY_BLOBS_CONTEXT) ||
+    Boolean(env.SITE_ID);
 
-  async function getSecret() {
-    if (secretCache) return secretCache;
-    if (process.env.CAHEN_ADMIN_SECRET) {
-      secretCache = process.env.CAHEN_ADMIN_SECRET;
-      return secretCache;
-    }
-    try {
-      secretCache = (await readFile(secretPath, "utf8")).trim();
-    } catch {
-      secretCache = randomBytes(32).toString("hex");
-      await ensureDirectories();
-      await writeFile(secretPath, secretCache, { mode: 0o600 });
-    }
-    return secretCache;
-  }
-
-  const emptyStore = () => ({
-    version: 1,
-    admins: [],
-    content: null,
-    contentUpdatedAt: null,
-    contentUpdatedBy: null,
-    activity: [],
-    media: [],
-  });
-
-  async function readStore() {
-    try {
-      const raw = await readFile(storePath, "utf8");
-      const parsed = JSON.parse(raw);
-      return { ...emptyStore(), ...parsed };
-    } catch {
-      return emptyStore();
-    }
-  }
-
-  function writeStore(store) {
-    writeQueue = writeQueue.then(async () => {
-      await ensureDirectories();
-      const temporary = `${storePath}.${process.pid}.tmp`;
-      await writeFile(temporary, JSON.stringify(store, null, 2), { mode: 0o600 });
-      await rename(temporary, storePath);
-    });
-    return writeQueue;
-  }
-
-  const publicAdmin = (admin) => ({
-    id: admin.id,
-    username: admin.username,
-    name: admin.name,
-    role: admin.role,
-    active: admin.active !== false,
-    createdAt: admin.createdAt,
-    lastLoginAt: admin.lastLoginAt ?? null,
-  });
-
-  function logActivity(store, actor, action, detail) {
+  const logActivity = (store, actor, action, detail) => {
     store.activity.unshift({
-      id: slugId(),
+      id: randomBytes(8).toString("hex"),
       at: new Date().toISOString(),
-      actor: actor ? actor.username : "system",
+      actor: actor || "system",
       action,
       detail,
     });
     store.activity = store.activity.slice(0, 200);
+  };
+
+  async function readStore() {
+    const stored = await activeStorage.readStore();
+    if (!isPlainObject(stored)) return emptyStore();
+    const store = { ...emptyStore(), ...stored };
+    if (!isPlainObject(store.lastLogins)) store.lastLogins = {};
+    if (!Array.isArray(store.activity)) store.activity = [];
+    if (!Array.isArray(store.media)) store.media = [];
+    if (!Array.isArray(store.sessions)) store.sessions = [];
+    // The old document carried local password hashes; they are never used now.
+    delete store.admins;
+    return store;
   }
 
-  async function sign(payload) {
-    const secret = await getSecret();
+  const writeStore = (store) => activeStorage.writeStore(store);
+
+  const sign = (config, payload) => {
     const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const signature = createHmac("sha256", secret).update(body).digest("base64url");
+    const signature = createHmac("sha256", config.secret).update(body).digest("base64url");
     return `${body}.${signature}`;
-  }
+  };
 
-  async function unsign(token) {
+  const unsign = (config, token) => {
     if (!token || !token.includes(".")) return null;
     const [body, signature] = token.split(".");
-    const secret = await getSecret();
-    const expected = createHmac("sha256", secret).update(body).digest("base64url");
+    if (!body || !signature) return null;
+    const expected = createHmac("sha256", config.secret).update(body).digest("base64url");
     if (signature.length !== expected.length) return null;
     if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+    let payload;
     try {
-      const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-      if (!payload?.sub || typeof payload.exp !== "number" || payload.exp < Date.now()) return null;
-      return payload;
+      payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
     } catch {
       return null;
     }
-  }
-
-  function setSessionCookie(request, response, token) {
-    const secure =
-      request.headers["x-forwarded-proto"] === "https" || request.socket?.encrypted ? "; Secure" : "";
-    response.setHeader(
-      "Set-Cookie",
-      `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(
-        SESSION_TTL_MS / 1000
-      )}${secure}`
-    );
-  }
-
-  const clearSessionCookie = (response) => {
-    response.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    if (!payload || payload.v !== 1) return null;
+    if (typeof payload.exp !== "number" || payload.exp <= Date.now()) return null;
+    if (typeof payload.sub !== "string" || typeof payload.email !== "string") return null;
+    return payload;
   };
 
-  async function currentAdmin(request, store) {
-    const token = parseCookies(request.headers.cookie).get(SESSION_COOKIE);
-    const payload = await unsign(token);
-    if (!payload) return null;
-    const admin = store.admins.find((entry) => entry.id === payload.sub);
-    if (!admin || admin.active === false) return null;
-    return admin;
+  const cookieAttributes = (request, config) => {
+    const forwardedProto = String(headerValue(request, "x-forwarded-proto") ?? "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase();
+    const secure =
+      config.cookieSecure || forwardedProto === "https" || Boolean(request.socket?.encrypted);
+    return {
+      secure,
+      base: ["Path=/", "HttpOnly", "SameSite=Strict", "Priority=High"],
+    };
+  };
+
+  const setSessionCookie = (request, response, config, token, maxAgeSeconds) => {
+    const { secure, base } = cookieAttributes(request, config);
+    const parts = [`${SESSION_COOKIE}=${token}`, ...base, `Max-Age=${maxAgeSeconds}`];
+    if (secure) parts.push("Secure");
+    response.setHeader("Set-Cookie", parts.join("; "));
+  };
+
+  const clearSessionCookie = (request, response, config) => {
+    const { secure, base } = cookieAttributes(request, config);
+    const parts = [
+      `${SESSION_COOKIE}=`,
+      ...base,
+      "Max-Age=0",
+      "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    ];
+    if (secure) parts.push("Secure");
+    response.setHeader("Set-Cookie", parts.join("; "));
+  };
+
+  const clientAddress = (request) => {
+    if (trustProxyHeaders) {
+      const netlify = headerValue(request, "x-nf-client-connection-ip");
+      if (netlify) return String(netlify).split(",")[0].trim();
+      const forwarded = headerValue(request, "x-forwarded-for");
+      if (forwarded) return String(forwarded).split(",")[0].trim();
+    }
+    return request.socket?.remoteAddress ?? "unknown";
+  };
+
+  const pruneFailures = (now) => {
+    if (loginFailures.size <= MAX_TRACKED_KEYS) return;
+    for (const [key, entry] of loginFailures) {
+      if (now > entry.resetAt) loginFailures.delete(key);
+    }
+    if (loginFailures.size > MAX_TRACKED_KEYS) loginFailures.clear();
+  };
+
+  function assertLoginAllowed(keys, now) {
+    for (const { key } of keys) {
+      const entry = loginFailures.get(key);
+      if (!entry) continue;
+      if (entry.blockedUntil && now < entry.blockedUntil) {
+        const seconds = Math.ceil((entry.blockedUntil - now) / 1000);
+        throw new ApiError(
+          429,
+          "too_many_attempts",
+          "تلاش‌های ناموفق زیاد بود؛ چند دقیقه بعد دوباره تلاش کنید.",
+          { "Retry-After": String(seconds) }
+        );
+      }
+      if (now >= entry.resetAt) loginFailures.delete(key);
+    }
   }
 
-  async function requireRole(request, store, minimum) {
-    const admin = await currentAdmin(request, store);
-    if (!admin) throw new ApiError(401, "unauthenticated", "ابتدا وارد شوید.");
-    if (minimum && ROLE_RANK[admin.role] < ROLE_RANK[minimum]) {
+  function registerFailure(keys, now) {
+    for (const { key, limit } of keys) {
+      const entry = loginFailures.get(key);
+      if (!entry || now > entry.resetAt) {
+        loginFailures.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS, blockedUntil: 0 });
+        continue;
+      }
+      entry.count += 1;
+      if (entry.count >= limit) {
+        entry.blockedUntil = now + LOGIN_BLOCK_MS;
+        entry.resetAt = now + LOGIN_BLOCK_MS;
+      }
+    }
+  }
+
+  const clearFailures = (keys) => keys.forEach(({ key }) => loginFailures.delete(key));
+
+  const pruneSessions = (store, now = Date.now()) => {
+    store.sessions = (store.sessions || []).filter(
+      (entry) => entry && typeof entry.sid === "string" && Number(entry.exp) > now
+    );
+    if (store.sessions.length > 30) {
+      store.sessions = store.sessions.slice(-30);
+    }
+  };
+
+  async function getSession(request, config, store) {
+    if (!config.ready) return null;
+    const token = parseCookies(headerValue(request, "cookie")).get(SESSION_COOKIE);
+    const payload = unsign(config, token);
+    if (!payload || !payload.sid) return null;
+    const account = config.accounts.find((entry) => entry.id === payload.sub);
+    if (!account || account.email !== payload.email) return null;
+    // Signed tokens are only accepted while their server-side record exists, so
+    // logout and revocation take effect immediately.
+    const record = (store.sessions || []).find(
+      (entry) => entry.sid === payload.sid && entry.sub === account.id
+    );
+    if (!record || Number(record.exp) <= Date.now()) return null;
+    return { account, payload };
+  }
+
+  async function requireAccount(request, config, minimum) {
+    if (!config.ready) {
+      throw new ApiError(
+        503,
+        "admin_not_configured",
+        "پنل مدیریت هنوز پیکربندی نشده است. متغیرهای محیطی سرور را تنظیم کنید."
+      );
+    }
+    const store = await readStore();
+    const session = await getSession(request, config, store);
+    if (!session) throw new ApiError(401, "unauthenticated", "ابتدا وارد شوید.");
+    if (minimum && ROLE_RANK[session.account.role] < ROLE_RANK[minimum]) {
       throw new ApiError(403, "forbidden", "برای این کار دسترسی ندارید.");
     }
-    return admin;
+    return { ...session, store };
   }
 
-  function throttleLogin(address) {
-    const now = Date.now();
-    const bucket = loginAttempts.get(address);
-    if (!bucket || now > bucket.resetAt) {
-      loginAttempts.set(address, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
-      return;
-    }
-    bucket.count += 1;
-    if (bucket.count > LOGIN_LIMIT) {
-      throw new ApiError(429, "too_many_attempts", "تلاش‌های ناموفق زیاد بود؛ کمی بعد دوباره تلاش کنید.");
-    }
-  }
+  const adminPayload = (store, account) => ({
+    ...publicAccount(account),
+    lastLoginAt: store.lastLogins?.[account.id] ?? null,
+  });
 
-  const clientAddress = (request) =>
-    String(request.headers["x-forwarded-for"] ?? request.socket?.remoteAddress ?? "local")
-      .split(",")[0]
-      .trim();
-
-  async function serveMedia(request, response, name) {
-    const safeName = path.basename(String(name ?? ""));
-    if (!/^[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(safeName)) {
-      throw new ApiError(400, "invalid_media");
-    }
-    const filePath = path.join(uploadsDirectory, safeName);
-    if (!filePath.startsWith(uploadsDirectory)) throw new ApiError(400, "invalid_media");
-    let info;
+  async function serveMedia(request, response, rawName) {
+    let decoded = rawName;
     try {
-      info = await stat(filePath);
+      decoded = decodeURIComponent(rawName);
     } catch {
-      throw new ApiError(404, "not_found");
+      throw new ApiError(400, "invalid_media", "نشانی تصویر معتبر نیست.");
     }
-    if (!info.isFile()) throw new ApiError(404, "not_found");
-    const extension = path.extname(safeName).toLowerCase();
+    const name = safeMediaName(decoded);
+    if (!name) throw new ApiError(400, "invalid_media", "نشانی تصویر معتبر نیست.");
+    const buffer = await activeStorage.readMedia(name);
+    if (!buffer) throw new ApiError(404, "not_found", "تصویر پیدا نشد.");
+    const extension = path.extname(name).toLowerCase();
     const type =
-      [...IMAGE_TYPES.entries()].find(([, suffix]) => suffix === extension)?.[0] ??
+      [...IMAGE_EXTENSIONS.entries()].find(([, suffix]) => suffix === extension)?.[0] ??
       "application/octet-stream";
     response.statusCode = 200;
     response.setHeader("Content-Type", type);
-    response.setHeader("Content-Length", info.size);
+    response.setHeader("Content-Length", buffer.length);
     response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+    response.setHeader("Content-Disposition", `inline; filename="${name}"`);
+    applySecurityHeaders(response);
     if (request.method === "HEAD") {
       response.end();
       return;
     }
-    createReadStream(filePath).pipe(response);
+    response.end(buffer);
+  }
+
+  async function handleSession(request, response, config) {
+    const store = await readStore();
+    const session = await getSession(request, config, store);
+    json(response, 200, {
+      ok: true,
+      configured: config.ready,
+      issues: config.ready ? [] : config.issues,
+      sessionHours: Math.round(config.sessionTtlMs / 3_600_000),
+      admin: session ? adminPayload(store, session.account) : null,
+      expiresAt: session ? new Date(session.payload.exp).toISOString() : null,
+    });
+  }
+
+  async function handleLogin(request, response, config) {
+    if (!config.ready) {
+      throw new ApiError(
+        503,
+        "admin_not_configured",
+        "پنل مدیریت هنوز پیکربندی نشده است. متغیرهای محیطی سرور را تنظیم کنید."
+      );
+    }
+    const body = await readJson(request);
+    const email = normaliseEmail(body.email);
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!email || email.length > 254 || !password || password.length > 512) {
+      throw new ApiError(401, "invalid_credentials", "ایمیل یا گذرواژه نادرست است.");
+    }
+
+    const now = Date.now();
+    pruneFailures(now);
+    const address = clientAddress(request);
+    const keys = [
+      { key: `ip:${sha256(address)}`, limit: IP_LOGIN_LIMIT },
+      { key: `email:${sha256(email)}`, limit: EMAIL_LOGIN_LIMIT },
+    ];
+    assertLoginAllowed(keys, now);
+
+    const account = config.accounts.find((entry) => entry.email === email);
+    // Unknown emails still pay for one scrypt derivation, so the response time
+    // does not reveal whether an address exists.
+    const hash = account ? account.hash : await getDummyHash();
+    const valid = await verifyPassword(password, hash);
+
+    if (!account || !valid) {
+      registerFailure(keys, now);
+      throw new ApiError(401, "invalid_credentials", "ایمیل یا گذرواژه نادرست است.");
+    }
+
+    clearFailures(keys);
+    const store = await readStore();
+    const expiresAt = now + config.sessionTtlMs;
+    const sid = randomBytes(18).toString("base64url");
+    const token = sign(config, {
+      v: 1,
+      sub: account.id,
+      email: account.email,
+      sid,
+      iat: now,
+      exp: expiresAt,
+    });
+    pruneSessions(store, now);
+    store.sessions.push({ sid, sub: account.id, iat: now, exp: expiresAt });
+    store.lastLogins[account.id] = new Date(now).toISOString();
+    logActivity(store, account.email, "login", "ورود موفق به پنل");
+    await writeStore(store);
+    setSessionCookie(request, response, config, token, Math.floor(config.sessionTtlMs / 1000));
+    json(response, 200, {
+      ok: true,
+      admin: adminPayload(store, account),
+      expiresAt: new Date(expiresAt).toISOString(),
+    });
+  }
+
+  async function handleState(request, response, config) {
+    const { account, payload, store } = await requireAccount(request, config);
+    json(response, 200, {
+      ok: true,
+      admin: adminPayload(store, account),
+      accounts: config.accounts.map((entry) => adminPayload(store, entry)),
+      content: store.content,
+      updatedAt: store.contentUpdatedAt,
+      updatedBy: store.contentUpdatedBy,
+      media: store.media,
+      activity: store.activity.slice(0, 60),
+      session: {
+        expiresAt: new Date(payload.exp).toISOString(),
+        sessionHours: Math.round(config.sessionTtlMs / 3_600_000),
+      },
+    });
+  }
+
+  async function handleUpload(request, response, config, url) {
+    const { account, store } = await requireAccount(request, config, "editor");
+    const buffer = await readBody(request, MAX_UPLOAD_BYTES);
+    if (!buffer.length) throw new ApiError(400, "empty_media", "فایل خالی است.");
+    const type = detectImageType(buffer);
+    if (!type) {
+      throw new ApiError(
+        415,
+        "unsupported_media",
+        "فقط تصویر JPG، PNG، WebP، AVIF یا GIF پذیرفته می‌شود."
+      );
+    }
+    const extension = IMAGE_EXTENSIONS.get(type);
+    const requested = String(url.searchParams.get("name") ?? "image");
+    const base = path
+      .basename(requested, path.extname(requested))
+      .replace(/[^A-Za-z0-9-_]/g, "-")
+      .slice(0, 40)
+      .toLowerCase();
+    const name = `${base || "image"}-${randomBytes(8).toString("hex")}${extension}`;
+    await activeStorage.writeMedia(name, buffer);
+    const entry = {
+      name,
+      size: buffer.length,
+      type,
+      at: new Date().toISOString(),
+      by: account.email,
+    };
+    store.media.unshift(entry);
+    store.media = store.media.slice(0, 300);
+    logActivity(store, account.email, "media.upload", name);
+    await writeStore(store);
+    json(response, 201, { ok: true, media: entry, url: `/media/${name}` });
   }
 
   async function handle(request, response) {
-    const url = new URL(request.url ?? "/", "http://localhost");
-    const { pathname } = url;
-    const method = request.method ?? "GET";
+    try {
+      const url = new URL(request.url ?? "/", "http://localhost");
+      const pathname = url.pathname;
+      const method = (request.method ?? "GET").toUpperCase();
 
-    if (pathname.startsWith("/media/")) {
-      await serveMedia(request, response, pathname.slice("/media/".length));
-      return;
-    }
-
-    if (pathname === "/api/content" && method === "GET") {
-      const store = await readStore();
-      json(response, 200, {
-        ok: true,
-        content: store.content,
-        updatedAt: store.contentUpdatedAt,
-      });
-      return;
-    }
-
-    if (!pathname.startsWith("/api/admin")) return false;
-
-    if (method !== "GET" && !sameOrigin(request)) {
-      throw new ApiError(403, "bad_origin");
-    }
-
-    if (pathname === "/api/admin/session" && method === "GET") {
-      const store = await readStore();
-      const admin = await currentAdmin(request, store);
-      json(response, 200, {
-        ok: true,
-        setupRequired: store.admins.length === 0,
-        admin: admin ? publicAdmin(admin) : null,
-      });
-      return;
-    }
-
-    if (pathname === "/api/admin/setup" && method === "POST") {
-      const body = await readJson(request);
-      const store = await readStore();
-      if (store.admins.length > 0) throw new ApiError(409, "already_initialised");
-      const username = String(body.username ?? "").trim().toLowerCase();
-      const password = String(body.password ?? "");
-      const name = String(body.name ?? "").trim() || "مدیر ارشد";
-      if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new ApiError(400, "invalid_username");
-      if (password.length < 8) throw new ApiError(400, "weak_password");
-      const admin = {
-        id: slugId(),
-        username,
-        name,
-        role: "owner",
-        active: true,
-        hash: await hashPassword(password),
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      };
-      store.admins.push(admin);
-      logActivity(store, admin, "setup", "حساب مالک ساخته شد");
-      await writeStore(store);
-      setSessionCookie(request, response, await sign({ sub: admin.id, exp: Date.now() + SESSION_TTL_MS }));
-      json(response, 201, { ok: true, admin: publicAdmin(admin) });
-      return;
-    }
-
-    if (pathname === "/api/admin/login" && method === "POST") {
-      throttleLogin(clientAddress(request));
-      const body = await readJson(request);
-      const store = await readStore();
-      const username = String(body.username ?? "").trim().toLowerCase();
-      const password = String(body.password ?? "");
-      const admin = store.admins.find((entry) => entry.username === username);
-      const valid = admin ? await verifyPassword(password, admin.hash) : false;
-      if (!admin || !valid || admin.active === false) {
-        throw new ApiError(401, "invalid_credentials", "نام کاربری یا گذرواژه درست نیست.");
+      if (pathname.startsWith("/media/")) {
+        if (method !== "GET" && method !== "HEAD") {
+          throw new ApiError(405, "method_not_allowed", "این روش پشتیبانی نمی‌شود.");
+        }
+        await serveMedia(request, response, pathname.slice("/media/".length));
+        return true;
       }
-      admin.lastLoginAt = new Date().toISOString();
-      logActivity(store, admin, "login", "ورود به پنل");
-      await writeStore(store);
-      setSessionCookie(request, response, await sign({ sub: admin.id, exp: Date.now() + SESSION_TTL_MS }));
-      loginAttempts.delete(clientAddress(request));
-      json(response, 200, { ok: true, admin: publicAdmin(admin) });
-      return;
-    }
 
-    if (pathname === "/api/admin/logout" && method === "POST") {
-      clearSessionCookie(response);
-      json(response, 200, { ok: true });
-      return;
-    }
-
-    if (pathname === "/api/admin/state" && method === "GET") {
-      const store = await readStore();
-      const admin = await requireRole(request, store);
-      json(response, 200, {
-        ok: true,
-        admin: publicAdmin(admin),
-        content: store.content,
-        updatedAt: store.contentUpdatedAt,
-        updatedBy: store.contentUpdatedBy,
-        admins: store.admins.map(publicAdmin),
-        media: store.media,
-        activity: store.activity.slice(0, 60),
-      });
-      return;
-    }
-
-    if (pathname === "/api/admin/activity" && method === "GET") {
-      const store = await readStore();
-      await requireRole(request, store);
-      json(response, 200, { ok: true, activity: store.activity.slice(0, 120) });
-      return;
-    }
-
-    if (pathname === "/api/admin/content" && method === "PUT") {
-      const store = await readStore();
-      const admin = await requireRole(request, store, "editor");
-      const body = await readJson(request);
-      if (!isPlainObject(body.content)) throw new ApiError(400, "invalid_content");
-      assertSafeContent(body.content);
-      store.content = body.content;
-      store.contentUpdatedAt = new Date().toISOString();
-      store.contentUpdatedBy = admin.username;
-      logActivity(store, admin, "content.save", String(body.message ?? "ذخیرهٔ محتوای سایت"));
-      await writeStore(store);
-      json(response, 200, { ok: true, updatedAt: store.contentUpdatedAt, updatedBy: admin.username });
-      return;
-    }
-
-    if (pathname === "/api/admin/content/reset" && method === "POST") {
-      const store = await readStore();
-      const admin = await requireRole(request, store, "owner");
-      store.content = null;
-      store.contentUpdatedAt = new Date().toISOString();
-      store.contentUpdatedBy = admin.username;
-      logActivity(store, admin, "content.reset", "بازگرداندن محتوا به پیش‌فرض");
-      await writeStore(store);
-      json(response, 200, { ok: true });
-      return;
-    }
-
-    if (pathname === "/api/admin/export" && method === "GET") {
-      const store = await readStore();
-      await requireRole(request, store, "editor");
-      json(response, 200, {
-        ok: true,
-        exportedAt: new Date().toISOString(),
-        content: store.content,
-      });
-      return;
-    }
-
-    if (pathname === "/api/admin/media" && method === "POST") {
-      const store = await readStore();
-      const admin = await requireRole(request, store, "editor");
-      const type = String(request.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
-      const extension = IMAGE_TYPES.get(type);
-      if (!extension) {
-        throw new ApiError(415, "unsupported_media", "فقط تصویر JPG، PNG، WebP، AVIF یا GIF پذیرفته می‌شود.");
+      if (pathname === "/api/content") {
+        if (method !== "GET" && method !== "HEAD") {
+          throw new ApiError(405, "method_not_allowed", "این روش پشتیبانی نمی‌شود.");
+        }
+        const store = await readStore();
+        json(response, 200, {
+          ok: true,
+          content: store.content,
+          updatedAt: store.contentUpdatedAt,
+        });
+        return true;
       }
-      const buffer = await readBody(request, MAX_UPLOAD_BYTES);
-      if (!buffer.length) throw new ApiError(400, "empty_media");
-      await ensureDirectories();
-      const requested = String(url.searchParams.get("name") ?? "image");
-      const base = path
-        .basename(requested, path.extname(requested))
-        .replace(/[^A-Za-z0-9-_]/g, "-")
-        .slice(0, 40)
-        .toLowerCase();
-      const fileName = `${base || "image"}-${slugId()}${extension}`;
-      await writeFile(path.join(uploadsDirectory, fileName), buffer);
-      const entry = {
-        name: fileName,
-        size: buffer.length,
-        type,
-        at: new Date().toISOString(),
-        by: admin.username,
-      };
-      store.media.unshift(entry);
-      store.media = store.media.slice(0, 300);
-      logActivity(store, admin, "media.upload", fileName);
-      await writeStore(store);
-      json(response, 201, { ok: true, media: entry, url: `/media/${fileName}` });
-      return;
-    }
 
-    if (pathname === "/api/admin/media" && method === "DELETE") {
-      const store = await readStore();
-      const admin = await requireRole(request, store, "editor");
-      const name = path.basename(String(url.searchParams.get("name") ?? ""));
-      if (!/^[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(name)) throw new ApiError(400, "invalid_media");
-      await unlink(path.join(uploadsDirectory, name)).catch(() => undefined);
-      store.media = store.media.filter((entry) => entry.name !== name);
-      logActivity(store, admin, "media.delete", name);
-      await writeStore(store);
-      json(response, 200, { ok: true });
-      return;
-    }
+      if (!pathname.startsWith("/api/admin")) return false;
 
-    if (pathname === "/api/admin/admins" && method === "POST") {
-      const store = await readStore();
-      const owner = await requireRole(request, store, "owner");
-      const body = await readJson(request);
-      const username = String(body.username ?? "").trim().toLowerCase();
-      const password = String(body.password ?? "");
-      const role = String(body.role ?? "editor");
-      if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new ApiError(400, "invalid_username");
-      if (password.length < 8) throw new ApiError(400, "weak_password");
-      if (!ROLES.has(role) || role === "owner") throw new ApiError(400, "invalid_role");
-      if (store.admins.some((entry) => entry.username === username)) {
-        throw new ApiError(409, "username_taken");
+      applySecurityHeaders(response);
+      if (method !== "GET" && method !== "HEAD") assertSameOrigin(request, trustProxyHeaders);
+
+      const config = await getConfig();
+
+      if (pathname === "/api/admin/session" && (method === "GET" || method === "HEAD")) {
+        await handleSession(request, response, config);
+        return true;
       }
-      const admin = {
-        id: slugId(),
-        username,
-        name: String(body.name ?? "").trim() || username,
-        role,
-        active: true,
-        hash: await hashPassword(password),
-        createdAt: new Date().toISOString(),
-        lastLoginAt: null,
-      };
-      store.admins.push(admin);
-      logActivity(store, owner, "admin.create", `${username} — ${role}`);
-      await writeStore(store);
-      json(response, 201, { ok: true, admin: publicAdmin(admin) });
-      return;
-    }
 
-    const adminMatch = pathname.match(/^\/api\/admin\/admins\/([a-f0-9]{8,32})$/);
-    if (adminMatch) {
-      const targetId = adminMatch[1];
-      const store = await readStore();
-      const actor = await requireRole(request, store);
-      const target = store.admins.find((entry) => entry.id === targetId);
-      if (!target) throw new ApiError(404, "not_found");
+      if (pathname === "/api/admin/login" && method === "POST") {
+        await handleLogin(request, response, config);
+        return true;
+      }
 
-      if (method === "PATCH") {
-        const body = await readJson(request);
-        const self = actor.id === target.id;
-        if (!self && actor.role !== "owner") throw new ApiError(403, "forbidden");
-
-        if (typeof body.password === "string") {
-          if (body.password.length < 8) throw new ApiError(400, "weak_password");
-          if (self && body.currentPassword !== undefined) {
-            const matches = await verifyPassword(String(body.currentPassword), target.hash);
-            if (!matches) throw new ApiError(403, "invalid_credentials", "گذرواژهٔ فعلی درست نیست.");
+      if (pathname === "/api/admin/logout" && method === "POST") {
+        if (config.ready) {
+          const store = await readStore();
+          const token = parseCookies(headerValue(request, "cookie")).get(SESSION_COOKIE);
+          const payload = unsign(config, token);
+          if (payload?.sid) {
+            const revokeAll = url.searchParams.get("all") === "1";
+            store.sessions = (store.sessions || []).filter((entry) =>
+              revokeAll ? entry.sub !== payload.sub : entry.sid !== payload.sid
+            );
+            await writeStore(store);
           }
-          target.hash = await hashPassword(body.password);
-          logActivity(store, actor, "admin.password", target.username);
         }
-        if (typeof body.name === "string" && body.name.trim()) target.name = body.name.trim().slice(0, 60);
-        if (typeof body.role === "string" && actor.role === "owner" && !self) {
-          if (!ROLES.has(body.role) || body.role === "owner") throw new ApiError(400, "invalid_role");
-          target.role = body.role;
-          logActivity(store, actor, "admin.role", `${target.username} — ${body.role}`);
-        }
-        if (typeof body.active === "boolean" && actor.role === "owner" && !self) {
-          target.active = body.active;
-          logActivity(store, actor, "admin.status", `${target.username} — ${body.active ? "فعال" : "غیرفعال"}`);
-        }
-        await writeStore(store);
-        json(response, 200, { ok: true, admin: publicAdmin(target) });
-        return;
+        clearSessionCookie(request, response, config);
+        json(response, 200, { ok: true });
+        return true;
       }
 
-      if (method === "DELETE") {
-        if (actor.role !== "owner") throw new ApiError(403, "forbidden");
-        if (target.id === actor.id) throw new ApiError(400, "cannot_delete_self");
-        if (target.role === "owner" && store.admins.filter((e) => e.role === "owner").length <= 1) {
-          throw new ApiError(400, "last_owner");
+      if (pathname === "/api/admin/state" && method === "GET") {
+        await handleState(request, response, config);
+        return true;
+      }
+
+      if (pathname === "/api/admin/activity" && method === "GET") {
+        const { store } = await requireAccount(request, config);
+        json(response, 200, { ok: true, activity: store.activity.slice(0, 120) });
+        return true;
+      }
+
+      if (pathname === "/api/admin/export" && method === "GET") {
+        const { store } = await requireAccount(request, config, "editor");
+        json(response, 200, {
+          ok: true,
+          exportedAt: new Date().toISOString(),
+          content: store.content,
+        });
+        return true;
+      }
+
+      if (pathname === "/api/admin/content" && method === "PUT") {
+        const { account, store } = await requireAccount(request, config, "editor");
+        const body = await readJson(request);
+        if (!isPlainObject(body.content)) {
+          throw new ApiError(400, "invalid_content", "محتوای ارسال‌شده معتبر نیست.");
         }
-        store.admins = store.admins.filter((entry) => entry.id !== target.id);
-        logActivity(store, actor, "admin.delete", target.username);
+        assertSafeContent(body.content);
+        store.content = body.content;
+        store.contentUpdatedAt = new Date().toISOString();
+        store.contentUpdatedBy = account.email;
+        logActivity(
+          store,
+          account.email,
+          "content.save",
+          String(body.message ?? "ذخیرهٔ محتوای سایت").slice(0, 160)
+        );
+        await writeStore(store);
+        json(response, 200, {
+          ok: true,
+          updatedAt: store.contentUpdatedAt,
+          updatedBy: store.contentUpdatedBy,
+        });
+        return true;
+      }
+
+      if (pathname === "/api/admin/content/reset" && method === "POST") {
+        const { account, store } = await requireAccount(request, config, "owner");
+        store.content = null;
+        store.contentUpdatedAt = new Date().toISOString();
+        store.contentUpdatedBy = account.email;
+        logActivity(store, account.email, "content.reset", "بازگرداندن محتوا به پیش‌فرض");
         await writeStore(store);
         json(response, 200, { ok: true });
-        return;
+        return true;
       }
-    }
 
-    throw new ApiError(404, "not_found");
+      if (pathname === "/api/admin/media" && method === "POST") {
+        await handleUpload(request, response, config, url);
+        return true;
+      }
+
+      if (pathname === "/api/admin/media" && method === "DELETE") {
+        const { account, store } = await requireAccount(request, config, "editor");
+        const name = safeMediaName(url.searchParams.get("name"));
+        if (!name) throw new ApiError(400, "invalid_media", "نشانی تصویر معتبر نیست.");
+        await activeStorage.deleteMedia(name);
+        store.media = store.media.filter((entry) => entry.name !== name);
+        logActivity(store, account.email, "media.delete", name);
+        await writeStore(store);
+        json(response, 200, { ok: true });
+        return true;
+      }
+
+      throw new ApiError(404, "not_found", "این مسیر وجود ندارد.");
+    } catch (error) {
+      fail(response, error);
+      return true;
+    }
   }
 
   /**
@@ -605,21 +734,19 @@ export function createAdminApi({ root }) {
    * request was handled so the caller can skip its own 404 branch.
    */
   const middleware = async (request, response) => {
-    const url = request.url ?? "/";
-    const pathname = url.split("?")[0];
+    const pathname = (request.url ?? "/").split("?")[0];
     if (!pathname.startsWith("/api/") && !pathname.startsWith("/media/")) return false;
     if (pathname === "/api/collaboration") return false;
-    try {
-      const handled = await handle(request, response);
-      if (handled === false) return false;
-      return true;
-    } catch (error) {
-      fail(response, error);
-      return true;
-    }
+    return handle(request, response);
   };
 
-  return { handle, middleware, uploadsDirectory, storePath };
+  return {
+    handle,
+    middleware,
+    storage: activeStorage,
+    uploadsDirectory: activeStorage.uploadsDirectory,
+    storePath: activeStorage.storePath,
+  };
 }
 
 export function createAdminMiddleware(options) {

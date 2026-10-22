@@ -11,9 +11,11 @@ interface Props {
   media: MediaEntry[];
   updatedAt: string | null;
   updatedBy: string | null;
+  session: { expiresAt: string; sessionHours: number };
   dirty: boolean;
   onReset: () => Promise<void> | void;
   onLogout: () => void;
+  onLogoutAll: () => void;
 }
 
 export function SettingsPanel({
@@ -22,9 +24,11 @@ export function SettingsPanel({
   media,
   updatedAt,
   updatedBy,
+  session,
   dirty,
   onReset,
   onLogout,
+  onLogoutAll,
 }: Props) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -87,8 +91,8 @@ export function SettingsPanel({
               <strong>{admin.name}</strong>
             </div>
             <div>
-              <span>نام کاربری</span>
-              <strong dir="ltr">{admin.username}</strong>
+              <span>ایمیل</span>
+              <strong dir="ltr">{admin.email}</strong>
             </div>
             <div>
               <span>نقش</span>
@@ -99,18 +103,35 @@ export function SettingsPanel({
               <strong>{formatDate(admin.lastLoginAt)}</strong>
             </div>
             <div>
-              <span>ساخته‌شده</span>
-              <strong>{formatDate(admin.createdAt)}</strong>
+              <span>پایان نشست</span>
+              <strong>{formatDate(session.expiresAt)}</strong>
             </div>
             <div>
               <span>آخرین ذخیرهٔ محتوا</span>
               <strong>{updatedAt ? `${formatDate(updatedAt)}${updatedBy ? ` — ${updatedBy}` : ""}` : "—"}</strong>
             </div>
           </div>
-          <button type="button" className="abtn" onClick={onLogout} style={{ justifySelf: "start" }}>
-            <LogOut />
-            خروج از پنل
-          </button>
+          <div className="anote">
+            <ShieldAlert />
+            <span>
+              نشست شما {session.sessionHours} ساعت اعتبار دارد و در کوکی HttpOnly با SameSite=Strict
+              نگه‌داری می‌شود؛ جاوااسکریپت صفحه به آن دسترسی ندارد. گذرواژه در پنل قابل تغییر نیست و از
+              متغیرهای محیطی سرور خوانده می‌شود.
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button type="button" className="abtn" onClick={onLogout}>
+              <LogOut />
+              خروج از این دستگاه
+            </button>
+            <ConfirmButton
+              className="abtn abtn--danger"
+              label="پایان همهٔ نشست‌ها"
+              confirmLabel="تأیید خروج همه؟"
+              icon={false}
+              onConfirm={onLogoutAll}
+            />
+          </div>
         </div>
       </section>
 

@@ -1,30 +1,14 @@
 import { useMemo, useState } from "react";
-import {
-  FileText,
-  Image,
-  KeyRound,
-  LogIn,
-  RotateCcw,
-  Search,
-  ShieldCheck,
-  Trash2,
-  UserPlus,
-} from "lucide-react";
+import { FileText, Image, LogIn, RotateCcw, Search, Trash2 } from "lucide-react";
 import type { ActivityEntry } from "../content/types";
 import { formatDate, timeAgo } from "./draft";
 
 const META: Record<string, { label: string; icon: typeof FileText; tone: string }> = {
-  setup: { label: "راه‌اندازی", icon: ShieldCheck, tone: "brand" },
-  login: { label: "ورود", icon: LogIn, tone: "muted" },
+  login: { label: "ورود", icon: LogIn, tone: "brand" },
   "content.save": { label: "ذخیرهٔ محتوا", icon: FileText, tone: "ok" },
   "content.reset": { label: "بازنشانی محتوا", icon: RotateCcw, tone: "warn" },
   "media.upload": { label: "بارگذاری تصویر", icon: Image, tone: "ok" },
   "media.delete": { label: "حذف تصویر", icon: Trash2, tone: "warn" },
-  "admin.create": { label: "مدیر تازه", icon: UserPlus, tone: "brand" },
-  "admin.password": { label: "تغییر گذرواژه", icon: KeyRound, tone: "warn" },
-  "admin.role": { label: "تغییر نقش", icon: ShieldCheck, tone: "brand" },
-  "admin.status": { label: "تغییر وضعیت", icon: ShieldCheck, tone: "warn" },
-  "admin.delete": { label: "حذف مدیر", icon: Trash2, tone: "warn" },
 };
 
 export function ActivityPanel({ activity }: { activity: ActivityEntry[] }) {

@@ -1,4 +1,4 @@
-import type { ActivityEntry, AdminRole, AdminUser, MediaEntry, SiteContent } from "../content/types";
+import type { ActivityEntry, AdminUser, MediaEntry, SiteContent } from "../content/types";
 
 export class ApiFailure extends Error {
   status: number;
@@ -24,6 +24,11 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok === false) {
+    // A dead session should return the operator to the sign-in screen instead of
+    // leaving an editable but unsavable panel on screen.
+    if (response.status === 401 && !input.includes("/api/admin/login")) {
+      window.dispatchEvent(new Event("cahen:unauthorized"));
+    }
     throw new ApiFailure(
       response.status,
       payload?.code ?? "request_failed",
@@ -35,34 +40,34 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
 
 export interface SessionInfo {
   ok: true;
-  setupRequired: boolean;
+  configured: boolean;
+  issues: string[];
+  sessionHours: number;
   admin: AdminUser | null;
+  expiresAt: string | null;
 }
 
 export interface AdminState {
   ok: true;
   admin: AdminUser;
+  accounts: AdminUser[];
   content: SiteContent | null;
   updatedAt: string | null;
   updatedBy: string | null;
-  admins: AdminUser[];
   media: MediaEntry[];
   activity: ActivityEntry[];
+  session: { expiresAt: string; sessionHours: number };
 }
 
 export const api = {
   session: () => request<SessionInfo>("/api/admin/session"),
-  setup: (body: { username: string; password: string; name: string }) =>
-    request<{ ok: true; admin: AdminUser }>("/api/admin/setup", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  login: (body: { username: string; password: string }) =>
-    request<{ ok: true; admin: AdminUser }>("/api/admin/login", {
+  login: (body: { email: string; password: string }) =>
+    request<{ ok: true; admin: AdminUser; expiresAt: string }>("/api/admin/login", {
       method: "POST",
       body: JSON.stringify(body),
     }),
   logout: () => request<{ ok: true }>("/api/admin/logout", { method: "POST" }),
+  logoutAll: () => request<{ ok: true }>("/api/admin/logout?all=1", { method: "POST" }),
   state: () => request<AdminState>("/api/admin/state"),
   saveContent: (content: SiteContent, message?: string) =>
     request<{ ok: true; updatedAt: string; updatedBy: string }>("/api/admin/content", {
@@ -89,18 +94,6 @@ export const api = {
     request<{ ok: true }>(`/api/admin/media?name=${encodeURIComponent(name)}`, {
       method: "DELETE",
     }),
-  createAdmin: (body: { username: string; password: string; name: string; role: AdminRole }) =>
-    request<{ ok: true; admin: AdminUser }>("/api/admin/admins", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  updateAdmin: (id: string, body: Record<string, unknown>) =>
-    request<{ ok: true; admin: AdminUser }>(`/api/admin/admins/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-  deleteAdmin: (id: string) =>
-    request<{ ok: true }>(`/api/admin/admins/${id}`, { method: "DELETE" }),
   exportContent: () => request<{ ok: true; exportedAt: string; content: SiteContent | null }>("/api/admin/export"),
 };
 

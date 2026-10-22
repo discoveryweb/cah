@@ -18,7 +18,7 @@ interface Props {
   admin: AdminUser;
   updatedAt: string | null;
   updatedBy: string | null;
-  admins: AdminUser[];
+  accounts: AdminUser[];
   media: MediaEntry[];
   activity: ActivityEntry[];
   dirty: boolean;
@@ -40,7 +40,7 @@ export function Dashboard({
   admin,
   updatedAt,
   updatedBy,
-  admins,
+  accounts,
   media,
   activity,
   dirty,
@@ -156,9 +156,9 @@ export function Dashboard({
           <span className="astat__icon">
             <Users />
           </span>
-          <b>{admins.filter((entry) => entry.active).length}</b>
+          <b>{accounts.length}</b>
           <span>مدیر فعال</span>
-          <small dir="ltr">{admins.length} ACCOUNTS</small>
+          <small dir="ltr">{accounts.filter((entry) => entry.role === "owner").length} OWNER</small>
         </button>
       </div>
 

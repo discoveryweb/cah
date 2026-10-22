@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "admin:hash": "node scripts/hash-password.mjs",
+    "admin:check": "node scripts/check-admin.mjs"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",
@@ -16,6 +18,7 @@
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "@fontsource-variable/vazirmatn": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
+    "@netlify/blobs": "^8.2.0",
     "clsx": "2.1.1",
     "lucide-react": "^1.55.0",
     "react": "19.2.6",
