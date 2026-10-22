@@ -25,7 +25,7 @@
   .services__foot p,
   .service__deliverables li,
   .service__facts dt,
-  .studio__fact dt,
+  .studio__ledger-label,
   .cta__meta dt,
   .cta__avail,
   .cta__social a,
@@ -111,7 +111,7 @@
   }
 
   .service__facts dt,
-  .studio__fact dt,
+  .studio__ledger-label,
   .cta__meta dt,
   .project__fact dt {
     font-size: 9.5px;
@@ -190,15 +190,15 @@
   }
 
   /* Persian numerals inside technical rows: tabular, never monospaced. */
-  .studio__stat strong,
+  .studio__stat-value,
   .project__metrics strong {
     font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     letter-spacing: 0;
   }
 
-  .studio__stat strong {
-    font-weight: 520;
+  .studio__stat-value {
+    font-weight: 580;
   }
 
   .project__metrics strong {
@@ -206,7 +206,6 @@
   }
 
   /* Serif italics have no Persian face — emphasis becomes weight + rule. */
-  .studio__statement em,
   .cta__social-title em,
   .section-head__title em,
   .work__title em,
@@ -220,7 +219,7 @@
     letter-spacing: -0.012em;
   }
 
-  .studio__statement em,
+  .studio__statement-accent,
   .cta__social-title em {
     color: var(--vermilion-soft);
     text-decoration: underline;
@@ -246,7 +245,7 @@
     }
 
     .project__fact dt,
-    .studio__fact dt,
+    .studio__ledger-label,
     .cta__meta dt,
     .service__facts dt {
       font-size: 9px;
