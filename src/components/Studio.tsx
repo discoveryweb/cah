@@ -1,14 +1,8 @@
 import { useCallback, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowUpLeft, MoveUpRight } from "lucide-react";
-import { CONTACT, PRINCIPLES } from "../data";
+import { useContent } from "../content/ContentProvider";
+import { renderRichText } from "../content/RichText";
 import { Magnetic, Marquee, Numeral, Reveal, SectionHead } from "./ui";
-
-const STUDIO_FACTS = [
-  { label: "تأسیس", value: "۱۳۹۸", latin: "FOUNDED" },
-  { label: "تیم ثابت", value: "۴ نفر", latin: "CORE TEAM" },
-  { label: "موقعیت", value: "تهران", latin: "TEHRAN" },
-  { label: "زبان کار", value: "فارسی / انگلیسی", latin: "LANGUAGES" },
-] as const;
 
 function StudioSeal() {
   return (
@@ -37,6 +31,7 @@ function StudioSeal() {
 }
 
 function StudioLedger() {
+  const content = useContent();
   return (
     <aside className="studio__sheet" aria-label="شناسنامهٔ استودیو">
       <header className="studio__sheet-head">
@@ -52,8 +47,8 @@ function StudioLedger() {
         <StudioSeal />
 
         <dl className="studio__ledger">
-          {STUDIO_FACTS.map((fact) => (
-            <div className="studio__ledger-row" key={fact.latin}>
+          {content.studio.facts.map((fact, index) => (
+            <div className="studio__ledger-row" key={`${index}-${fact.latin}`}>
               <dt>
                 <span className="studio__ledger-label">{fact.label}</span>
                 <span className="studio__ledger-latin" dir="ltr">
@@ -72,6 +67,7 @@ function StudioLedger() {
 
 function StudioTenets() {
   const [active, setActive] = useState(0);
+  const principles = useContent().principles;
 
   const spotlight = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const row = event.currentTarget;
@@ -88,20 +84,20 @@ function StudioTenets() {
         </span>
         <p className="studio__tenets-title">سه اصل که کارِ ما را شکل می‌دهند</p>
         <span className="studio__tenets-count" dir="ltr">
-          {String(active + 1).padStart(2, "0")} / {String(PRINCIPLES.length).padStart(2, "0")}
+          {String(active + 1).padStart(2, "0")} / {String(principles.length).padStart(2, "0")}
         </span>
       </Reveal>
 
       <div className="studio__tenets-body">
         <span className="studio__tenets-ghost" aria-hidden="true">
-          <Numeral key={active} value={PRINCIPLES[active]?.number ?? "1"} />
+          <Numeral key={active} value={active + 1} />
         </span>
 
         <ul className="studio__tenet-list">
-          {PRINCIPLES.map((principle, index) => (
+          {principles.map((principle, index) => (
             <Reveal
               as="li"
-              key={principle.number}
+              key={`${index}-${principle.title}`}
               delay={index * 80}
               className="studio__tenet"
             >
@@ -112,7 +108,7 @@ function StudioTenets() {
                 onPointerMove={spotlight}
               >
                 <span className="studio__tenet-num">
-                  <Numeral value={principle.number} />
+                  <Numeral value={index + 1} />
                 </span>
                 <div className="studio__tenet-copy">
                   <h3 className="studio__tenet-title">{principle.title}</h3>
@@ -131,6 +127,9 @@ function StudioTenets() {
 }
 
 export function Studio() {
+  const content = useContent();
+  const studio = content.studio;
+
   return (
     <section
       id="studio"
@@ -149,12 +148,8 @@ export function Studio() {
           latin="The Studio"
           id="studio-title"
           className="studio__head"
-          title={
-            <>
-              استودیوی کوچک، وسواسِ <span className="accent">بزرگ</span>.
-            </>
-          }
-          note="ما یک تیمِ کوچکِ ثابت هستیم؛ بدون واسطه، بدون لایه‌های اضافه. کسی که با شما حرف می‌زند، همان کسی است که طراحی می‌کند و کد را می‌نویسد."
+          title={renderRichText(studio.title)}
+          note={studio.note}
         />
 
         <div className="studio__spread">
@@ -165,34 +160,28 @@ export function Studio() {
 
           <div className="studio__manifesto">
             <div className="studio__statement">
-              <Reveal as="span" variant="mask" className="studio__line">
-                <span>ما با ایده‌های بزرگ</span>
-              </Reveal>
-              <Reveal as="span" variant="mask" className="studio__line" delay={100}>
-                <span>شروع نمی‌کنیم؛ با</span>
-              </Reveal>
-              <Reveal as="span" variant="mask" className="studio__line" delay={200}>
-                <span>
-                  <span className="studio__statement-accent">پرسش‌های درست</span> شروع می‌کنیم.
-                </span>
-              </Reveal>
+              {studio.statementLines.map((line, index) => (
+                <Reveal
+                  key={`${index}-${line}`}
+                  as="span"
+                  variant="mask"
+                  className="studio__line"
+                  delay={index * 100}
+                >
+                  <span>{renderRichText(line)}</span>
+                </Reveal>
+              ))}
             </div>
 
             <Reveal className="studio__copy" delay={120}>
-              <p>
-                کاهن در سال ۱۳۹۸ با یک ایدهٔ ساده شروع شد: طراحی باید مسئله را حل کند، نه اینکه فقط
-                خوب به نظر برسد. امروز همان ایده، شکل یک استودیوی مستقل است که برندها، محصولات و
-                تجربه‌های دیجیتال می‌سازد.
-              </p>
-              <p>
-                ما در تهران کار می‌کنیم و با تیم‌هایی در سراسر جهان همکاری می‌کنیم. ابزارمان گفت‌وگوی
-                شفاف، پژوهشِ دقیق و وسواسی است که در جزئیاتی دیده می‌شود که شاید کسی نامشان را نبرد.
-              </p>
+              {studio.copy.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
             </Reveal>
 
             <Reveal className="studio__manifesto-foot" delay={180}>
               <a href="#work" className="studio__textlink">
-                <span>کارهایی که این اصول را نشان می‌دهند</span>
+                <span>{studio.linkLabel}</span>
                 <ArrowUpLeft aria-hidden="true" />
               </a>
               <span className="studio__sign" aria-hidden="true" dir="ltr">
@@ -209,29 +198,23 @@ export function Studio() {
         <StudioTenets />
 
         <Reveal className="studio__cta" delay={80}>
-          <p>
-            اگر مسئله‌ای دارید که فکر می‌کنید وقتِ حل‌شدنش رسیده،
-            <span> یک پیام کوتاه کافی است.</span>
-          </p>
+          <p>{studio.ctaText}</p>
           <div className="studio__cta-actions">
             <Magnetic strength={8}>
               <a href="#contact" className="studio__link">
-                <span>بیایید دربارهٔ همکاری حرف بزنیم</span>
+                <span>{studio.ctaLabel}</span>
                 <ArrowUpLeft aria-hidden="true" />
               </a>
             </Magnetic>
-            <a className="studio__mail" href={`mailto:${CONTACT.email}`} dir="ltr">
-              {CONTACT.email}
+            <a className="studio__mail" href={`mailto:${content.contact.email}`} dir="ltr">
+              {content.contact.email}
             </a>
           </div>
         </Reveal>
       </div>
 
       <div className="studio__marquee">
-        <Marquee
-          items={["CAHEN", "DIGITAL STUDIO", "TEHRAN", "DESIGN & CODE", "SINCE 2019"]}
-          speed={40}
-        />
+        <Marquee items={studio.marquee} speed={40} />
       </div>
     </section>
   );

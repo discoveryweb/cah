@@ -1,10 +1,13 @@
 import { ArrowUp, ArrowUpLeft } from "lucide-react";
-import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
+import { useContent } from "../content/ContentProvider";
+import { socialIcon } from "../content/socialIcons";
 import { Brand } from "./ui";
 import { GravityLetters } from "./GravityLetters";
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const content = useContent();
+  const { contact, nav, socials, footer, meta } = content;
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   return (
@@ -12,21 +15,18 @@ export function Footer() {
       <div className="frame">
         <div className="footer__grid">
           <div className="footer__brand">
-            <a href="#home" className="brand" aria-label="CAHEN — بازگشت به ابتدای صفحه">
+            <a href="#home" className="brand" aria-label={`${meta.brand} — بازگشت به ابتدای صفحه`}>
               <Brand sub="DESIGN & CODE" />
             </a>
-            <p className="footer__statement">
-              استودیوی مستقل طراحی و توسعهٔ دیجیتال. برندها و محصولاتی می‌سازیم که در اولین نگاه،
-              خودشان را نشان می‌دهند.
-            </p>
+            <p className="footer__statement">{footer.statement}</p>
           </div>
 
           <nav aria-label="پیوندهای پابرگ">
             <span className="footer__col-label" dir="ltr">
-              SITEMAP
+              {footer.sitemapLabel}
             </span>
             <div className="footer__links">
-              {NAV_LINKS.map((link) => (
+              {nav.map((link) => (
                 <a key={link.id} href={`#${link.id}`} className="footer__link">
                   {link.label}
                   <span className="footer__link-line" aria-hidden="true" />
@@ -37,10 +37,10 @@ export function Footer() {
 
           <div>
             <span className="footer__col-label" dir="ltr">
-              ELSEWHERE
+              {footer.elsewhereLabel}
             </span>
             <div className="footer__links">
-              {SOCIAL_CHANNELS.map((channel) => (
+              {socials.map((channel) => (
                 <a
                   key={channel.platform}
                   href={channel.href}
@@ -48,7 +48,14 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="footer__link"
                 >
-                  <img src={channel.image} alt="" width={16} height={16} loading="lazy" decoding="async" />
+                  <img
+                    src={socialIcon(channel.icon)}
+                    alt=""
+                    width={16}
+                    height={16}
+                    loading="lazy"
+                    decoding="async"
+                  />
                   {channel.name}
                   <ArrowUpLeft aria-hidden="true" />
                 </a>
@@ -58,15 +65,20 @@ export function Footer() {
 
           <div>
             <span className="footer__col-label" dir="ltr">
-              DIRECT
+              {footer.directLabel}
             </span>
             <div className="footer__links">
-              <a href={`mailto:${CONTACT.email}`} className="footer__link">
-                {CONTACT.email}
+              <a href={`mailto:${contact.email}`} className="footer__link">
+                {contact.email}
               </a>
-              <span className="footer__link footer__link--static">{CONTACT.city}</span>
-              <span className="footer__link footer__link--static">
-                {CONTACT.latinCity}
+              {contact.phone ? (
+                <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="footer__link" dir="ltr">
+                  {contact.phone}
+                </a>
+              ) : null}
+              <span className="footer__link footer__link--static">{contact.city}</span>
+              <span className="footer__link footer__link--static" dir="ltr">
+                {contact.latinCity}
               </span>
             </div>
           </div>
@@ -99,11 +111,11 @@ export function Footer() {
 
         <div className="footer__bottom">
           <div className="footer__bottom-group">
-            <span dir="ltr">© {year} CAHEN STUDIO</span>
-            <span>همهٔ حقوق محفوظ است.</span>
+            <span dir="ltr">© {year} {meta.brand} STUDIO</span>
+            <span>{footer.rights}</span>
           </div>
           <div className="footer__bottom-group">
-            <span dir="ltr">DESIGNED &amp; BUILT IN-HOUSE</span>
+            <span dir="ltr">{footer.credit}</span>
             <button type="button" onClick={scrollTop}>
               <span>بازگشت به بالا</span>
               <ArrowUp aria-hidden="true" />

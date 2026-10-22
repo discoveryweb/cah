@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOrderHandler } from "./server/order-api.mjs";
+import { createAdminApi } from "./server/admin-api.mjs";
 import { loadServerEnv } from "./server/env.mjs";
 
 loadServerEnv();
@@ -10,6 +11,7 @@ loadServerEnv();
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const distDirectory = path.join(projectRoot, "dist");
 const orderHandler = createOrderHandler();
+const adminApi = createAdminApi({ root: projectRoot });
 const contentTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".gif", "image/gif"],
@@ -62,6 +64,20 @@ function resolvePublicFile(pathname) {
 const server = createServer(async (request, response) => {
   applySecurityHeaders(response);
   const requestUrl = new URL(request.url ?? "/", "http://localhost");
+  if (
+    requestUrl.pathname.startsWith("/api/admin") ||
+    requestUrl.pathname === "/api/content" ||
+    requestUrl.pathname.startsWith("/media/")
+  ) {
+    const handled = await adminApi.handle(request, response).catch((error) => {
+      console.error("[admin]", error);
+      response.statusCode = 500;
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      response.end(JSON.stringify({ ok: false, code: "server_error" }));
+      return true;
+    });
+    if (handled !== false) return;
+  }
   if (requestUrl.pathname === "/api/collaboration") {
     await orderHandler(request, response);
     return;

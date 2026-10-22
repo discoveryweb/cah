@@ -1,21 +1,25 @@
 import type { CSSProperties } from "react";
 import { ArrowUpLeft, ArrowUpRight } from "lucide-react";
-import { CONTACT, SOCIAL_CHANNELS } from "../data";
+import { useContent } from "../content/ContentProvider";
+import { renderRichText } from "../content/RichText";
+import { socialIcon } from "../content/socialIcons";
 import { Magnetic, Numeral, Reveal } from "./ui";
 import { ParticleMorph } from "./ParticleMorph";
 
-const SOCIAL_IMAGES = SOCIAL_CHANNELS.map((channel) => channel.image);
-const SOCIAL_LABELS = SOCIAL_CHANNELS.map((channel) => channel.platform);
-const SOCIAL_COLORS = SOCIAL_CHANNELS.map((channel) => channel.color);
-
 export function Cta({ onOrder }: { onOrder: () => void }) {
+  const content = useContent();
+  const { contact, socials, contactSection } = content;
+  const SOCIAL_IMAGES = socials.map((channel) => socialIcon(channel.icon));
+  const SOCIAL_LABELS = socials.map((channel) => channel.platform);
+  const SOCIAL_COLORS = socials.map((channel) => channel.color);
+
   return (
     <section id="contact" className="cta" aria-labelledby="cta-title">
       <div className="frame">
         <Reveal className="cta__top" as="header">
           <span className="cta__avail">
             <i aria-hidden="true" />
-            همیشه پذیرای همکاری‌های تازه
+            {contactSection.availability}
           </span>
           <span className="cta__index" dir="ltr">
             <Numeral value={5} className="numeral--section" />
@@ -26,14 +30,14 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
         <div className="cta__hero">
           <Reveal variant="mask">
             <h2 className="cta__headline" id="cta-title">
-              بیایید چیزی بسازیم که <span className="accent">دیده شود.</span>
+              {renderRichText(contactSection.headline)}
             </h2>
           </Reveal>
 
           <a
             className="cta__seal-wrap"
-            href={`mailto:${CONTACT.email}`}
-            aria-label={`ایمیل به ${CONTACT.email}`}
+            href={`mailto:${contact.email}`}
+            aria-label={`ایمیل به ${contact.email}`}
             data-cursor="hover"
           >
             <svg className="cta__seal" viewBox="0 0 140 140" aria-hidden="true">
@@ -63,15 +67,12 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
 
         <div className="cta__under">
           <div className="cta__lead">
-            <p className="cta__lead-text">
-              هر همکاری با یک پیام کوتاه شروع می‌شود. بنویسید چه می‌سازید، در چه مرحله‌ای هستید و چه
-              چیزی باید تغییر کند؛ بقیهٔ مسیر را با هم می‌چینیم.
-            </p>
+            <p className="cta__lead-text">{contactSection.lead}</p>
 
             <div className="cta__actions">
               <Magnetic strength={12}>
                 <button type="button" className="cta__button" onClick={onOrder} data-cursor="hover">
-                  <span>شروع گفت‌وگو</span>
+                  <span>{contactSection.ctaLabel}</span>
                   <ArrowUpLeft aria-hidden="true" />
                 </button>
               </Magnetic>
@@ -83,20 +84,25 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
               <div>
                 <dt>ایمیل</dt>
                 <dd>
-                  <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+                  <a href={`mailto:${contact.email}`}>{contact.email}</a>
                 </dd>
               </div>
               <div>
-                <dt>تلگرام</dt>
+                <dt>{contactSection.telegramLabel}</dt>
                 <dd>
-                  <a href={SOCIAL_CHANNELS[0].href} target="_blank" rel="noopener noreferrer" dir="ltr">
-                    {CONTACT.handle}
+                  <a
+                    href={socials[0]?.href ?? "#contact"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    dir="ltr"
+                  >
+                    {contact.handle}
                   </a>
                 </dd>
               </div>
               <div>
-                <dt>پاسخ‌گویی</dt>
-                <dd>کمتر از یک روز کاری</dd>
+                <dt>{contactSection.responseLabel}</dt>
+                <dd>{contact.responseTime}</dd>
               </div>
             </dl>
           </div>
@@ -105,20 +111,17 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
         <Reveal className="cta__social-panel" delay={140}>
           <div className="cta__social-copy">
             <span className="cta__social-eyebrow" dir="ltr">
-              CAHEN / SOCIAL CHANNELS
+              {contactSection.socialEyebrow}
             </span>
             <h3 className="cta__social-title">
-              جایی که راحت‌ترید،
+              {contactSection.socialTitle}
               <br />
-              <em>پیدایمان کنید.</em>
+              <em>{contactSection.socialTitleAccent}</em>
             </h3>
-            <p className="cta__social-text">
-              سه مسیر، یک تیم. هر کدام را که انتخاب کنید، همان آدم‌هایی پاسخ می‌دهند که پروژه را
-              می‌سازند.
-            </p>
+            <p className="cta__social-text">{contactSection.socialText}</p>
 
             <ul className="cta__channels" aria-label="شبکه‌های اجتماعی CAHEN">
-              {SOCIAL_CHANNELS.map((channel) => (
+              {socials.map((channel) => (
                 <li key={channel.platform}>
                   <a
                     href={channel.href}
@@ -130,7 +133,7 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
                   >
                     <span className="cta__channel-icon">
                       <img
-                        src={channel.image}
+                        src={socialIcon(channel.icon)}
                         alt=""
                         width={20}
                         height={20}

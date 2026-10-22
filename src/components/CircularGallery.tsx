@@ -27,9 +27,11 @@ const wrapIndex = (index: number, count: number) => ((index % count) + count) % 
 export function CircularGallery({
   items,
   onOpen,
+  hint = "اسکرول کنید تا بچرخد",
 }: {
   items: readonly GalleryItem[];
   onOpen: (index: number) => void;
+  hint?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
@@ -260,7 +262,7 @@ export function CircularGallery({
 
               <span className="gallery__hint" aria-hidden="true">
                 <Mouse />
-                <span>اسکرول کنید تا بچرخد</span>
+                <span>{hint}</span>
               </span>
 
               <span className="gallery__counter" dir="ltr" aria-hidden="true">

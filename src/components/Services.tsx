@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowUpLeft } from "lucide-react";
-import { SERVICES } from "../data";
+import { useContent } from "../content/ContentProvider";
+import { renderRichText } from "../content/RichText";
 import { cn } from "../utils/cn";
 import { Numeral, Reveal, SectionHead } from "./ui";
 import { toRoman } from "../utils/roman";
@@ -8,6 +9,8 @@ import { toRoman } from "../utils/roman";
 export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
   const [open, setOpen] = useState<number | null>(0);
   const [hovered, setHovered] = useState<number | null>(null);
+  const content = useContent();
+  const services = content.services;
 
   return (
     <section
@@ -21,20 +24,17 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
           label="توانمندی‌ها"
           latin="Capabilities"
           id="services-title"
-          title={
-            <>
-              آنچه می‌سازیم، با <span className="accent">دقت</span>.
-            </>
-          }
-          note="چهار حوزه که در کنار هم یک محصول کامل می‌سازند: از اولین پرسش تا آخرین پیکسلِ منتشرشده. برای دیدن جزئیات هر حوزه، روی آن باز کنید."
+          title={renderRichText(services.title)}
+          note={services.note}
         />
 
         <Reveal className="services__list" delay={80}>
-          {SERVICES.map((service, index) => {
+          {services.items.map((service, index) => {
             const isOpen = open === index;
+            const number = String(index + 1).padStart(2, "0");
             return (
               <div
-                key={service.number}
+                key={`${index}-${service.title}`}
                 className={cn("service", isOpen && "service--open")}
                 onPointerEnter={() => setHovered(index)}
                 onPointerLeave={() => setHovered(null)}
@@ -48,7 +48,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
                     id={`service-trigger-${index}`}
                     onClick={() => setOpen(isOpen ? null : index)}
                   >
-                    <Numeral value={service.number} className="service__num" />
+                    <Numeral value={number} className="service__num" />
                     <span className="service__name">
                       <strong>{service.title}</strong>
                       <span dir="ltr">{service.latin}</span>
@@ -73,7 +73,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
                   <div className="service__panel-inner">
                     <div className="service__content">
                       <span className="service__watermark" aria-hidden="true" dir="ltr">
-                        {toRoman(service.number)}
+                        {toRoman(number)}
                       </span>
                       <div className="service__lede">
                         <p className="service__desc">{service.text}</p>
@@ -84,7 +84,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
                           onClick={() => onOrder(service.option)}
                           data-cursor="hover"
                         >
-                          <span>شروع این خدمت</span>
+                          <span>{services.ctaLabel}</span>
                           <ArrowUpLeft aria-hidden="true" />
                         </button>
                       </div>
@@ -118,7 +118,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
         </Reveal>
 
         <Reveal className="services__foot" delay={120}>
-          <p>هر پروژه، ترکیبی از این چهار حوزه است — نه یک انتخاب از میان آن‌ها</p>
+          <p>{services.foot}</p>
           <button
             type="button"
             className="link-arrow"

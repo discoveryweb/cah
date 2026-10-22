@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ArrowUpLeft, Search, X } from "lucide-react";
-import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
+import { useContent } from "../content/ContentProvider";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
@@ -14,6 +14,8 @@ const SEARCH_INDEX = [
 ];
 
 export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean }) {
+  const content = useContent();
+  const { contact, nav: NAV_LINKS, socials: SOCIAL_CHANNELS } = content;
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -343,8 +345,8 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
               </div>
 
               <div className="menu__direct">
-                <a href={`mailto:${CONTACT.email}`} className="menu__mail" tabIndex={menuOpen ? 0 : -1} dir="ltr">
-                  {CONTACT.email}
+                <a href={`mailto:${contact.email}`} className="menu__mail" tabIndex={menuOpen ? 0 : -1} dir="ltr">
+                  {contact.email}
                 </a>
                 <button
                   type="button"

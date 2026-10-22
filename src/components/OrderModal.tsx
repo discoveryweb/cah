@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertCircle, ArrowUpLeft, CheckCircle2, LoaderCircle, X } from "lucide-react";
-import { SERVICE_OPTIONS } from "../data";
+import { useContent } from "../content/ContentProvider";
 import { normalizePhoneNumber } from "../utils/phone.mjs";
 import { cn } from "../utils/cn";
 
@@ -20,6 +20,8 @@ export function OrderModal({
   onClose: () => void;
   initialService?: string;
 }) {
+  const content = useContent();
+  const serviceOptions = content.services.items.map((item) => item.option || item.title);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -94,7 +96,7 @@ export function OrderModal({
     if (!phone.trim()) nextErrors.phone = "واردکردن شماره موبایل لازم است.";
     else if (!normalizePhoneNumber(phone)) nextErrors.phone = "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۱۲۳۴۵۶۷).";
     if (email.trim() && !EMAIL_PATTERN.test(email.trim())) nextErrors.email = "نشانی ایمیل معتبر نیست.";
-    if (service && !SERVICE_OPTIONS.includes(service as (typeof SERVICE_OPTIONS)[number])) {
+    if (service && !serviceOptions.includes(service)) {
       nextErrors.service = "نوع خدمت انتخاب‌شده معتبر نیست.";
     }
     if (message.trim().length > 400) nextErrors.message = "توضیح پروژه حداکثر ۴۰۰ نویسه باشد.";
@@ -184,11 +186,10 @@ export function OrderModal({
             LET&apos;S BUILD SOMETHING
           </span>
           <h2 id="order-title" className="modal__title">
-            دربارهٔ پروژه‌تان بگویید
+            {content.order.title}
           </h2>
           <p id="order-description" className="modal__desc">
-            چند سؤال کوتاه، تا بدانیم از کجا شروع کنیم. اگر جزئیات را هنوز نمی‌دانید، اشکالی ندارد؛
-            همین‌جا با هم روشنش می‌کنیم.
+            {content.order.description}
           </p>
 
           {status === "success" ? (
@@ -291,7 +292,7 @@ export function OrderModal({
                   className={fieldClass(Boolean(errors.service), "field__select")}
                 >
                   <option value="">انتخاب کنید…</option>
-                  {SERVICE_OPTIONS.map((option) => (
+                  {serviceOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
@@ -351,7 +352,7 @@ export function OrderModal({
                   </>
                 ) : (
                   <>
-                    <span>ارسال درخواست</span>
+                    <span>{content.order.submitLabel}</span>
                     <ArrowUpLeft aria-hidden="true" />
                   </>
                 )}

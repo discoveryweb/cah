@@ -4,12 +4,26 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { createOrderHandler } from "./server/order-api.mjs";
+import { createAdminMiddleware } from "./server/admin-api.mjs";
 import { loadServerEnv } from "./server/env.mjs";
 
 loadServerEnv();
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const orderHandler = createOrderHandler();
-const orderApiMiddleware = (request: Parameters<typeof orderHandler>[0], response: Parameters<typeof orderHandler>[1], next: (error?: Error) => void) => {
+const adminMiddleware = createAdminMiddleware({ root: projectRoot });
+
+const apiMiddleware = (
+  request: Parameters<typeof orderHandler>[0],
+  response: Parameters<typeof orderHandler>[1],
+  next: (error?: Error) => void
+) => {
   const pathname = request.url?.split("?")[0] ?? "";
+  if (pathname.startsWith("/api/admin") || pathname === "/api/content" || pathname.startsWith("/media/")) {
+    void adminMiddleware(request, response).then((handled: boolean) => {
+      if (!handled) next();
+    });
+    return;
+  }
   if (pathname === "/api/collaboration") {
     void orderHandler(request, response, next);
     return;
@@ -24,6 +38,23 @@ const orderApiMiddleware = (request: Parameters<typeof orderHandler>[0], respons
   next();
 };
 
+/**
+ * The admin panel lives at /shenataisoni with hash tabs, so the dev and preview
+ * servers must hand that path the single-page app shell.
+ */
+const adminPathFallback = (
+  request: Parameters<typeof orderHandler>[0],
+  _response: Parameters<typeof orderHandler>[1],
+  next: (error?: Error) => void
+) => {
+  const url = request.url ?? "/";
+  const pathname = url.split("?")[0].replace(/\/+$/, "");
+  if (pathname.toLowerCase() === "/shenataisoni") {
+    request.url = `/index.html${url.includes("?") ? url.slice(url.indexOf("?")) : ""}`;
+  }
+  next();
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const allowedHosts = [".e2b.app", "localhost", "127.0.0.1"];
@@ -31,12 +62,14 @@ const allowedHosts = [".e2b.app", "localhost", "127.0.0.1"];
 export default defineConfig({
   plugins: [
     {
-      name: "cahen-collaboration-api",
+      name: "cahen-server-api",
       configureServer(server) {
-        server.middlewares.use(orderApiMiddleware);
+        server.middlewares.use(adminPathFallback);
+        server.middlewares.use(apiMiddleware);
       },
       configurePreviewServer(server) {
-        server.middlewares.use(orderApiMiddleware);
+        server.middlewares.use(adminPathFallback);
+        server.middlewares.use(apiMiddleware);
       },
     },
     react(),

@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpLeft, X } from "lucide-react";
-import { WORK } from "../data";
+import { useContent } from "../content/ContentProvider";
+import { fillTemplate, toPersianNumber } from "../content/defaults";
+import { renderRichText } from "../content/RichText";
 import { Button, Numeral, Reveal } from "./ui";
 import { toRoman } from "../utils/roman";
 import { CircularGallery } from "./CircularGallery";
+import type { WorkItem } from "../content/types";
 
-type Project = (typeof WORK)[number];
+type Project = WorkItem & { index: string };
 
 export function Work({ onOrder }: { onOrder: () => void }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
+  const content = useContent();
+  const work = content.work;
+  const projects: Project[] = work.items
+    .filter((item) => item.published !== false)
+    .map((item, index) => ({ ...item, index: String(index + 1) }));
 
   const open = (index: number) => {
     lastTrigger.current = document.activeElement as HTMLElement | null;
@@ -27,29 +35,28 @@ export function Work({ onOrder }: { onOrder: () => void }) {
               WORK
             </span>
             <span className="label label--plain" dir="ltr">
-              SELECTED WORK
+              {work.eyebrow}
             </span>
           </div>
           <div>
             <h2 className="work__title" id="work-title">
-              کارهایی که <span className="accent">دیده</span> شدند
+              {renderRichText(work.title)}
               <span className="hero__dot" aria-hidden="true" />
             </h2>
-            <p className="work__note">
-              سه پروژه از مجموعه؛ هر کدام با یک مسئلهٔ مشخص شروع شده و با یک سیستمِ قابلِ استفاده تمام
-              شده است. اسکرول کنید تا حلقهٔ کارها بچرخد، یا روی کارتِ جلو بزنید تا پروژه باز شود.
-            </p>
+            <p className="work__note">{work.note}</p>
           </div>
         </Reveal>
       </div>
 
-      <CircularGallery items={WORK} onOpen={open} />
+      <CircularGallery items={projects} onOpen={open} hint={work.hint} />
 
       <div className="frame">
         <Reveal className="work__foot" delay={120}>
-          <span className="work__foot-note">۳ پروژه در این مجموعه — آرشیو کامل با درخواست</span>
+          <span className="work__foot-note">
+            {fillTemplate(work.footNote, { count: toPersianNumber(projects.length) })}
+          </span>
           <button type="button" className="work__all" onClick={onOrder} data-cursor="hover">
-            <span>درخواست آرشیو کامل</span>
+            <span>{work.archiveCta}</span>
             <ArrowUpLeft aria-hidden="true" />
           </button>
         </Reveal>
@@ -57,7 +64,7 @@ export function Work({ onOrder }: { onOrder: () => void }) {
 
       {openIndex !== null ? (
         <ProjectOverlay
-          projects={WORK}
+          projects={projects}
           index={openIndex}
           onClose={() => {
             setOpenIndex(null);
