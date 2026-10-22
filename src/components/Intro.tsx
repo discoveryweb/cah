@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { ArrowUpLeft } from "lucide-react";
+import cahenMark from "../assets/cahen-mark.png";
 import studioImage from "../assets/studio.jpg";
 import { PRINCIPLES } from "../data";
 import { useParallax } from "../hooks/useParallax";
@@ -85,7 +86,7 @@ export function Intro() {
               />
             </div>
             <span className="intro__badge" aria-hidden="true">
-              <span className="intro__badge-star">✳</span>
+              <img className="intro__badge-star" src={cahenMark} alt="" width={736} height={600} decoding="async" />
               <span>
                 CAHEN
                 <br />

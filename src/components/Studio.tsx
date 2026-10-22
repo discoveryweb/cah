@@ -1,7 +1,13 @@
 import { ArrowUpLeft } from "lucide-react";
 import { PRINCIPLES, STATS } from "../data";
 import { Marquee, Reveal, SectionHead } from "./ui";
-import { ParticleLogo } from "./ParticleLogo";
+
+const STUDIO_FACTS = [
+  { label: "تأسیس", value: "۱۳۹۸", latin: "FOUNDED" },
+  { label: "تیم ثابت", value: "۴ نفر", latin: "CORE TEAM" },
+  { label: "موقعیت", value: "تهران", latin: "TEHRAN" },
+  { label: "زبان کار", value: "فارسی / انگلیسی", latin: "LANGUAGES" },
+] as const;
 
 export function Studio() {
   return (
@@ -11,6 +17,9 @@ export function Studio() {
       data-invert
       aria-labelledby="studio-title"
     >
+      <span className="studio__aura" aria-hidden="true" />
+      <span className="studio__orbit" aria-hidden="true" />
+
       <div className="frame">
         <SectionHead
           index="05"
@@ -26,6 +35,68 @@ export function Studio() {
           note="ما یک تیمِ کوچکِ ثابت هستیم؛ بدون واسطه، بدون لایه‌های اضافه. کسی که با شما حرف می‌زند، همان کسی است که طراحی می‌کند و کد را می‌نویسد."
         />
 
+        <div className="studio__manifesto">
+          <Reveal className="studio__lead">
+            <p className="studio__statement">
+              ما با ایده‌های بزرگ شروع نمی‌کنیم؛
+              <br />
+              با <em>پرسش‌های درست</em> شروع می‌کنیم.
+            </p>
+            <div className="studio__copy">
+              <p>
+                کاهن در سال ۱۳۹۸ با یک ایدهٔ ساده شروع شد: طراحی باید مسئله را حل کند، نه اینکه فقط
+                خوب به نظر برسد. امروز همان ایده، شکل یک استودیوی مستقل است که برندها، محصولات و
+                تجربه‌های دیجیتال می‌سازد.
+              </p>
+              <p>
+                ما در تهران کار می‌کنیم و با تیم‌هایی در سراسر جهان همکاری می‌کنیم. ابزارمان گفت‌وگوی
+                شفاف، پژوهشِ دقیق و وسواسی است که در جزئیاتی دیده می‌شود که شاید کسی نامشان را نبرد.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal className="studio__card" delay={120}>
+            <div className="studio__card-top">
+              <span className="studio__card-label" dir="ltr">
+                STUDIO PROFILE
+              </span>
+              <span className="studio__card-index" dir="ltr">
+                / 05
+              </span>
+            </div>
+
+            <dl className="studio__facts">
+              {STUDIO_FACTS.map((fact) => (
+                <div className="studio__fact" key={fact.latin}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                  <span className="studio__fact-latin" dir="ltr">
+                    {fact.latin}
+                  </span>
+                </div>
+              ))}
+            </dl>
+
+            <span className="studio__avail">
+              <i aria-hidden="true" />
+              ظرفیت همکاری — زمستان ۱۴۰۴
+            </span>
+          </Reveal>
+        </div>
+
+        <ul className="studio__values" aria-label="ارزش‌های استودیو">
+          {PRINCIPLES.map((principle, index) => (
+            <Reveal as="li" className="studio__value" key={principle.number} delay={index * 90}>
+              <span className="studio__value-num" dir="ltr">
+                {principle.number}
+              </span>
+              <h3 className="studio__value-title">{principle.title}</h3>
+              <p className="studio__value-text">{principle.text}</p>
+              <ArrowUpLeft className="studio__value-arrow" aria-hidden="true" />
+            </Reveal>
+          ))}
+        </ul>
+
         <Reveal className="studio__stats" delay={80}>
           {STATS.map((stat) => (
             <div className="studio__stat" key={stat.latin}>
@@ -38,58 +109,16 @@ export function Studio() {
           ))}
         </Reveal>
 
-        <div className="studio__grid">
-          <Reveal className="studio__copy">
-            <p>
-              کاهن در سال ۱۳۹۸ با یک ایدهٔ ساده شروع شد: طراحی باید مسئله را حل کند، نه اینکه فقط خوب
-              به نظر برسد. امروز همان ایده، شکل یک استودیوی مستقل است که برندها، محصولات و تجربه‌های
-              دیجیتال می‌سازد.
-            </p>
-            <p>
-              ما در تهران کار می‌کنیم و با تیم‌هایی در سراسر جهان همکاری می‌کنیم. ابزارمان گفت‌وگوی
-              شفاف، پژوهشِ دقیق و وسواسی است که در جزئیاتی دیده می‌شود که شاید کسی نامشان را نبرد.
-            </p>
-
-            <div className="studio__values" aria-label="ارزش‌های استودیو">
-              {PRINCIPLES.map((principle) => (
-                <div className="studio__value" key={principle.number}>
-                  <span className="studio__value-mark" dir="ltr">
-                    {principle.number}
-                  </span>
-                  <div>
-                    <p className="studio__value-title">{principle.title}</p>
-                    <p className="studio__value-text">{principle.text}</p>
-                  </div>
-                  <ArrowUpLeft aria-hidden="true" />
-                </div>
-              ))}
-            </div>
-
-            <a href="#contact" className="studio__link">
-              <span>بیایید دربارهٔ همکاری حرف بزنیم</span>
-              <ArrowUpLeft aria-hidden="true" />
-            </a>
-          </Reveal>
-
-          <div className="studio__stage">
-            <span className="studio__stage-grid" aria-hidden="true" />
-            <span className="studio__corner studio__corner--tl" aria-hidden="true" />
-            <span className="studio__corner studio__corner--br" aria-hidden="true" />
-            <span className="studio__mark-tag studio__mark-tag--tl" dir="ltr">
-              MARK / 01
-            </span>
-            <span className="studio__mark-tag studio__mark-tag--tr" dir="ltr">
-              PARTICLE SYSTEM
-            </span>
-            <span className="studio__mark-tag studio__mark-tag--bl">زنده — با ماوس حرکت کنید</span>
-            <span className="studio__mark-tag studio__mark-tag--br" dir="ltr">
-              35.6892° N
-            </span>
-            <div className="studio__mark">
-              <ParticleLogo />
-            </div>
-          </div>
-        </div>
+        <Reveal className="studio__cta" delay={120}>
+          <p>
+            اگر مسئله‌ای دارید که فکر می‌کنید وقتِ حل‌شدنش رسیده،
+            <span> یک پیام کوتاه کافی است.</span>
+          </p>
+          <a href="#contact" className="studio__link">
+            <span>بیایید دربارهٔ همکاری حرف بزنیم</span>
+            <ArrowUpLeft aria-hidden="true" />
+          </a>
+        </Reveal>
       </div>
 
       <div className="studio__marquee">

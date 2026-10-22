@@ -1,44 +1,17 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpLeft, X } from "lucide-react";
 import { WORK } from "../data";
 import { Button, Reveal } from "./ui";
+import { CircularGallery } from "./CircularGallery";
 
 type Project = (typeof WORK)[number];
 
 export function Work({ onOrder }: { onOrder: () => void }) {
-  const [active, setActive] = useState<number | null>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const target = useRef({ x: 0, y: 0 });
-  const current = useRef({ x: 0, y: 0 });
-  const frame = useRef(0);
-  const lastRow = useRef<HTMLButtonElement | null>(null);
+  const lastTrigger = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    if (active === null) return;
-    const preview = previewRef.current;
-    if (!preview) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const render = () => {
-      current.current.x += (target.current.x - current.current.x) * 0.16;
-      current.current.y += (target.current.y - current.current.y) * 0.16;
-      const dx = target.current.x - current.current.x;
-      preview.style.transform = `translate3d(${(current.current.x - 150).toFixed(2)}px, ${(
-        current.current.y - 200
-      ).toFixed(2)}px, 0) rotate(${Math.max(-4, Math.min(4, dx * 0.02)).toFixed(2)}deg)`;
-      frame.current = window.requestAnimationFrame(render);
-    };
-    frame.current = window.requestAnimationFrame(render);
-    return () => window.cancelAnimationFrame(frame.current);
-  }, [active]);
-
-  const track = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    target.current = { x: event.clientX, y: event.clientY };
-  }, []);
-
-  const open = (index: number, row?: HTMLButtonElement | null) => {
-    lastRow.current = row ?? null;
+  const open = (index: number) => {
+    lastTrigger.current = document.activeElement as HTMLElement | null;
     setOpenIndex(index);
   };
 
@@ -61,55 +34,15 @@ export function Work({ onOrder }: { onOrder: () => void }) {
             </h2>
             <p className="work__note">
               سه پروژه از مجموعه؛ هر کدام با یک مسئلهٔ مشخص شروع شده و با یک سیستمِ قابلِ استفاده تمام
-              شده است. روی هر ردیف مکث کنید تا تصویرش را ببینید.
+              شده است. اسکرول کنید تا حلقهٔ کارها بچرخد، یا روی کارتِ جلو بزنید تا پروژه باز شود.
             </p>
           </div>
         </Reveal>
+      </div>
 
-        <div onPointerMove={track} onPointerLeave={() => setActive(null)}>
-          <ul className="work__list" aria-label="فهرست پروژه‌ها">
-            {WORK.map((project, index) => (
-              <li key={project.id}>
-                <Reveal delay={index * 70}>
-                  <button
-                    type="button"
-                    className="work__row"
-                    data-cursor="hidden"
-                    onPointerEnter={(event) => {
-                      setActive(index);
-                      target.current = { x: event.clientX, y: event.clientY };
-                      current.current = { x: event.clientX, y: event.clientY };
-                    }}
-                    onFocus={() => setActive(index)}
-                    onBlur={() => setActive(null)}
-                    onClick={(event) => open(index, event.currentTarget)}
-                    aria-label={`مشاهدهٔ پروژهٔ ${project.name} — ${project.title}`}
-                  >
-                    <span className="work__row-index" dir="ltr">
-                      {project.index}
-                    </span>
-                    <span className="work__row-main">
-                      <span className="work__row-name" dir="ltr">
-                        {project.name}
-                      </span>
-                      <span className="work__row-desc">{project.title}</span>
-                    </span>
-                    <span className="work__row-side">
-                      <span className="work__row-meta" dir="ltr">
-                        {project.category} · {project.year}
-                      </span>
-                      <span className="work__row-thumb">
-                        <img src={project.image} alt="" loading="lazy" decoding="async" />
-                      </span>
-                      <ArrowUpLeft className="work__row-arrow" aria-hidden="true" />
-                    </span>
-                  </button>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <CircularGallery items={WORK} onOpen={open} />
 
+      <div className="frame">
         <Reveal className="work__foot" delay={120}>
           <span className="work__foot-note">۳ پروژه در این مجموعه — آرشیو کامل با درخواست</span>
           <button type="button" className="work__all" onClick={onOrder} data-cursor="hover">
@@ -119,33 +52,13 @@ export function Work({ onOrder }: { onOrder: () => void }) {
         </Reveal>
       </div>
 
-      <div
-        ref={previewRef}
-        className={`work__preview${active !== null ? " work__preview--on" : ""}`}
-        aria-hidden="true"
-      >
-        {WORK.map((project, index) => (
-          <img
-            key={project.id}
-            src={project.image}
-            alt=""
-            data-active={active === index}
-            loading="lazy"
-            decoding="async"
-          />
-        ))}
-        <span className="work__preview-label" dir="ltr">
-          VIEW PROJECT ↗
-        </span>
-      </div>
-
       {openIndex !== null ? (
         <ProjectOverlay
           projects={WORK}
           index={openIndex}
           onClose={() => {
             setOpenIndex(null);
-            lastRow.current?.focus();
+            lastTrigger.current?.focus();
           }}
           onNavigate={setOpenIndex}
           onOrder={onOrder}

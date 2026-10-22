@@ -19,7 +19,7 @@
     min-width: 320px;
     min-height: 100vh;
     margin: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-sans);
@@ -107,7 +107,7 @@
   ::-webkit-scrollbar-thumb {
     border: 3px solid var(--paper);
     border-radius: 999px;
-    background: #17150f;
+    background: rgba(167, 122, 255, 0.32);
   }
 
   .sr-only {
@@ -155,12 +155,12 @@
     position: fixed;
     z-index: 60;
     inset: 0;
-    opacity: 0.05;
+    opacity: 0.06;
     pointer-events: none;
     content: "";
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 140px;
-    mix-blend-mode: multiply;
+    mix-blend-mode: soft-light;
   }
 
   .chapter {
@@ -300,11 +300,12 @@
     justify-content: center;
     gap: 14px;
     overflow: hidden;
-    padding: 0 26px;
-    border: 1px solid var(--ink);
-    border-radius: 0;
-    background: var(--ink);
-    color: var(--paper);
+    padding: 0 30px;
+    border: 1px solid rgba(199, 169, 255, 0.32);
+    border-radius: 16px;
+    background: linear-gradient(110deg, #7040f0 0%, #9a5cff 100%);
+    box-shadow: 0 18px 40px -22px rgba(129, 84, 246, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    color: #fdfbff;
     font-size: 13.5px;
     font-weight: 520;
     line-height: 1;
@@ -312,16 +313,23 @@
     transition:
       background 420ms var(--ease),
       color 420ms var(--ease),
-      border-color 420ms var(--ease);
+      border-color 420ms var(--ease),
+      box-shadow 420ms var(--ease),
+      transform 420ms var(--ease);
   }
 
   .btn::before {
     position: absolute;
     inset: 0;
     transform: translateY(101%);
-    background: var(--accent, var(--vermilion));
+    background: linear-gradient(110deg, #8b5cff 0%, #c396ff 100%);
     content: "";
     transition: transform 480ms var(--ease);
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 24px 55px -22px rgba(154, 92, 255, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   }
 
   .btn > * {
@@ -344,22 +352,23 @@
   }
 
   .btn--light {
-    border-color: var(--line-strong);
-    background: transparent;
+    border-color: var(--card-line);
+    background: var(--card-bg-soft);
+    box-shadow: var(--card-shadow);
     color: var(--fg);
   }
 
   .btn--light::before {
-    background: var(--fg);
+    background: var(--vermilion);
   }
 
   .btn--light:hover {
-    color: var(--bg);
+    color: #0b0a1c;
   }
 
   .btn--pill {
     border-radius: 999px;
-    padding-inline: 30px;
+    padding-inline: 32px;
   }
 
   .btn--sm {
@@ -497,7 +506,7 @@
     inset: 0;
     display: grid;
     background: var(--ink-deep);
-    color: var(--paper);
+    color: var(--ink);
     clip-path: inset(0 0 0 0);
     transition: clip-path 1000ms var(--ease-io);
   }
@@ -528,13 +537,13 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    color: var(--paper);
+    color: var(--ink);
   }
 
   .preloader__mark img {
-    width: 38px;
-    opacity: 0.9;
-    filter: grayscale(1) brightness(3);
+    width: 42px;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 18px rgba(94, 60, 220, 0.7));
   }
 
   .preloader__center {
@@ -621,12 +630,14 @@
     white-space: nowrap;
   }
 
-  .marquee__item::after {
-    color: var(--accent, var(--vermilion));
-    font-family: var(--font-serif);
-    font-size: 1.1em;
-    content: "✳";
-    transform: translateY(1px);
+  .marquee__sep {
+    display: inline-flex;
+    width: 0.9em;
+    height: 0.9em;
+    flex: 0 0 auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(167, 122, 255, 0.55));
+    opacity: 0.92;
   }
 
   @keyframes marquee {
@@ -660,10 +671,11 @@
     height: 46px;
     transform: translateY(16px);
     place-items: center;
-    border: 1px solid var(--line-strong);
+    border: 1px solid var(--card-line);
     border-radius: 50%;
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--card-bg);
+    color: var(--fg);
+    box-shadow: var(--card-shadow);
     opacity: 0;
     pointer-events: none;
     transition:
@@ -695,7 +707,9 @@
   .print {
     position: relative;
     overflow: hidden;
+    border-radius: var(--card-radius);
     background: var(--paper-deep);
+    box-shadow: var(--card-shadow);
   }
 
   .print img {
@@ -714,8 +728,8 @@
     inset: 0;
     background: var(--vermilion);
     content: "";
-    mix-blend-mode: multiply;
-    opacity: 0.08;
+    mix-blend-mode: screen;
+    opacity: 0.12;
     pointer-events: none;
     transition: opacity 700ms var(--ease);
   }
@@ -833,7 +847,7 @@
   }
 
   .rail--light {
-    color: var(--paper);
+    color: var(--ink);
   }
 
   .rail__list {
@@ -897,5 +911,44 @@
     .rail {
       display: block;
     }
+  }
+}
+
+@layer components {
+  /* =========================================================
+     CanvasUI particle logo adapter (used by the hero mark)
+     ========================================================= */
+  .particle-logo-stage {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+  }
+
+  .particle-logo-canvas {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+
+  .particle-logo-static {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 30px rgba(80, 50, 200, 0.55));
+    opacity: 1;
+    transition: opacity 600ms var(--ease);
+  }
+
+  .particle-logo-static.is-loaded {
+    opacity: 0;
   }
 }

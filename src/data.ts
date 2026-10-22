@@ -15,9 +15,9 @@ export const NAV_LINKS = [
 ] as const;
 
 export const SOCIAL_CHANNELS = [
-  { name: "تلگرام", platform: "Telegram", href: "https://t.me/", image: telegramImage },
-  { name: "اینستاگرام", platform: "Instagram", href: "https://www.instagram.com/", image: instagramImage },
-  { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", image: whatsappImage },
+  { name: "تلگرام", platform: "Telegram", href: "https://t.me/", image: telegramImage, color: "#3fb6f2" },
+  { name: "اینستاگرام", platform: "Instagram", href: "https://www.instagram.com/", image: instagramImage, color: "#f2688c" },
+  { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", image: whatsappImage, color: "#4fe08a" },
 ] as const;
 
 export const SERVICE_OPTIONS = [

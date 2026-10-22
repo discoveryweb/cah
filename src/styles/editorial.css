@@ -58,8 +58,8 @@
      01 — Studio intro
      ========================================================= */
   .intro {
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--bg);
+    color: var(--fg);
   }
 
   .intro__grid {
@@ -174,7 +174,10 @@
   .intro__portrait-frame {
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--card-line);
+    border-radius: var(--card-radius);
     aspect-ratio: 0.82;
+    box-shadow: var(--card-shadow);
   }
 
   .intro__portrait-frame img {
@@ -246,8 +249,8 @@
      04 — Process
      ========================================================= */
   .process {
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--bg);
+    color: var(--fg);
   }
 
   .process__grid {
@@ -320,7 +323,7 @@
     inset: 0 -16px;
     transform: scaleY(0);
     transform-origin: bottom;
-    background: var(--ink);
+    background: linear-gradient(90deg, rgba(129, 84, 246, 0.22), rgba(129, 84, 246, 0.05));
     content: "";
     transition: transform 520ms var(--ease);
   }
@@ -331,7 +334,7 @@
   }
 
   .process__item:hover {
-    color: var(--paper);
+    color: var(--ink);
   }
 
   .process__num,
@@ -408,81 +411,6 @@
     transform: none;
   }
 
-  /* =========================================================
-     Ink quote strip
-     ========================================================= */
-  .quote {
-    position: relative;
-    overflow: hidden;
-    padding-block: clamp(62px, 7.4vw, 108px);
-    background: var(--ink-deep);
-    color: var(--paper);
-  }
-
-  .quote::before {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: min(100vw, 1100px);
-    aspect-ratio: 2;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse, rgba(232, 65, 28, 0.15), transparent 68%);
-    content: "";
-    filter: blur(40px);
-    pointer-events: none;
-  }
-
-  .quote__inner {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(22px, 3vw, 34px);
-    text-align: center;
-  }
-
-  .quote__text {
-    max-width: 22ch;
-    font-size: clamp(1.7rem, 4.2vw, 3.6rem);
-    font-weight: 600;
-    line-height: 1.5;
-    letter-spacing: -0.028em;
-  }
-
-  .quote__text em {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-weight: 400;
-    color: var(--vermilion-soft);
-  }
-
-  .quote__meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 10px 20px;
-    color: rgba(236, 233, 226, 0.42);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .quote__meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .quote__meta span::before {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--vermilion-soft);
-    content: "";
-  }
-
   .process__aside .link-arrow {
     align-self: flex-start;
   }
@@ -536,11 +464,6 @@
     .process__arrow {
       display: none;
     }
-
-    .quote__text {
-      max-width: 18ch;
-      line-height: 1.55;
-    }
   }
 }
 
@@ -567,8 +490,8 @@
     right: clamp(-8px, -1vw, -20px);
     bottom: 34px;
     border-radius: 50%;
-    background: var(--vermilion);
-    color: var(--paper);
+    background: linear-gradient(150deg, #c9a7ff, #7d4bf0);
+    color: #100a22;
     animation: none;
     font-family: var(--font-mono);
     font-size: 7.5px;
@@ -576,107 +499,26 @@
     line-height: 1.6;
     text-align: center;
     text-transform: uppercase;
-    box-shadow: 0 18px 40px -22px rgba(232, 65, 28, 0.8);
+    box-shadow: 0 22px 50px -20px rgba(129, 84, 246, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
   .intro__badge-star {
-    display: inline-block;
-    font-family: var(--font-sans);
-    font-size: 16px;
-    line-height: 1;
-    animation: badge-spin 14s linear infinite;
-  }
-
-  /* =========================================================
-     Vermilion statement band
-     ========================================================= */
-  .quote {
-    background: var(--vermilion);
-    color: #f6f1e6;
-  }
-
-  .quote::before {
-    display: none;
-  }
-
-  .quote__inner {
-    position: relative;
-    z-index: 1;
-    align-items: flex-start;
-    text-align: start;
-  }
-
-  .quote__text {
-    max-width: none;
-    color: #f8f3e9;
-    font-size: clamp(1.9rem, 4.5vw, 3.9rem);
-    font-weight: 640;
-    line-height: 1.38;
-    letter-spacing: -0.03em;
-  }
-
-  .quote__mark {
-    position: relative;
-    display: inline-block;
-    color: #1a0f0a;
-  }
-
-  .quote__mark::after {
-    position: absolute;
-    right: 0;
-    bottom: 0.02em;
-    left: 0;
-    height: 0.055em;
-    background: currentColor;
-    content: "";
-  }
-
-  .quote__meta {
-    justify-content: flex-start;
-    color: rgba(26, 15, 10, 0.68);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .quote__meta span::before {
-    background: currentColor;
-  }
-
-  .quote__asterisk {
-    position: absolute;
-    z-index: 0;
-    top: 50%;
-    left: -4%;
     display: block;
-    width: min(34vw, 420px);
-    color: rgba(26, 15, 10, 0.12);
-    transform: translateY(-50%);
-    animation: badge-spin 40s linear infinite;
-    pointer-events: none;
+    width: 26px;
+    height: 22px;
+    object-fit: contain;
+    animation: badge-pulse 4.5s ease-in-out infinite;
   }
 
-  .quote__asterisk svg {
-    width: 100%;
-    height: 100%;
-    stroke-width: 0.6;
-  }
-
-  @media (max-width: 767px) {
-    .quote__text {
-      font-size: clamp(1.6rem, 7.4vw, 2.4rem);
-      line-height: 1.55;
+  @keyframes badge-pulse {
+    0%,
+    100% {
+      transform: scale(1) rotate(-4deg);
+      filter: drop-shadow(0 2px 8px rgba(10, 6, 30, 0.5));
     }
-
-    .quote__asterisk {
-      top: 26%;
-      left: -14%;
-      width: 52vw;
-    }
-
-    .quote__meta {
-      font-size: 8px;
+    50% {
+      transform: scale(1.14) rotate(4deg);
+      filter: drop-shadow(0 6px 16px rgba(10, 6, 30, 0.7));
     }
   }
 }
@@ -703,20 +545,5 @@
 
   .process__arrow {
     inset-inline-start: 0;
-  }
-}
-
-@layer components {
-  /* Quote is vermilion: paper-coloured header text reads with far more contrast. */
-  .quote {
-    --accent: #1a0f0a;
-  }
-
-  .quote .quote__mark::after {
-    background: currentColor;
-  }
-
-  .quote .quote__text em {
-    color: #1a0f0a;
   }
 }

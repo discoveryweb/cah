@@ -35,10 +35,14 @@ export function ParticleLogo() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [motionReady, setMotionReady] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [staticFallback, setStaticFallback] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [ParticleObject, setParticleObject] = useState<ParticleObjectComponent | null>(null);
-  const handleError = useCallback(() => setFailed(true), []);
+  const handleError = useCallback(() => {
+    setLoaded(false);
+    setFailed(true);
+  }, []);
+  const handleLoad = useCallback(() => setLoaded(true), []);
 
   useEffect(() => {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -48,7 +52,6 @@ export function ParticleLogo() {
       // The static mark is a fallback only, never a placeholder over the particle version.
       // Capability (not device tier) decides: low-core devices still get a lighter particle count.
       const unavailable = motionQuery.matches || !supportsWebGL();
-      setStaticFallback(unavailable);
       setMotionReady(isInView && !unavailable);
     };
 
@@ -56,7 +59,6 @@ export function ParticleLogo() {
 
     if (!wrapper || typeof IntersectionObserver === "undefined") {
       setVisible(false);
-      setStaticFallback(true);
       return () => motionQuery.removeEventListener("change", syncMotionAndCapability);
     }
 
@@ -87,14 +89,21 @@ export function ParticleLogo() {
 
   return (
     <div ref={wrapperRef} className="particle-logo-stage">
-      {(failed || staticFallback) && (
-        <img className="particle-logo-static" src={cahenMark} alt="نشان CAHEN" width={736} height={600} />
-      )}
+      {/* The static mark holds the frame until the particle system is ready. */}
+      <img
+        className={`particle-logo-static${loaded ? " is-loaded" : ""}`}
+        src={cahenMark}
+        alt="نشان CAHEN"
+        width={736}
+        height={600}
+        decoding="async"
+      />
       {motionReady && visible && !failed && ParticleObject && (
         <ParticleObject
           {...PARTICLE_OPTIONS}
           src={cahenMark}
           className="particle-logo-canvas"
+          onLoad={handleLoad}
           onError={handleError}
         />
       )}

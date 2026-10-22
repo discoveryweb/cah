@@ -4,6 +4,7 @@ import heroStill from "../assets/hero-still.jpg";
 import { TICKER } from "../data";
 import { useParallax } from "../hooks/useParallax";
 import { Button, Magnetic, Marquee } from "./ui";
+import { ParticleLogo } from "./ParticleLogo";
 
 export function Hero({ onOrder }: { onOrder: () => void }) {
   const figureRef = useRef<HTMLElement>(null);
@@ -68,10 +69,36 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
           </div>
 
           <aside className="hero__aside">
+            <div className="hero__mark">
+              <span className="hero__mark-grid" aria-hidden="true" />
+              <span className="hero__mark-ring hero__mark-ring--outer" aria-hidden="true" />
+              <span className="hero__mark-ring hero__mark-ring--inner" aria-hidden="true" />
+              <span className="hero__mark-corner hero__mark-corner--tl" aria-hidden="true" />
+              <span className="hero__mark-corner hero__mark-corner--br" aria-hidden="true" />
+
+              <div className="hero__mark-stage">
+                <ParticleLogo />
+              </div>
+
+              <span className="hero__mark-tag hero__mark-tag--tl" dir="ltr">
+                MARK / 01
+              </span>
+              <span className="hero__mark-tag hero__mark-tag--tr" dir="ltr">
+                PARTICLE SYSTEM
+              </span>
+              <span className="hero__mark-tag hero__mark-tag--bl">
+                <i aria-hidden="true" />
+                زنده — با ماوس حرکت کنید
+              </span>
+              <span className="hero__mark-tag hero__mark-tag--br" dir="ltr">
+                35.6892° N
+              </span>
+            </div>
+
             <figure className="hero__figure" ref={figureRef}>
               <img
                 src={heroStill}
-                alt="ترکیب‌بندی استودیویی از فرم‌های کاغذی و یک دایرهٔ نارنجی روی زمینهٔ کاغذ"
+                alt="ترکیب‌بندی استودیویی از فرم‌های کاغذی و یک دایرهٔ بنفش روی زمینهٔ کاغذ"
                 width={1122}
                 height={1402}
                 fetchPriority="high"
@@ -84,8 +111,9 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
                 SELECTED WORK
               </span>
             </figure>
+
             <figcaption className="hero__caption">
-              <span>تجربهٔ خرید، بازطراحی‌شده</span>
+              <span>نشانِ کاهن، در قابِ ذرات — و یک کار منتخب</span>
               <span dir="ltr">FIG. 01</span>
             </figcaption>
 

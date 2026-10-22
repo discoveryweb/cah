@@ -15,37 +15,49 @@
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
   --font-serif: "Instrument Serif", Georgia, serif;
 
-  --color-paper: #ece9e2;
-  --color-paper-2: #e3dfd5;
-  --color-ink: #12110e;
-  --color-ink-2: #0b0b0a;
-  --color-vermilion: #e8411c;
-  --color-vermilion-soft: #ff6a44;
-  --color-stone: #6d675c;
-  --color-mist: #a9a294;
+  --color-paper: #0a0a1e;
+  --color-paper-2: #11112c;
+  --color-ink: #f6f4ff;
+  --color-ink-2: #08081a;
+  --color-vermilion: #a77aff;
+  --color-vermilion-soft: #d3bcff;
+  --color-stone: #8f8ca8;
+  --color-mist: #5d5b78;
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --paper: #ece9e2;
-  --paper-deep: #e4e0d6;
-  --ink: #12110e;
-  --ink-deep: #080807;
-  --vermilion: #e8411c;
-  --vermilion-soft: #ff6a44;
+  /* The identity palette: deep indigo ground, violet signal, porcelain type. */
+  --paper: #0a0a1e;
+  --paper-deep: #12122f;
+  --ink: #f6f4ff;
+  --ink-deep: #05050f;
+  --vermilion: #a77aff;
+  --vermilion-soft: #d3bcff;
 
   --bg: var(--paper);
   --fg: var(--ink);
-  --fg-soft: rgba(18, 17, 14, 0.66);
-  --fg-mute: rgba(18, 17, 14, 0.44);
-  --line: rgba(18, 17, 14, 0.14);
-  --line-strong: rgba(18, 17, 14, 0.28);
-  --surface: rgba(18, 17, 14, 0.04);
+  --fg-soft: rgba(246, 244, 255, 0.68);
+  --fg-mute: rgba(246, 244, 255, 0.44);
+  --line: rgba(190, 176, 255, 0.14);
+  --line-strong: rgba(190, 176, 255, 0.3);
+  --surface: rgba(255, 255, 255, 0.045);
+
+  /* Card system — rounded glass plates with a violet rim, as in the first build. */
+  --card-bg: linear-gradient(158deg, rgba(32, 29, 68, 0.92), rgba(12, 12, 32, 0.94));
+  --card-bg-soft: linear-gradient(158deg, rgba(24, 22, 54, 0.72), rgba(11, 11, 28, 0.86));
+  --card-line: rgba(190, 176, 255, 0.16);
+  --card-line-hover: rgba(190, 176, 255, 0.42);
+  --card-shadow: 0 26px 70px -38px rgba(4, 2, 20, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --card-shadow-hover: 0 34px 90px -34px rgba(92, 52, 226, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --card-radius: 22px;
+  --card-radius-sm: 16px;
+  --glow: rgba(122, 86, 255, 0.42);
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
@@ -61,18 +73,19 @@
 }
 
 .theme-ink {
-  --bg: var(--ink-deep);
-  --fg: #f2eee4;
-  --fg-soft: rgba(242, 238, 228, 0.68);
-  --fg-mute: rgba(242, 238, 228, 0.42);
-  --line: rgba(242, 238, 228, 0.16);
-  --line-strong: rgba(242, 238, 228, 0.34);
-  --surface: rgba(242, 238, 228, 0.05);
+  --bg: #07071a;
+  --fg: #f6f4ff;
+  --fg-soft: rgba(246, 244, 255, 0.7);
+  --fg-mute: rgba(246, 244, 255, 0.42);
+  --line: rgba(190, 176, 255, 0.15);
+  --line-strong: rgba(190, 176, 255, 0.32);
+  --surface: rgba(255, 255, 255, 0.05);
   --accent: var(--vermilion-soft);
   color-scheme: dark;
 }
 
 .theme-paper {
+  --bg: #0c0c23;
   --accent: var(--vermilion);
-  color-scheme: light;
+  color-scheme: dark;
 }

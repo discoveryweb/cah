@@ -310,6 +310,16 @@ export function Marquee({
             {items.map((item) => (
               <span key={`${group}-${item}`} className="marquee__item">
                 {item}
+                <img
+                  className="marquee__sep"
+                  src={cahenMark}
+                  alt=""
+                  width={736}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
               </span>
             ))}
           </div>

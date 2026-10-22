@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ArrowUpLeft, Search, X } from "lucide-react";
 import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
+import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
 import { Brand } from "./ui";
 import { TehranClock } from "./SiteChrome";
@@ -251,12 +252,38 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
         id="site-menu"
         ref={menuRef}
         className={cn("menu", menuOpen && "menu--open")}
+        role="dialog"
+        aria-modal={menuOpen ? true : undefined}
+        aria-label="منوی اصلی سایت"
         aria-hidden={!menuOpen}
       >
         <div className="menu__scroll">
-          <div className="menu__inner frame">
+          <div
+            className="menu__inner frame"
+            style={{ "--count": NAV_LINKS.length } as CSSProperties}
+          >
             <div className="menu__top">
-              <span dir="ltr">CAHEN / INDEX — ۲۰۲۶</span>
+              <a
+                href="#home"
+                className="menu__brand"
+                tabIndex={menuOpen ? 0 : -1}
+                onClick={() => setMenuOpen(false)}
+              >
+                <img src={cahenMark} alt="" width={736} height={600} decoding="async" />
+                <span className="menu__brand-type" dir="ltr">
+                  CAHEN
+                  <small>DIGITAL STUDIO</small>
+                </span>
+              </a>
+
+              <div className="menu__top-meta">
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <i aria-hidden="true" />
+                  TEHRAN
+                </span>
+                <TehranClock short />
+              </div>
+
               <button
                 type="button"
                 className="menu__close"
@@ -268,12 +295,20 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
               </button>
             </div>
 
+            <span className="menu__eyebrow" dir="ltr">
+              INDEX — ۰۱ / ۰۶
+            </span>
+
             <nav aria-label="منوی اصلی" className="menu__list">
               {NAV_LINKS.map((link, index) => (
-                <div className="menu__item" key={link.id}>
+                <div
+                  className="menu__item"
+                  key={link.id}
+                  style={{ "--i": index } as CSSProperties}
+                >
                   <a
                     href={`#${link.id}`}
-                    className="menu__link"
+                    className={cn("menu__link", active === link.id && "menu__link--active")}
                     tabIndex={menuOpen ? 0 : -1}
                     aria-current={active === link.id ? "location" : undefined}
                     onClick={() => setMenuOpen(false)}
@@ -281,62 +316,60 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
                     <span className="menu__num" dir="ltr">
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="menu__label">{link.label}</span>
-                    <span className="menu__en" dir="ltr">
-                      {link.latin}
+                    <span className="menu__label">
+                      {link.label}
+                      <small dir="ltr">{link.latin}</small>
                     </span>
+                    <ArrowUpLeft className="menu__arrow" aria-hidden="true" />
                   </a>
                 </div>
               ))}
             </nav>
 
             <div className="menu__foot">
-              <div className="menu__foot-group">
-                <span className="menu__foot-label" dir="ltr">
-                  SOCIAL
+              <div>
+                <span className="menu__eyebrow" dir="ltr" style={{ marginBottom: 10 }}>
+                  ELSEWHERE
                 </span>
-                <div className="menu__social">
+                <div className="menu__socials">
                   {SOCIAL_CHANNELS.map((channel) => (
                     <a
                       key={channel.platform}
                       href={channel.href}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="menu__social-link"
                       tabIndex={menuOpen ? 0 : -1}
                     >
-                      <img src={channel.image} alt="" width={16} height={16} loading="lazy" decoding="async" />
-                      {channel.name}
+                      <span>{channel.name}</span>
+                      <em dir="ltr">{channel.platform}</em>
                     </a>
                   ))}
                 </div>
               </div>
 
-              <div className="menu__foot-group">
-                <span className="menu__foot-label" dir="ltr">
-                  DIRECT
-                </span>
-                <a
-                  href={`mailto:${CONTACT.email}`}
-                  className="menu__mail"
-                  tabIndex={menuOpen ? 0 : -1}
-                  dir="ltr"
-                >
+              <div className="menu__direct">
+                <a href={`mailto:${CONTACT.email}`} className="menu__mail" tabIndex={menuOpen ? 0 : -1} dir="ltr">
                   {CONTACT.email}
                 </a>
+                <button
+                  type="button"
+                  className="menu__cta"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOrder();
+                  }}
+                >
+                  شروع یک پروژه
+                  <ArrowUpLeft aria-hidden="true" />
+                </button>
               </div>
+            </div>
 
-              <button
-                type="button"
-                className="menu__cta"
-                tabIndex={menuOpen ? 0 : -1}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOrder();
-                }}
-              >
-                شروع یک پروژه
-                <ArrowUpLeft aria-hidden="true" />
-              </button>
+            <div className="menu__legal">
+              <span dir="ltr">© ۲۰۲۶ CAHEN STUDIO</span>
+              <span>طراحی و کد، درون استودیو</span>
             </div>
           </div>
         </div>
