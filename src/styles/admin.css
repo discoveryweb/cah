@@ -2002,6 +2002,12 @@
     white-space: nowrap;
   }
 
+  .awork__missing {
+    color: #ffd7a1;
+    font-size: 9.5px;
+    line-height: 1.7;
+  }
+
   .awork__move {
     display: flex;
     gap: 3px;

@@ -1,4 +1,4 @@
-import type { SiteContent } from "../content/types";
+import type { SiteContent, WorkItem } from "../content/types";
 
 export const getPath = (source: unknown, path: string): unknown =>
   path.split(".").reduce<unknown>((current, key) => {
@@ -80,8 +80,10 @@ export function validateContent(content: SiteContent): Record<string, string> {
     const base = `work.items.${index}`;
     required(`${base}.name`, item.name, "نام پروژه");
     required(`${base}.title`, item.title, "تیتر پروژه");
-    required(`${base}.image`, item.image, "تصویر پروژه");
-    required(`${base}.description`, item.description, "توضیح کوتاه");
+    if (item.published !== false) {
+      required(`${base}.image`, item.image, "تصویر پروژه");
+      required(`${base}.description`, item.description, "توضیح کوتاه");
+    }
   });
 
   content.services.items.forEach((item, index) => {
@@ -93,6 +95,18 @@ export function validateContent(content: SiteContent): Record<string, string> {
   });
 
   return errors;
+}
+
+/** Fields a work item needs before it can go live. Drafts may stay incomplete. */
+export function missingWorkFields(item: WorkItem): string[] {
+  const missing: string[] = [];
+  if (!item.name.trim()) missing.push("نام برند");
+  if (!item.title.trim()) missing.push("تیتر");
+  if (item.published !== false) {
+    if (!item.image.trim()) missing.push("تصویر");
+    if (!item.description.trim()) missing.push("توضیح کوتاه");
+  }
+  return missing;
 }
 
 export const ROLE_LABELS = {

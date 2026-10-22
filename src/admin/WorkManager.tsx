@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Eye, EyeOff, Pencil, Plus, Search } from "lucide-react";
 import type { WorkItem } from "../content/types";
-import { moveItem } from "./draft";
+import { missingWorkFields, moveItem } from "./draft";
 import { ConfirmButton, Field, ImagePicker, Modal, StringList, TextArea, TextInput, Toggle } from "./ui";
 
 const blankWork = (): WorkItem => ({
@@ -116,7 +116,7 @@ export function WorkManager({
     setEditingIndex(null);
   };
 
-  const draftErrors = editingIndex === null ? {} : errors;
+  const draftMissing = draft ? missingWorkFields(draft) : [];
 
   return (
     <div className="acard">
@@ -200,6 +200,11 @@ export function WorkManager({
                 <span>{item.year || "—"}</span>
               </p>
               <p className="awork__desc">{item.description || "توضیح کوتاه نوشته نشده است."}</p>
+              {missingWorkFields(item).length > 0 ? (
+                <p className="awork__missing">
+                  برای انتشار کامل شود: {missingWorkFields(item).join("، ")}
+                </p>
+              ) : null}
               <div className="awork__tools">
                 <button
                   type="button"
@@ -299,18 +304,20 @@ export function WorkManager({
         {draft ? (
           <div className="agrid">
             <div className="agrid agrid--2">
-              <Field label="نام کارفرما / برند" path="name" error={draftErrors[`work.items.${editingIndex}.name`]}>
+              <Field label="نام کارفرما / برند" path="name" error={draftMissing.includes("نام برند") ? "این فیلد لازم است." : undefined}>
                 <TextInput
                   value={draft.name}
                   onChange={(value) => patchDraft("name", value)}
                   placeholder="مثلاً سیروس"
+                  error={draftMissing.includes("نام برند")}
                 />
               </Field>
-              <Field label="تیتر پروژه" path="title" error={draftErrors[`work.items.${editingIndex}.title`]}>
+              <Field label="تیتر پروژه" path="title" error={draftMissing.includes("تیتر") ? "این فیلد لازم است." : undefined}>
                 <TextInput
                   value={draft.title}
                   onChange={(value) => patchDraft("title", value)}
                   placeholder="مثلاً هویتی که نفس می‌کشد"
+                  error={draftMissing.includes("تیتر")}
                 />
               </Field>
             </div>
@@ -334,7 +341,7 @@ export function WorkManager({
               label="توضیح کوتاه"
               path="description"
               hint="زیر تیتر کارت گالری نمایش داده می‌شود."
-              error={draftErrors[`work.items.${editingIndex}.description`]}
+              error={draftMissing.includes("توضیح کوتاه") ? "برای انتشار، توضیح کوتاه لازم است." : undefined}
             >
               <TextArea
                 value={draft.description}
@@ -343,7 +350,11 @@ export function WorkManager({
               />
             </Field>
 
-            <Field label="تصویر شاخص" path="image" error={draftErrors[`work.items.${editingIndex}.image`]}>
+            <Field
+              label="تصویر شاخص"
+              path="image"
+              error={draftMissing.includes("تصویر") ? "برای انتشار، تصویر لازم است." : undefined}
+            >
               <ImagePicker
                 label=""
                 value={draft.image}
