@@ -1,6 +1,6 @@
 import path from "node:path";
 import { normalizePhoneNumber } from "../src/utils/phone.mjs";
-import { appendOrder, deliverOrder, readOrders, retryPendingOrders } from "./orders.mjs";
+import { appendOrder, deliverOrder, readOrders } from "./orders.mjs";
 import { createFsStorage } from "./storage-fs.mjs";
 
 const MAX_BODY_BYTES = 12 * 1024;
@@ -150,7 +150,7 @@ export function createOrderHandler({
   const activeStorage =
     storage ?? createFsStorage({ dataDirectory: path.join(root, "data") });
 
-  return async (request, response) => {
+  return async (request, response, context) => {
     try {
       if (request.method !== "POST") {
         response.setHeader("Allow", "POST");
@@ -172,9 +172,6 @@ export function createOrderHandler({
         return sendJson(response, 429, { ok: false, code: "rate_limited" });
       }
 
-      // A configuration added later should heal earlier leads automatically.
-      await retryPendingOrders(activeStorage, { env, fetchImpl }).catch(() => 0);
-
       const orders = await readOrders(activeStorage);
       if (isRecentDuplicate(orders, lead.phone)) {
         return sendJson(response, 200, { ok: true, duplicate: true });
@@ -184,11 +181,20 @@ export function createOrderHandler({
 
       // The order is stored before this point; a provider problem only changes
       // its delivery status, which the panel surfaces with a retry action.
-      const delivered = await deliverOrder(activeStorage, order, { env, fetchImpl }).catch((error) => {
+      const delivery = deliverOrder(activeStorage, order, { env, fetchImpl }).catch((error) => {
         console.error("[collaboration-api] delivery failed", error?.code ?? error?.name ?? "unknown");
         return null;
       });
 
+      // On Netlify the function has a `waitUntil` context: answer the visitor
+      // immediately and keep sending the SMS parts in the background. This
+      // keeps the request well below the rewrite/execution timeouts.
+      if (typeof context?.waitUntil === "function") {
+        context.waitUntil(delivery);
+        return sendJson(response, 200, { ok: true, queued: true });
+      }
+
+      const delivered = await delivery;
       return sendJson(response, 200, {
         ok: true,
         queued: delivered ? delivered.sms?.status !== "sent" : true,
@@ -198,6 +204,7 @@ export function createOrderHandler({
         return sendJson(response, error.status, {
           ok: false,
           code: error.code,
+          message: error.message,
           ...(error.fields ? { fields: error.fields } : {}),
         });
       }

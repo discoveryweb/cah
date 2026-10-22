@@ -3,42 +3,48 @@ import { createOrderHandler } from "../../server/order-api.mjs";
 import { createBlobsStorage } from "../../server/storage-blobs.mjs";
 import { createWebHandler, normaliseFunctionPath } from "../../server/web-adapter.mjs";
 
+// One instance per warm container, shared by every route so the admin API and
+// the public order endpoint see the same storage object.
 let handlerPromise = null;
 
-/**
- * One function serves both /api/* and /media/*; a redirect in netlify.toml
- * rewrites those routes here. Credentials are read from the site's server-side
- * environment variables (ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_SESSION_SECRET).
- */
 function getHandler() {
   if (!handlerPromise) {
-    // One store instance is shared so orders, content and sessions cannot race
-    // each other through separate per-process caches.
     const storage = createBlobsStorage();
-    const api = createAdminApi({ storage, env: process.env });
-    const orderHandler = createOrderHandler({ storage, env: process.env });
-    handlerPromise = Promise.resolve(createWebHandler(api, { orderHandler }));
+    const env = process.env;
+    const api = createAdminApi({ storage, env });
+    const orderHandler = createOrderHandler({ storage, env });
+    handlerPromise = Promise.resolve(
+      createWebHandler(api, { orderHandler })
+    );
   }
   return handlerPromise;
 }
 
-export default async function adminFunction(request) {
+/**
+ * Serves `/api/*` and `/media/*` (see `netlify.toml`). Credentials and SMS
+ * settings come from the site's server-side environment variables and never
+ * reach the browser bundle.
+ */
+export default async function adminFunction(request, context) {
   try {
     const url = new URL(request.url);
     url.pathname = normaliseFunctionPath(url.pathname);
     const normalised = new Request(url, request);
     const handler = await getHandler();
-    return await handler(normalised);
+    return await handler(normalised, context);
   } catch (error) {
-    console.error("[admin-function]", error);
+    console.error("[admin-function]", error?.name ?? error?.code ?? "unknown");
+    const storageIssue = /blobs|storage/i.test(String(error?.name ?? ""));
     return new Response(
       JSON.stringify({
         ok: false,
-        code: "storage_unavailable",
-        message: "دسترسی به فضای ذخیره‌سازی پنل ممکن نشد. تنظیمات Netlify Blobs را بررسی کنید.",
+        code: storageIssue ? "storage_unavailable" : "server_error",
+        message: storageIssue
+          ? "دسترسی به فضای ذخیره‌سازی پنل ممکن نشد. تنظیمات Netlify Blobs را بررسی کنید."
+          : "خطای غیرمنتظره در سرور.",
       }),
       {
-        status: 503,
+        status: storageIssue ? 503 : 500,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "no-store",

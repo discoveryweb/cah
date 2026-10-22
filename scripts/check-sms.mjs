@@ -300,6 +300,73 @@ await checkAsync("orders survive a missing SMS configuration", async () => {
   assert.equal(stored.items[0].sms.error, "sms_not_configured");
 });
 
+await checkAsync("the Netlify adapter answers unknown API routes with 404", async () => {
+  const memory = {
+    readStore: async () => null,
+    writeStore: async () => undefined,
+    readJson: async () => null,
+    writeJson: async () => undefined,
+    updateJson: async (_key, updater) => updater(null),
+    readMedia: async () => null,
+    writeMedia: async () => undefined,
+    deleteMedia: async () => undefined,
+  };
+  const handler = createWebHandler(createAdminApi({ storage: memory, env: { ...configured } }), {
+    orderHandler: createOrderHandler({ storage: memory, env: configured }),
+  });
+  const response = await handler(new Request("https://cahen.studio/api/does-not-exist"));
+  assert.equal(response.status, 404);
+  assert.equal((await response.json()).code, "not_found");
+
+  const wrongMethod = await handler(new Request("https://cahen.studio/api/collaboration"));
+  assert.equal(wrongMethod.status, 405);
+});
+
+await checkAsync("a Netlify context sends the SMS after the response", async () => {
+  const documents = new Map();
+  const memory = {
+    readStore: async () => documents.get("store") ?? null,
+    writeStore: async (value) => documents.set("store", value),
+    readJson: async (key) => documents.get(key) ?? null,
+    writeJson: async (key, value) => documents.set(key, value),
+    updateJson: async (key, updater) => {
+      const next = updater(documents.get(key) ?? null);
+      documents.set(key, next);
+      return next;
+    },
+    readMedia: async () => null,
+    writeMedia: async () => undefined,
+    deleteMedia: async () => undefined,
+  };
+  const webEnv = { ...configured, NETLIFY: "true" };
+  const handler = createWebHandler(createAdminApi({ storage: memory, env: webEnv }), {
+    orderHandler: createOrderHandler({
+      storage: memory,
+      env: webEnv,
+      fetchImpl: async () => new Response("1001", { status: 200 }),
+    }),
+  });
+  const background = [];
+  const response = await handler(
+    new Request("https://cahen.studio/api/collaboration", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://cahen.studio",
+        "x-nf-client-connection-ip": "198.51.100.51",
+      },
+      body: JSON.stringify({ ...valid, phone: "09121234111" }),
+    }),
+    { waitUntil: (promise) => background.push(promise) }
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).queued, true);
+  assert.equal(background.length, 1);
+  await Promise.all(background);
+  const stored = await readOrders(memory);
+  assert.equal(stored.items[0].sms.status, "sent");
+});
+
 await checkAsync("the Netlify web adapter routes /api/collaboration", async () => {
   const documents = new Map();
   const memory = {

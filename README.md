@@ -62,7 +62,7 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Two checks run entirely offline: `npm run admin:check` (API/security, 63 assertions) and `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 19 assertions).
+Three checks run entirely offline: `npm run admin:check` (API/security, 63 assertions), `npm run sms:check` (order storage + Melipayamak formatting with a stubbed provider, 21 assertions) and `npm run netlify:check` (bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API, 23 assertions).
 
 The panel is fully closed while these variables are missing: `/api/admin/session` reports `configured: false`, the UI shows the exact variables to set, and every login attempt returns `503`. There is no setup screen and no default password to guess.
 
@@ -73,7 +73,7 @@ The panel is fully closed while these variables are missing: `/api/admin/session
 - Every session is recorded server-side by id, so **logout and revocation take effect immediately** instead of trusting a still-valid cookie. Settings also offers “sign out all devices”.
 - Failed logins are throttled per IP and per email (12 / 6 attempts per 15 minutes, then a 15-minute lock with `Retry-After`); successful logins clear the counters.
 - Every state-changing request must be same-origin (`Origin` / `Sec-Fetch-Site`), which blocks cross-site form posts (CSRF).
-- Uploads are re-typed from their magic bytes (never from the declared `Content-Type`), renamed to random hex names, capped at 6 MB, restricted to JPEG/PNG/WebP/AVIF/GIF, and served with `nosniff` plus `Content-Security-Policy: default-src 'none'; sandbox`.
+- Uploads are re-typed from their magic bytes (never from the declared `Content-Type`), renamed to random hex names, capped at 4 MB, restricted to JPEG/PNG/WebP/AVIF/GIF, and served with `nosniff` plus `Content-Security-Policy: default-src 'none'; sandbox`.
 - Only the public read-only `/api/content` and `/media/*` endpoints are reachable without a session. The old `/api/admin/setup` and `/api/admin/admins` routes were removed.
 - Panel-managed accounts never leave the server as hashes: `scrypt$…` strings are stripped from every response, one-time passwords are returned once to the creating owner, and the admin state only exposes `{id, email, name, role, active, source, mustChangePassword, createdAt, lastLoginAt}`. The last active owner is protected against demotion/deletion, and changing a role or password revokes the affected sessions.
 - Responses are `no-store`; the API answers with `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, COOP/CORP and a restrictive `Permissions-Policy`.
@@ -82,17 +82,58 @@ The panel is fully closed while these variables are missing: `/api/admin/session
 
 **Self-hosted Node** (`npm run build && npm start`): data lives in `data/` on disk (git-ignored). Set the variables in the process environment or in a local `.env` file (loaded by `server/env.mjs` without overriding real environment variables).
 
-**Netlify**: `netlify.toml` builds `dist/`, publishes it, and rewrites `/api/*` and `/media/*` to `netlify/functions/admin.mjs`. That function reuses the same handler through `server/web-adapter.mjs` and stores content, activity and uploads in **Netlify Blobs** (`server/storage-blobs.mjs`). Add the environment variables above under *Site configuration → Environment variables* (they are server-side only; never use a `VITE_` prefix). Blobs is available on all Netlify plans.
+**Netlify** — the repository is already configured; connect it to a Netlify site and set the environment variables:
 
-`netlify.toml` also adds a strict CSP for the public site (`script-src 'self' 'wasm-unsafe-eval'` for the particle scene) plus HSTS and frame protections.
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` (from `netlify.toml`) |
+| Publish directory | `dist` |
+| Functions directory | `netlify/functions` |
+| Node version | `22` (`netlify.toml` + `.nvmrc`) |
+
+Required environment variables (Site configuration → Environment variables, scope **Functions**):
+
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (or `ADMIN_PASSWORD`), `ADMIN_SESSION_SECRET` — the owner account. Use `npm run admin:hash -- "passphrase"`; never commit the hash.
+- `ORDER_MANAGER_PHONE`, `MELIPAYAMAK_USERNAME`, `MELIPAYAMAK_API_KEY` (or `MELIPAYAMAK_PASSWORD`), `MELIPAYAMAK_FROM` — SMS notifications. Missing values do not break the site: orders are stored and queued.
+
+Optional: `ADMIN_NAME`, `ADMIN_SESSION_HOURS` (1–72, default 8), `ADMIN_TEAM` (JSON array of extra env-level editors/viewers), `ADMIN_BLOB_STORE` (default `cahen-admin`), `ADMIN_COOKIE_SECURE`, `TRUST_PROXY`.
+
+How the deployment is wired:
+
+- `[[redirects]]` send `/api/*` and `/media/*` to `netlify/functions/admin.mjs` with status `200` and `force = true`, before the SPA fallback (`/*` → `/index.html`). `/shenataisoni` also falls back to the SPA shell.
+- The function reuses the exact handlers from `server/` through `server/web-adapter.mjs`; there is no second API implementation to drift.
+- State (content, sessions, orders, uploads) lives in **Netlify Blobs** (`server/storage-blobs.mjs`). Netlify injects the Blobs context automatically inside functions; the client is lazy so a missing context returns a clean `503 storage_unavailable` instead of crashing the deploy.
+- Deploy previews and branch deploys use `<store>-preview` automatically (`CONTEXT` is `deploy-preview`/`branch-deploy`), so preview edits and test orders never touch production content.
+- `netlify/functions/retry-orders.mjs` is a scheduled function (`@hourly`) that re-sends orders left in `pending`/`failed`, for example when SMS settings were added after the fact. It is free of side effects when the queue is empty.
+- SMS parts are sent after the HTTP response using the function's `waitUntil` context, so the visitor never waits on Melipayamak and the request stays well inside the function and rewrite timeouts. On the self-hosted server the same handler sends synchronously.
+- Uploads are capped at 4 MB because Netlify buffers at most 6 MB per request and base64-encodes binary bodies (+33%).
+- Responses from the function set their own security headers (Netlify header rules only apply to static files): `no-store` for the API, `nosniff`/CSP sandbox for media, HSTS and frame protections for HTML.
+
+After the first deploy:
+
+1. Open `https://<site>/shenataisoni` and sign in with `ADMIN_EMAIL` and the password behind `ADMIN_PASSWORD_HASH`.
+2. Save a text change and reload the public page to confirm Blobs writes work.
+3. Submit the collaboration form once and check the order appears under *سفارش‌ها* with SMS status `sent` (or `pending` if SMS variables are not set yet; the hourly sweep will retry).
+4. Add a custom domain under Domain management; session cookies are `Secure` on HTTPS automatically.
+
+Troubleshooting:
+
+- `admin_not_configured` — `ADMIN_EMAIL` / password / `ADMIN_SESSION_SECRET` are missing or rejected at boot; open `/api/admin/session` to see the exact `issues` list.
+- `storage_unavailable` — the function cannot reach Netlify Blobs. Confirm the site has Blobs enabled (all plans) and that the deploy is running as a Netlify Function, not a static preview.
+- Login appears to succeed but the panel is read-only — check the role (`viewer`), and remember that role changes revoke the affected sessions.
+- Orders stay `pending` — fill the four Melipayamak variables, redeploy, then use *ارسال دوباره* or wait for the hourly sweep.
+
+`netlify.toml` also sets a strict CSP for the public site (`script-src 'self' 'wasm-unsafe-eval'` for the particle scene), immutable caching for `/assets/*`, no-cache for `index.html`, and `noindex` for the control room.
 
 ### Verifying the security model
 
 ```bash
-npm run admin:check
+npm run admin:check   # API + security model
+npm run sms:check     # order storage + Melipayamak client
+npm run netlify:check # function bundling + Blobs-backed routes
 ```
 
-This spins up the API on a random port against a temporary directory, generates throwaway hashes in memory, and asserts the behaviour described above: origin checks, generic credential errors, cookie flags, tampered and revoked sessions, role limits, removed legacy routes, upload re-typing, path traversal, throttling and the serverless adapter.
+The first two spin up the API on a random port against a temporary directory with throwaway credentials; the third bundles both functions with esbuild and runs them against a mock Netlify Blobs edge API. Together they cover origin checks, generic credential errors, cookie flags, tampered and revoked sessions, role limits, upload re-typing, path traversal, throttling, order queuing, SMS formatting, SPA/API routing and storage-outage behaviour.
 
 ### Notes
 

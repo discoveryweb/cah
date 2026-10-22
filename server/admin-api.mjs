@@ -14,7 +14,9 @@ import { createFsStorage } from "./storage-fs.mjs";
 
 const SESSION_COOKIE = "cahen_admin";
 const MAX_JSON_BYTES = 1024 * 1024;
-const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+// Netlify buffers at most 6 MB per request and base64-encodes binary bodies
+// (+33%), so 4 MB is the largest upload that reliably reaches the function.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_BLOCK_MS = 15 * 60 * 1000;
 const IP_LOGIN_LIMIT = 12;
@@ -50,6 +52,7 @@ const applySecurityHeaders = (response) => {
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   response.setHeader("Vary", "Origin, Cookie");
 };
 
@@ -65,6 +68,21 @@ const fail = (response, error) => {
   if (error instanceof ApiError) {
     for (const [key, value] of Object.entries(error.headers)) response.setHeader(key, value);
     json(response, error.status, { ok: false, code: error.code, message: error.message });
+    return;
+  }
+  const name = String(error?.name ?? "");
+  if (
+    name === "MissingBlobsEnvironmentError" ||
+    name === "BlobsInternalError" ||
+    name === "BlobsConsistencyError" ||
+    name === "InvalidBlobsRegionError"
+  ) {
+    console.error("[admin-api] storage", name);
+    json(response, 503, {
+      ok: false,
+      code: "storage_unavailable",
+      message: "دسترسی به فضای ذخیره‌سازی پنل ممکن نشد. تنظیمات Netlify Blobs را بررسی کنید.",
+    });
     return;
   }
   console.error("[admin-api]", error);
@@ -264,7 +282,17 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
   };
 
   async function readStore() {
-    const stored = await activeStorage.readStore();
+    let stored;
+    try {
+      stored = await activeStorage.readStore();
+    } catch (error) {
+      console.error("[admin-api] storage read", error?.name ?? "unknown");
+      throw new ApiError(
+        503,
+        "storage_unavailable",
+        "دسترسی به فضای ذخیره‌سازی پنل ممکن نشد. تنظیمات Netlify Blobs را بررسی کنید."
+      );
+    }
     if (!isPlainObject(stored)) return emptyStore();
     const store = { ...emptyStore(), ...stored };
     if (!isPlainObject(store.lastLogins)) store.lastLogins = {};
@@ -530,7 +558,22 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
   }
 
   async function handleSession(request, response, config) {
-    const store = await readStore();
+    let store;
+    try {
+      store = await readStore();
+    } catch {
+      // A broken storage backend must not look like a network failure: report
+      // it as setup work that still needs doing.
+      json(response, 200, {
+        ok: true,
+        configured: false,
+        issues: ["دسترسی به فضای ذخیره‌سازی پنل ممکن نشد."],
+        sessionHours: Math.round(config.sessionTtlMs / 3_600_000),
+        admin: null,
+        expiresAt: null,
+      });
+      return;
+    }
     const session = await getSession(request, config, store);
     json(response, 200, {
       ok: true,
@@ -691,7 +734,15 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
         if (method !== "GET" && method !== "HEAD") {
           throw new ApiError(405, "method_not_allowed", "این روش پشتیبانی نمی‌شود.");
         }
-        const store = await readStore();
+        let store;
+        try {
+          store = await readStore();
+        } catch {
+          // The public site has built-in defaults; a storage outage should show
+          // those instead of an error page.
+          json(response, 200, { ok: true, content: null, updatedAt: null });
+          return true;
+        }
         json(response, 200, {
           ok: true,
           content: store.content,
@@ -718,19 +769,24 @@ export function createAdminApi({ root = process.cwd(), storage, env = process.en
       }
 
       if (pathname === "/api/admin/logout" && method === "POST") {
+        // Clearing the cookie must succeed even if storage is unavailable.
+        clearSessionCookie(request, response, config);
         if (config.ready) {
-          const store = await readStore();
-          const token = parseCookies(headerValue(request, "cookie")).get(SESSION_COOKIE);
-          const payload = unsign(config, token);
-          if (payload?.sid) {
-            const revokeAll = url.searchParams.get("all") === "1";
-            store.sessions = (store.sessions || []).filter((entry) =>
-              revokeAll ? entry.sub !== payload.sub : entry.sid !== payload.sid
-            );
-            await writeStore(store);
+          try {
+            const store = await readStore();
+            const token = parseCookies(headerValue(request, "cookie")).get(SESSION_COOKIE);
+            const payload = unsign(config, token);
+            if (payload?.sid) {
+              const revokeAll = url.searchParams.get("all") === "1";
+              store.sessions = (store.sessions || []).filter((entry) =>
+                revokeAll ? entry.sub !== payload.sub : entry.sid !== payload.sid
+              );
+              await writeStore(store);
+            }
+          } catch {
+            // Best effort: the cookie is already gone.
           }
         }
-        clearSessionCookie(request, response, config);
         json(response, 200, { ok: true });
         return true;
       }

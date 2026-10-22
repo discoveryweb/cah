@@ -2,6 +2,32 @@ import { getStore } from "@netlify/blobs";
 
 const STORE_KEY = "admin.json";
 const MEDIA_PREFIX = "media/";
+const PREVIEW_CONTEXTS = new Set(["deploy-preview", "branch-deploy"]);
+
+/**
+ * Deploy previews and branch deploys share a site with production, and Blobs
+ * stores are site-wide. Suffixing the store name keeps preview edits and test
+ * orders away from the live content.
+ */
+export const resolveStoreName = (env = process.env, explicit) => {
+  const base = explicit || env.ADMIN_BLOB_STORE || "cahen-admin";
+  return PREVIEW_CONTEXTS.has(env.CONTEXT) ? `${base}-preview` : base;
+};
+
+/**
+ * Strong consistency needs the uncached edge URL that Netlify injects into
+ * NETLIFY_BLOBS_CONTEXT. Without it the client throws, so fall back to the
+ * default model instead of failing every request.
+ */
+const hasUncachedEdge = (env = process.env) => {
+  const raw = env.NETLIFY_BLOBS_CONTEXT;
+  if (!raw) return false;
+  try {
+    return Boolean(JSON.parse(Buffer.from(raw, "base64").toString("utf8")).uncachedEdgeURL);
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Netlify Blobs storage for the serverless deployment. Content, media and the
@@ -15,8 +41,8 @@ export function createBlobsStorage({ storeName, client } = {}) {
   const getClient = () => {
     if (!store) {
       store = getStore({
-        name: storeName || process.env.ADMIN_BLOB_STORE || "cahen-admin",
-        consistency: "strong",
+        name: resolveStoreName(process.env, storeName),
+        consistency: hasUncachedEdge() ? "strong" : "eventual",
       });
     }
     return store;

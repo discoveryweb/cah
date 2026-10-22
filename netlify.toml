@@ -1,14 +1,31 @@
+# Netlify configuration for the CAHEN studio site.
+# Docs: https://docs.netlify.com/build/configure-builds/file-based-configuration/
+#
+# The site is a static Vite build plus two serverless functions:
+#   admin         – /api/* and /media/* (content, orders, uploads, sessions)
+#   retry-orders  – hourly sweep that re-sends queued SMS notifications
+#
+# Everything stateful lives in Netlify Blobs (ADMIN_BLOB_STORE, default
+# "cahen-admin"), so deploys never overwrite content, orders or uploads.
+
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
+
+[build.environment]
+  # Vite 7 needs Node 22.12+ and the functions runtime follows the build
+  # runtime unless AWS_LAMBDA_JS_RUNTIME overrides it.
+  NODE_VERSION = "22"
 
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# The admin API and uploaded media are served by one serverless function that
-# uses Netlify Blobs for storage. Credentials live in the site's environment
-# variables and never reach the browser bundle.
+# --- API and uploaded media -------------------------------------------------
+# Both prefixes are rewrites (status 200) to one function. The function receives
+# the rewritten URL and `normaliseFunctionPath` maps it back to /api/... or
+# /media/... . `force` keeps these rules ahead of any static file with the same
+# name.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/admin/api/:splat"
@@ -21,17 +38,29 @@
   status = 200
   force = true
 
-# Single-page app routes, including the control room.
+# --- Single-page app --------------------------------------------------------
+# The control room lives at its own path; everything else falls back to the
+# Vite entry document. Static assets are not shadowed by these rules.
 [[redirects]]
   from = "/shenataisoni"
   to = "/index.html"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/shenataisoni/*"
+  to = "/index.html"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# --- Headers for static responses ------------------------------------------
+# Netlify does not apply these to function responses; the function sets its own
+# security headers in server/admin-api.mjs.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -43,13 +72,30 @@
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
+# Vite fingerprints every asset in /assets, so they are safe to cache for a year.
 [[headers]]
-  for = "/api/*"
-  [headers.values]
-    Cache-Control = "no-store, max-age=0"
-
-[[headers]]
-  for = "/media/*"
+  for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-    X-Content-Type-Options = "nosniff"
+
+# The HTML shell must be revalidated so new deploys are picked up immediately.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/shenataisoni"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/favicon.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

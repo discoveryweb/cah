@@ -11,7 +11,9 @@
     "start": "node server.mjs",
     "admin:hash": "node scripts/hash-password.mjs",
     "admin:check": "node scripts/check-admin.mjs",
-    "sms:check": "node scripts/check-sms.mjs"
+    "sms:check": "node scripts/check-sms.mjs",
+    "netlify:check": "node scripts/check-netlify.mjs",
+    "verify": "npm run typecheck && npm run admin:check && npm run sms:check && npm run netlify:check"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",
@@ -34,6 +36,7 @@
     "@types/react-dom": "19.2.3",
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "5.1.1",
+    "esbuild": "^0.28.2",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.3.7"
