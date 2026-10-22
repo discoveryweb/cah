@@ -190,19 +190,11 @@
   }
 
   /* Persian numerals inside technical rows: tabular, never monospaced. */
-  .studio__stat-value,
   .project__metrics strong {
     font-family: var(--font-sans);
+    font-weight: 520;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0;
-  }
-
-  .studio__stat-value {
-    font-weight: 580;
-  }
-
-  .project__metrics strong {
-    font-weight: 520;
   }
 
   /* Serif italics have no Persian face — emphasis becomes weight + rule. */

@@ -1,12 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useCallback, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowUpLeft, MoveUpRight } from "lucide-react";
-import { CONTACT, PRINCIPLES, STATS } from "../data";
+import { CONTACT, PRINCIPLES } from "../data";
 import { Magnetic, Marquee, Numeral, Reveal, SectionHead } from "./ui";
 
 const STUDIO_FACTS = [
@@ -15,94 +9,6 @@ const STUDIO_FACTS = [
   { label: "موقعیت", value: "تهران", latin: "TEHRAN" },
   { label: "زبان کار", value: "فارسی / انگلیسی", latin: "LANGUAGES" },
 ] as const;
-
-const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
-
-const toPersianDigits = (value: string) => value.replace(/[0-9]/g, (digit) => PERSIAN_DIGITS[Number(digit)]);
-const toLatinDigits = (value: string) =>
-  value.replace(/[۰-۹]/g, (digit) => String(PERSIAN_DIGITS.indexOf(digit)));
-
-/** Tehran local time — the studio keeps its own clock. */
-function useTehranClock() {
-  const [time, setTime] = useState<string | null>(null);
-
-  useEffect(() => {
-    const formatter = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Tehran",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    const tick = () => setTime(toPersianDigits(formatter.format(new Date())));
-    tick();
-    const id = window.setInterval(tick, 20_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  return time;
-}
-
-function useInView<T extends HTMLElement>(threshold = 0.25, rootMargin = "180px 0px") {
-  const ref = useRef<T | null>(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || inView) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold, rootMargin }
-    );
-    observer.observe(element);
-    const safety = window.setTimeout(() => setInView(true), 7000);
-    return () => {
-      observer.disconnect();
-      window.clearTimeout(safety);
-    };
-  }, [inView, threshold]);
-
-  return { ref, inView };
-}
-
-function useCountUp(target: number, active: boolean, delay = 0, duration = 1500) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (!active) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(target);
-      return;
-    }
-    let frame = 0;
-    let timer = 0;
-    const run = () => {
-      const start = performance.now();
-      const step = (now: number) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setValue(Math.round(target * eased));
-        if (progress < 1) frame = window.requestAnimationFrame(step);
-      };
-      frame = window.requestAnimationFrame(step);
-    };
-    timer = window.setTimeout(run, delay);
-    return () => {
-      window.clearTimeout(timer);
-      window.cancelAnimationFrame(frame);
-    };
-  }, [active, delay, duration, target]);
-
-  return value;
-}
 
 function StudioSeal() {
   return (
@@ -130,43 +36,7 @@ function StudioSeal() {
   );
 }
 
-function StatCell({
-  stat,
-  index,
-  active,
-}: {
-  stat: (typeof STATS)[number];
-  index: number;
-  active: boolean;
-}) {
-  const latin = toLatinDigits(stat.value);
-  const numeric = /^\d+$/.test(latin) ? Number(latin) : null;
-  const pad = stat.value.length;
-  const counted = useCountUp(numeric ?? 0, active && numeric !== null, index * 110);
-  // Before the band is on screen the real figure is shown, so no-JS and crawlers
-  // still read the published number; the count-up only runs once it approaches.
-  const display = numeric === null ? stat.value : String(active ? counted : numeric).padStart(pad, "0");
-  const shown = numeric === null ? stat.value : toPersianDigits(display);
-
-  return (
-    <div className="studio__stat" data-numeric={numeric !== null}>
-      <span className="studio__stat-index" dir="ltr">
-        {String(index + 1).padStart(2, "0")}
-      </span>
-      <strong className="studio__stat-value" aria-label={stat.value}>
-        {shown}
-      </strong>
-      <span className="studio__stat-label">{stat.label}</span>
-      <span className="studio__stat-latin" dir="ltr">
-        {stat.latin}
-      </span>
-    </div>
-  );
-}
-
 function StudioLedger() {
-  const clock = useTehranClock();
-
   return (
     <aside className="studio__sheet" aria-label="شناسنامهٔ استودیو">
       <header className="studio__sheet-head">
@@ -196,18 +66,6 @@ function StudioLedger() {
         </dl>
       </div>
 
-      <footer className="studio__sheet-foot">
-        <span className="studio__avail">
-          <i aria-hidden="true" />
-          ظرفیت همکاری — زمستان ۱۴۰۴
-        </span>
-        <span className="studio__clock">
-          <span className="studio__clock-city">تهران</span>
-          <span className="studio__clock-time" dir="ltr" aria-live="off">
-            {clock ?? "—:—"}
-          </span>
-        </span>
-      </footer>
     </aside>
   );
 }
@@ -273,8 +131,6 @@ function StudioTenets() {
 }
 
 export function Studio() {
-  const { ref: statsRef, inView: statsInView } = useInView<HTMLDivElement>(0.2);
-
   return (
     <section
       id="studio"
@@ -351,20 +207,6 @@ export function Studio() {
         </div>
 
         <StudioTenets />
-
-        <div className="studio__stats-wrap" ref={statsRef}>
-          <Reveal className="studio__stats-head" as="header">
-            <span className="studio__stats-label" dir="ltr">
-              THE LEDGER
-            </span>
-            <p>استودیو در اعداد</p>
-          </Reveal>
-          <div className="studio__stats" data-active={statsInView}>
-            {STATS.map((stat, index) => (
-              <StatCell key={stat.latin} stat={stat} index={index} active={statsInView} />
-            ))}
-          </div>
-        </div>
 
         <Reveal className="studio__cta" delay={80}>
           <p>

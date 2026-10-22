@@ -272,6 +272,48 @@
     letter-spacing: -0.032em;
   }
 
+  /* =========================================================
+     Gravity letters — a headline you can cut and drop
+     ========================================================= */
+  .gravity-letters {
+    position: relative;
+    width: 100%;
+  }
+
+  /* Typeset word, shown until the grains exist (and without JavaScript). */
+  .gravity-letters__fallback {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: clamp(2.6rem, 12vw, 10rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    white-space: nowrap;
+    transition: opacity 500ms var(--ease);
+    pointer-events: none;
+  }
+
+  .gravity-letters[data-ready="true"] .gravity-letters__fallback {
+    opacity: 0;
+  }
+
+  .gravity-letters__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: pan-y;
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .gravity-letters__canvas {
+      cursor: crosshair;
+    }
+  }
+
   .display--xl {
     font-size: clamp(3.1rem, 9.4vw, 9rem);
     font-weight: 760;

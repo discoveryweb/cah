@@ -281,44 +281,33 @@
     opacity: 0.45;
   }
 
-  .footer__clock {
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.08em;
-  }
-
-  .footer__clock-note {
-    margin-top: 3px;
-    color: rgba(236, 233, 226, 0.4);
-    font-family: var(--font-mono);
-    font-size: 8.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
+  /* The wordmark is grain sand now — see GravityLetters. */
   .footer__wordmark {
     position: relative;
     margin: 0;
-    padding-top: 10px;
+    padding-top: 12px;
     border-top: 1px solid rgba(190, 176, 255, 0.14);
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-size: clamp(4.2rem, 18.5vw, 17.5rem);
-    font-weight: 600;
-    letter-spacing: -0.045em;
-    line-height: 0.8;
-    text-align: center;
-    white-space: nowrap;
-    user-select: none;
-    pointer-events: none;
     overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
-  .footer__wordmark span {
-    display: inline-block;
-    transition: color 600ms ease;
+  .footer__wordmark::before {
+    position: absolute;
+    inset: -30% 10% -40%;
+    background: radial-gradient(ellipse at 50% 60%, rgba(129, 84, 246, 0.28), transparent 66%);
+    content: "";
+    filter: blur(50px);
+    pointer-events: none;
+  }
+
+  .footer__gravity {
+    position: relative;
+    height: clamp(96px, 16vw, 248px);
+  }
+
+  .footer__gravity .gravity-letters__canvas {
+    cursor: crosshair;
   }
 
   .footer__bottom {
@@ -396,8 +385,8 @@
       gap: 26px;
     }
 
-    .footer__wordmark {
-      font-size: clamp(3.6rem, 20vw, 6rem);
+    .footer__gravity {
+      height: clamp(84px, 24vw, 150px);
     }
 
     .footer__bottom {
@@ -449,10 +438,6 @@
     cursor: default;
   }
 
-  .footer__clock-note {
-    text-align: right;
-  }
-
   .footer__link--static:hover {
     transform: none;
     color: rgba(236, 233, 226, 0.7);
@@ -469,18 +454,8 @@
     width: 18px;
   }
 
-  .footer__clock {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-
   .footer__brand .brand {
     align-self: flex-start;
-  }
-
-  .footer__wordmark {
-    letter-spacing: -0.06em;
   }
 
   @media (min-width: 900px) {

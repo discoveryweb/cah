@@ -138,24 +138,6 @@
     margin-inline-start: auto;
   }
 
-  .header__clock {
-    display: none;
-    align-items: center;
-    gap: 7px;
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.12em;
-    opacity: 0.5;
-  }
-
-  .header__clock i {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--vermilion);
-    box-shadow: 0 0 0 3px rgba(129, 84, 246, 0.22);
-  }
-
   .header__cta {
     display: none;
     align-items: center;
@@ -787,7 +769,6 @@
      Responsive
      ========================================================= */
   @media (min-width: 900px) {
-    .header__clock,
     .header__cta {
       display: inline-flex;
     }

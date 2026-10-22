@@ -15,7 +15,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
         <div className="hero__meta">
           <span className="hero__status">
             <i aria-hidden="true" />
-            پذیرش پروژه برای زمستان ۱۴۰۴
+            پذیرش پروژه — همیشه باز
           </span>
           <div className="hero__meta-right">
             <span className="label label--plain" dir="ltr">

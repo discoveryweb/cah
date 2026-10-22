@@ -15,7 +15,7 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
         <Reveal className="cta__top" as="header">
           <span className="cta__avail">
             <i aria-hidden="true" />
-            ظرفیت محدود برای همکاری در فصل جدید
+            همیشه پذیرای همکاری‌های تازه
           </span>
           <span className="cta__index" dir="ltr">
             <Numeral value={6} className="numeral--section" />

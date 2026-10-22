@@ -5,7 +5,6 @@ import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
 import { Brand, Numeral } from "./ui";
-import { TehranClock } from "./SiteChrome";
 
 const SEARCH_INDEX = [
   { keys: ["کار", "پروژه", "نمونه", "soma", "orbit", "aura", "پرتفولیو"], id: "work" },
@@ -157,7 +156,6 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
           </nav>
 
           <div className="header__side">
-            <TehranClock className="header__clock" />
             <button
               type="button"
               className="header__search"
@@ -281,7 +279,6 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
                   <i aria-hidden="true" />
                   TEHRAN
                 </span>
-                <TehranClock short />
               </div>
 
               <button

@@ -100,36 +100,3 @@ export function ChapterRail() {
     </nav>
   );
 }
-
-const TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Tehran",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-/** Tehran local time, refreshed on the minute. */
-export function TehranClock({ className, short = false }: { className?: string; short?: boolean }) {
-  const [time, setTime] = useState(() => TIME_FORMAT.format(new Date()));
-
-  useEffect(() => {
-    let timer = 0;
-
-    const schedule = () => {
-      const now = new Date();
-      setTime(TIME_FORMAT.format(now));
-      timer = window.setTimeout(schedule, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()));
-    };
-
-    schedule();
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  return (
-    <span className={className}>
-      {!short && <i aria-hidden="true" />}
-      <span dir="ltr">{time}</span>
-      <span className="sr-only">به وقت تهران</span>
-    </span>
-  );
-}

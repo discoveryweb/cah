@@ -1,7 +1,7 @@
 import { ArrowUp, ArrowUpLeft } from "lucide-react";
 import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
 import { Brand } from "./ui";
-import { TehranClock } from "./SiteChrome";
+import { GravityLetters } from "./GravityLetters";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -19,12 +19,6 @@ export function Footer() {
               استودیوی مستقل طراحی و توسعهٔ دیجیتال. برندها و محصولاتی می‌سازیم که در اولین نگاه،
               خودشان را نشان می‌دهند.
             </p>
-            <div>
-              <TehranClock className="footer__clock" short />
-              <p className="footer__clock-note">
-                TEHRAN — LOCAL TIME / OPEN FOR WORK
-              </p>
-            </div>
           </div>
 
           <nav aria-label="پیوندهای پابرگ">
@@ -78,8 +72,29 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="footer__wordmark" aria-hidden="true">
-          <span dir="ltr">CAHEN</span>
+        <div
+          className="footer__wordmark"
+          title="بکشید تا حروف بپاشند — کلیک کنید تا فرو بریزند"
+        >
+          <GravityLetters
+            text="CAHEN"
+            className="footer__gravity"
+            fontSize={340}
+            fontWeight={600}
+            fontFamily='"JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace'
+            colors={["#f6f4ff", "#b39dff"]}
+            grainSize={4}
+            grainScale={0.86}
+            gravity={1}
+            cut
+            cutWidth={16}
+            throwForce={1.05}
+            clickToCollapse
+            collapseSpeed={1500}
+            holdTime={1.1}
+            rebuild="sweep"
+            rebuildDuration={0.85}
+          />
         </div>
 
         <div className="footer__bottom">
