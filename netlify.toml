@@ -78,6 +78,14 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# The hero film is not fingerprinted, so it gets a short, revalidated cache:
+# fast repeat visits, and a replaced film is live within minutes.
+[[headers]]
+  for = "/film/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+    Accept-Ranges = "bytes"
+
 # The HTML shell must be revalidated so new deploys are picked up immediately.
 [[headers]]
   for = "/index.html"

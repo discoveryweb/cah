@@ -11,6 +11,43 @@ npm run dev
 
 Create a production build with `npm run build`; run the TypeScript check on its own with `npm run typecheck`.
 
+## The hero film
+
+The first screen is a full-bleed film, not a still. It is pinned while the
+first ~30% of a viewport scrolls: the clip drifts up, pushes in slightly and the
+copy fades out, then the page releases into the next section. All of that runs on
+a single `requestAnimationFrame` loop (`src/hooks/useHeroFilm.ts`) that reads the
+scroll position once per frame and eases it with a frame-rate independent filter,
+so it behaves the same at 60 Hz and 144 Hz and never triggers a React re-render.
+
+Bundled defaults live in `public/film/`. Replace them with the real clip:
+
+```bash
+npm run film:video -- path/to/clip.mp4                 # 16:9 cover crop, no audio
+npm run film:video -- clip.mp4 --duration 12 --fps 30  # trim to 12s
+npm run film:video -- clip.mov --fit contain           # letterbox instead of crop
+npm run film:placeholder                               # rebuild a branded stand-in
+```
+
+That writes `hero-1920.mp4` (desktop), `hero-1280.mp4` (≤900px screens),
+`hero-poster.jpg` (first paint, and the fallback when motion is off), and
+optionally `hero-scrub.mp4` (`--scrub`, every frame a keyframe).
+
+Deliberate choices, all visible in `src/components/Hero.tsx`:
+
+- Muted, `playsInline`, `loop`, `preload="auto"` — the film is the LCP element, so
+  the poster is `fetchPriority="high"` and paints before a single video byte.
+- Phones never download the 1920 file; the `src` is chosen by media query.
+- `prefers-reduced-motion`, save-data or a ≤2-core device renders the poster only
+  and skips the video element entirely.
+- Playback pauses off-screen and in hidden tabs; the scroll transform keeps
+  working (it is transform/opacity only, no layout).
+- `FILM.mode = "scrub"` in `Hero.tsx` switches from a looping clip to one whose
+  timeline follows the scroll position (needs `--scrub`). Ambient is the default
+  because it looks smoother on mid-range phones.
+- Audio is stripped at encode time: an audible hero would need a click first, and
+  an unbounded video payload is the easiest way to ruin first paint.
+
 ## Content and visual identity
 
 - Page copy, navigation, services and selected projects are editable from the admin panel; the built-in defaults live in `src/content/defaults.ts`.

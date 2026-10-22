@@ -87,6 +87,10 @@ export interface SiteContent {
     lede: string;
     primaryCta: string;
     secondaryCta: string;
+    /**
+     * Legacy hero still. The hero is a full-bleed film now; the field stays in
+     * the content model so older saved documents keep validating.
+     */
     figure: {
       image: string;
       alt: string;

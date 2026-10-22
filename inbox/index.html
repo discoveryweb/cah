@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>صندوق ورودی — CAHEN</title>
+<style>
+  :root {
+    --bg: #0b0812;
+    --panel: #150f1f;
+    --line: rgba(184, 160, 255, .16);
+    --line-strong: rgba(184, 160, 255, .32);
+    --ink: #efeaf8;
+    --muted: #9d94b4;
+    --accent: #b9a4ff;
+    --accent-2: #7f5cff;
+    --ok: #7fe0b4;
+    --bad: #ff9b9b;
+    --radius: 22px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 520px at 82% -8%, rgba(127, 92, 255, .20), transparent 62%),
+      radial-gradient(760px 480px at 8% 6%, rgba(185, 164, 255, .10), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "Vazirmatn", "IRANSans", ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: min(920px, calc(100% - 2.5rem)); margin: 0 auto; padding: clamp(2.5rem, 6vw, 5rem) 0 4rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .38rem .85rem; border: 1px solid var(--line-strong); border-radius: 999px;
+    font-size: .78rem; letter-spacing: .02em; color: var(--accent);
+    background: rgba(185, 164, 255, .07);
+  }
+  .badge i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  h1 { font-size: clamp(1.9rem, 4.6vw, 3rem); line-height: 1.25; margin: 1.1rem 0 .55rem; font-weight: 600; letter-spacing: -.01em; }
+  h1 span { color: var(--accent); }
+  .lede { color: var(--muted); margin: 0 0 2rem; max-width: 46ch; font-size: 1rem; }
+
+  .drop {
+    position: relative; display: grid; place-items: center; gap: .35rem; text-align: center;
+    padding: clamp(2rem, 5vw, 3.2rem) 1.5rem; border-radius: var(--radius);
+    border: 1px dashed var(--line-strong);
+    background: linear-gradient(160deg, rgba(185, 164, 255, .07), rgba(21, 15, 31, .7) 45%);
+    cursor: pointer; transition: border-color .25s, background .25s, transform .25s;
+  }
+  .drop:hover { border-color: var(--accent); background: linear-gradient(160deg, rgba(185, 164, 255, .12), rgba(21, 15, 31, .8) 45%); }
+  .drop.over { border-color: var(--accent); border-style: solid; transform: translateY(-2px); box-shadow: 0 20px 60px -30px rgba(127, 92, 255, .8); }
+  .drop svg { width: 42px; height: 42px; color: var(--accent); opacity: .9; }
+  .drop strong { font-weight: 600; font-size: 1.05rem; }
+  .drop .hint { color: var(--muted); font-size: .84rem; margin: 0; }
+  .drop .hint code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: .82em; color: var(--accent); opacity: .9; }
+
+  h2 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+  .section { margin-top: 2.6rem; }
+  .row-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .ghost {
+    appearance: none; border: 1px solid var(--line); background: rgba(255, 255, 255, .02);
+    color: var(--muted); font: inherit; font-size: .82rem; padding: .4rem .9rem;
+    border-radius: 999px; cursor: pointer; transition: color .2s, border-color .2s;
+  }
+  .ghost:hover { color: var(--ink); border-color: var(--line-strong); }
+
+  .card {
+    border: 1px solid var(--line); border-radius: 18px; background: rgba(21, 15, 31, .78);
+    padding: .95rem 1.1rem; margin-bottom: .7rem;
+  }
+  .file-row { display: flex; align-items: center; gap: .95rem; }
+  .file-thumb {
+    flex: 0 0 auto; width: 62px; height: 62px; border-radius: 12px; overflow: hidden;
+    background: linear-gradient(140deg, #241a35, #150f1f); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--accent); font-size: 1.15rem;
+  }
+  .file-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .file-main { flex: 1 1 auto; min-width: 0; }
+  .file-name { font-size: .95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right; }
+  .file-meta { color: var(--muted); font-size: .78rem; display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .15rem; }
+  .file-meta a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed rgba(185, 164, 255, .45); }
+  .file-meta a:hover { border-bottom-style: solid; }
+  .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; }
+  .file-actions { display: flex; gap: .4rem; flex: 0 0 auto; }
+  .icon-btn {
+    appearance: none; width: 34px; height: 34px; display: grid; place-items: center;
+    border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--muted);
+    cursor: pointer; transition: color .2s, border-color .2s, background .2s; text-decoration: none;
+  }
+  .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(185, 164, 255, .08); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  .bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, .07); overflow: hidden; margin-top: .55rem; }
+  .bar i { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .25s ease; }
+  .state { font-size: .78rem; color: var(--muted); }
+  .state.ok { color: var(--ok); }
+  .state.bad { color: var(--bad); }
+  .empty { color: var(--muted); font-size: .88rem; border: 1px dashed var(--line); border-radius: 18px; padding: 1.4rem; text-align: center; }
+
+  .frames { display: flex; gap: .4rem; margin-top: .7rem; overflow-x: auto; padding-bottom: .15rem; }
+  .frames img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex: 0 0 auto; }
+
+  footer { margin-top: 3rem; color: var(--muted); font-size: .78rem; border-top: 1px solid var(--line); padding-top: 1.1rem; }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge"><i></i>Arena · صندوق ورودی</span>
+  <h1>ویدیو را اینجا <span>رها کن</span></h1>
+  <p class="lede">فایل را بکش و رها کن یا انتخاب کن. آپلود تکه‌تکه انجام می‌شود، پس اتصال قطع‌شده از همان نقطه ادامه پیدا می‌کند.</p>
+
+  <section id="drop" class="drop" role="button" tabindex="0" aria-label="انتخاب فایل برای آپلود">
+    <input id="picker" type="file" multiple hidden
+           accept="video/*,image/*,audio/*,.pdf,.zip,.md,.txt,.json" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </svg>
+    <strong>انتخاب فایل</strong>
+    <p class="hint">ویدیو، تصویر، صدا یا PDF — هر فایل تا <code id="maxLabel">۲۰۰ مگابایت</code></p>
+  </section>
+
+  <section id="queueSection" class="section" hidden>
+    <div class="row-head"><h2>در حال ارسال</h2></div>
+    <div id="queue"></div>
+  </section>
+
+  <section class="section">
+    <div class="row-head">
+      <h2>فایل‌های رسیده</h2>
+      <button id="refresh" class="ghost" type="button">تازه‌سازی</button>
+    </div>
+    <div id="files"><div class="empty">هنوز فایلی نرسیده است.</div></div>
+  </section>
+
+  <footer>
+    فایل‌ها در پوشهٔ <code>inbox/uploads</code> همین پروژه ذخیره می‌شوند. پس از پایان آپلود، همین جا در گفتگو بنویس «آپلود شد».
+  </footer>
+</main>
+
+<script>
+(() => {
+  const CHUNK = 4 * 1024 * 1024;
+  const picker = document.getElementById("picker");
+  const drop = document.getElementById("drop");
+  const queue = document.getElementById("queue");
+  const queueSection = document.getElementById("queueSection");
+  const filesEl = document.getElementById("files");
+  const maxLabel = document.getElementById("maxLabel");
+
+  const nf = new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 });
+  const nfInt = new Intl.NumberFormat("fa-IR");
+  const size = (b) => {
+    if (!Number.isFinite(b)) return "—";
+    if (b < 1024) return nfInt.format(b) + " بایت";
+    if (b < 1048576) return nf.format(b / 1024) + " کیلوبایت";
+    if (b < 1073741824) return nf.format(b / 1048576) + " مگابایت";
+    return nf.format(b / 1073741824) + " گیگابایت";
+  };
+  const clock = (s) => {
+    if (!Number.isFinite(s)) return null;
+    const t = Math.round(s);
+    const m = Math.floor(t / 60);
+    const sec = String(t % 60).padStart(2, "0").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+    return nfInt.format(m) + ":" + sec;
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function api(path, options) {
+    const res = await fetch(path, options);
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    if (!res.ok) {
+      const err = new Error(data.error || "HTTP " + res.status);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  }
+
+  const ERRORS = {
+    too_large: "حجم فایل بیش از حد مجاز است.",
+    unsupported_type: "این نوع فایل پذیرفته نمی‌شود.",
+    over_size: "حجم ارسال از اندازه اعلام‌شده بیشتر شد.",
+    offset_mismatch: "همگام‌سازی اصلاح شد.",
+    incomplete: "ارسال کامل نشد؛ دوباره تلاش کن.",
+    file_missing: "فایل روی سرور پیدا نشد.",
+    unknown_upload: "این ارسال منقضی شده است.",
+  };
+  const why = (err) => ERRORS[err?.data?.error] || "خطا در ارسال؛ دوباره تلاش کن.";
+
+  /* ---------------------------------------------------------------- upload */
+
+  const inflight = new Set();
+
+  function row(file) {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `
+      <div class="file-row">
+        <div class="file-thumb">${file.type.startsWith("video") ? "▶" : file.type.startsWith("image") ? "◧" : "▤"}</div>
+        <div class="file-main">
+          <div class="file-name"></div>
+          <div class="file-meta"><span class="size"></span><span class="dot"></span><span class="state">در حال آماده‌سازی…</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+      </div>`;
+    el.querySelector(".file-name").textContent = file.name;
+    el.querySelector(".size").textContent = size(file.size);
+    queue.appendChild(el);
+    queueSection.hidden = false;
+    return el;
+  }
+
+  async function send(file) {
+    const el = row(file);
+    const bar = el.querySelector(".bar i");
+    const state = el.querySelector(".state");
+    const setState = (text, tone) => {
+      state.textContent = text;
+      state.className = "state" + (tone ? " " + tone : "");
+    };
+    inflight.add(el);
+
+    try {
+      const init = await api("/api/new", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, type: file.type || "" }),
+      });
+
+      let offset = 0;
+      try {
+        const st = await api("/api/state/" + init.id);
+        offset = st.received || 0;
+        if (offset) setState("ادامه از " + nfInt.format(Math.round((offset / file.size) * 100)) + "٪");
+      } catch { /* new upload */ }
+
+      // A proxy in front of the app may cap request bodies; shrink the chunk and
+      // fall back to POST instead of failing the whole upload.
+      let chunk = CHUNK;
+      let method = "PUT";
+      while (offset < file.size) {
+        const end = Math.min(offset + chunk, file.size);
+        const blob = file.slice(offset, end);
+        let attempt = 0;
+        for (;;) {
+          try {
+            const res = await fetch("/api/chunk/" + init.id + "?offset=" + offset, {
+              method,
+              headers: { "content-type": "application/octet-stream" },
+              body: blob,
+            });
+            let data = {};
+            try { data = await res.json(); } catch { /* ignore */ }
+            if (res.status === 409 && typeof data.received === "number") { offset = data.received; break; }
+            if ((res.status === 413 || res.status === 400) && chunk > 512 * 1024) {
+              chunk = Math.floor(chunk / 2);
+              setState("تکه‌های کوچک‌تر…");
+              break;
+            }
+            if (!res.ok) {
+              const err = new Error(data.error || "HTTP " + res.status);
+              err.data = data;
+              throw err;
+            }
+            offset = typeof data.received === "number" ? data.received : end;
+            break;
+          } catch (err) {
+            if (err.data) throw err;
+            if (++attempt > 6) throw err;
+            if (attempt === 1) method = "POST";
+            if (attempt >= 2 && chunk > 512 * 1024) {
+              chunk = Math.floor(chunk / 2);
+              setState("تکه‌های کوچک‌تر…");
+              break;
+            }
+            setState("اتصال قطع شد؛ تلاش دوباره…");
+            await sleep(500 * attempt);
+          }
+        }
+        const pct = Math.min(100, Math.round((offset / file.size) * 100));
+        bar.style.width = pct + "%";
+        setState("در حال ارسال — " + nfInt.format(pct) + "٪");
+      }
+
+      setState("در حال بررسی فایل…");
+      bar.style.width = "100%";
+      const done = await api("/api/done/" + init.id, { method: "POST" });
+      const bits = [];
+      if (done.probe?.duration) bits.push(clock(done.probe.duration));
+      if (done.probe?.width) bits.push(nfInt.format(done.probe.width) + "×" + nfInt.format(done.probe.height));
+      setState("رسید" + (bits.length ? " · " + bits.join(" · ") : ""), "ok");
+      setTimeout(() => el.remove(), 1600);
+      if (!queue.children.length) queueSection.hidden = true;
+      loadFiles();
+    } catch (err) {
+      bar.style.width = "0%";
+      setState(why(err), "bad");
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "ghost";
+      retry.textContent = "تلاش دوباره";
+      retry.style.marginTop = ".5rem";
+      retry.addEventListener("click", () => { el.remove(); send(file); });
+      el.querySelector(".file-main").appendChild(retry);
+      if (!queue.children.length) queueSection.hidden = true;
+    } finally {
+      inflight.delete(el);
+    }
+  }
+
+  let active = 0;
+  const waiting = [];
+  function enqueue(file) {
+    waiting.push(file);
+    pump();
+  }
+  function pump() {
+    while (active < 2 && waiting.length) {
+      const f = waiting.shift();
+      active++;
+      send(f).finally(() => { active--; pump(); });
+    }
+  }
+
+  picker.addEventListener("change", () => {
+    [...picker.files].forEach(enqueue);
+    picker.value = "";
+  });
+  drop.addEventListener("click", () => picker.click());
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); picker.click(); }
+  });
+  ["dragenter", "dragover"].forEach((t) =>
+    drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "dragend"].forEach((t) =>
+    drop.addEventListener(t, () => drop.classList.remove("over")));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("over");
+    [...(e.dataTransfer?.files || [])].forEach(enqueue);
+  });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+  window.addEventListener("beforeunload", (e) => {
+    if (inflight.size) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  /* ------------------------------------------------------------------ list */
+
+  const ICONS = {
+    open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2m-8 0 1 12h8l1-12"/></svg>',
+  };
+
+  function item(meta) {
+    const el = document.createElement("div");
+    el.className = "card";
+
+    const bits = [size(meta.size)];
+    if (meta.probe?.duration) bits.push(clock(meta.probe.duration));
+    if (meta.probe?.width) bits.push(nfInt.format(meta.probe.width) + "×" + nfInt.format(meta.probe.height));
+    if (meta.probe?.codec) bits.push(meta.probe.codec.split(" ")[0]);
+    if (meta.proxy?.bytes) bits.push('<a href="/proxy/' + meta.id + '" target="_blank" rel="noopener">نسخهٔ سبک</a>');
+    if (!meta.complete) bits.push("ناقص — " + nfInt.format(Math.round((meta.received / meta.size) * 100)) + "٪");
+
+    el.innerHTML = `
+      <div class="file-row">
+        <div class="file-thumb">${meta.probe?.width ? "▶" : "▤"}</div>
+        <div class="file-main">
+          <div class="file-name"></div>
+          <div class="file-meta">${bits.map((b) => `<span>${b}</span>`).join('<span class="dot"></span>')}</div>
+        </div>
+        <div class="file-actions">
+          <a class="icon-btn" href="/files/${meta.id}" target="_blank" rel="noopener" title="باز کردن" aria-label="باز کردن">${ICONS.open}</a>
+          <button class="icon-btn" type="button" title="حذف" aria-label="حذف">${ICONS.trash}</button>
+        </div>
+      </div>`;
+    el.querySelector(".file-name").textContent = meta.name;
+    el.querySelector("a.icon-btn").title = meta.name;
+
+    if (meta.frames?.length) {
+      const strip = document.createElement("div");
+      strip.className = "frames";
+      meta.frames.forEach((f) => {
+        const img = document.createElement("img");
+        img.src = `/frames/${meta.id}/${f}`;
+        img.alt = "نمای " + f;
+        img.loading = "lazy";
+        strip.appendChild(img);
+      });
+      el.appendChild(strip);
+      const cover = el.querySelector(".file-thumb");
+      const first = document.createElement("img");
+      first.src = `/frames/${meta.id}/${meta.frames[0]}`;
+      first.alt = "";
+      cover.textContent = "";
+      cover.appendChild(first);
+    }
+
+    el.querySelector("button.icon-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        await api("/api/files/" + meta.id, { method: "DELETE" });
+        el.remove();
+        if (!filesEl.children.length) emptyState();
+      } catch {
+        btn.disabled = false;
+      }
+    });
+    return el;
+  }
+
+  function emptyState() {
+    filesEl.innerHTML = '<div class="empty">هنوز فایلی نرسیده است.</div>';
+  }
+
+  async function loadFiles() {
+    try {
+      const { items, maxBytes } = await api("/api/files");
+      if (maxBytes) maxLabel.textContent = size(maxBytes);
+      filesEl.textContent = "";
+      if (!items.length) return emptyState();
+      items.forEach((m) => filesEl.appendChild(item(m)));
+    } catch {
+      filesEl.innerHTML = '<div class="empty">فهرست فایل‌ها در دسترس نیست.</div>';
+    }
+  }
+
+  document.getElementById("refresh").addEventListener("click", loadFiles);
+  loadFiles();
+  setInterval(() => { if (!inflight.size) loadFiles(); }, 20000);
+})();
+</script>
+</body>
+</html>

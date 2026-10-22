@@ -13,6 +13,8 @@
     "admin:check": "node scripts/check-admin.mjs",
     "sms:check": "node scripts/check-sms.mjs",
     "netlify:check": "node scripts/check-netlify.mjs",
+    "film:video": "node scripts/hero-video.mjs",
+    "film:placeholder": "node scripts/hero-video.mjs --placeholder",
     "verify": "npm run typecheck && npm run admin:check && npm run sms:check && npm run netlify:check"
   },
   "dependencies": {

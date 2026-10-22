@@ -174,55 +174,6 @@ function HeroFields({ content, update, errors, disabled }: EditorProps) {
       </div>
 
       <div className="adivider" />
-
-      <span className="aeyebrow" dir="ltr">
-        HERO FIGURE
-      </span>
-      <div className="agrid agrid--2">
-        <ImagePicker
-          label="تصویر هیرو"
-          value={hero.figure.image}
-          onChange={(value) => update("hero.figure.image", value)}
-          alt={hero.figure.alt}
-          disabled={disabled}
-          aspect="4 / 5"
-        />
-        <div className="agrid">
-          <Field label="متن جایگزین تصویر" path="hero.figure.alt">
-            <TextArea
-              value={hero.figure.alt}
-              onChange={(value) => update("hero.figure.alt", value)}
-              rows={2}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="برچسب روی تصویر" path="hero.figure.index">
-            <TextInput
-              value={hero.figure.index}
-              onChange={(value) => update("hero.figure.index", value)}
-              ltr
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="برچسب گوشهٔ تصویر" path="hero.figure.tag">
-            <TextInput
-              value={hero.figure.tag}
-              onChange={(value) => update("hero.figure.tag", value)}
-              ltr
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="کپشن تصویر" path="hero.figure.caption">
-            <TextInput
-              value={hero.figure.caption}
-              onChange={(value) => update("hero.figure.caption", value)}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <div className="adivider" />
       <Field label="نوار متحرک هیرو" path="hero.ticker" hint="هر خط، یک عبارت در نوار متحرک است.">
         <StringList
           items={hero.ticker}

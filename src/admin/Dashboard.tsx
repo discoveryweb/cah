@@ -63,7 +63,7 @@ export function Dashboard({
 }: Props) {
   const published = content.work.items.filter((item) => item.published !== false);
   const drafts = content.work.items.length - published.length;
-  const missingAlt = [...published.map((item) => item.image), content.hero.figure.image, content.about.portrait.image].filter(
+  const missingAlt = [...published.map((item) => item.image), content.about.portrait.image].filter(
     (value) => !value
   ).length;
   const queuedOrders = pendingOrders;

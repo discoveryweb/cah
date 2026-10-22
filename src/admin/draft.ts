@@ -59,7 +59,6 @@ export function validateContent(content: SiteContent): Record<string, string> {
   required("meta.seoTitle", content.meta.seoTitle, "عنوان سئو");
   required("hero.lines.0", content.hero.lines[0], "خط اول تیتر");
   required("hero.lines.1", content.hero.lines[1], "خط دوم تیتر");
-  required("hero.figure.image", content.hero.figure.image, "تصویر هیرو");
   required("about.title", content.about.title, "عنوان درباره");
 
   if (!EMAIL.test(content.contact.email)) errors["contact.email"] = "ایمیل معتبر نیست.";
