@@ -10,7 +10,8 @@ const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" 
   count: Math.round(7600 * BUDGET_SCALE),
   size: 2.3,
   sizeVariance: 0.28,
-  color: "#efe8d8",
+  // No colour override: the mark keeps its chrome, shifted to the site violet by CSS.
+  color: "",
   background: "",
   scale: 3.55,
   cameraDistance: 4.1,

@@ -237,6 +237,34 @@
     letter-spacing: 0.04em;
   }
 
+  /* Roman numerals: the site's section counter, set in the editorial serif. */
+  .numeral {
+    display: inline-flex;
+    align-items: baseline;
+    font-family: var(--font-serif);
+    font-style: normal;
+    font-weight: 400;
+    font-variant-numeric: normal;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    color: inherit;
+  }
+
+  .numeral .numeral__suffix {
+    margin-inline-start: 0.18em;
+    font-family: var(--font-mono);
+    font-size: 0.62em;
+    letter-spacing: 0.12em;
+    opacity: 0.6;
+  }
+
+  .numeral--section {
+    color: var(--accent, var(--vermilion));
+    font-size: 1.28em;
+    letter-spacing: 0.14em;
+    transform: translateY(0.04em);
+  }
+
   .display {
     font-size: clamp(2.6rem, 6.4vw, 6.2rem);
     font-weight: 730;
@@ -543,7 +571,7 @@
   .preloader__mark img {
     width: 42px;
     opacity: 0.95;
-    filter: drop-shadow(0 6px 18px rgba(94, 60, 220, 0.7));
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 18px rgba(94, 60, 220, 0.7));
   }
 
   .preloader__center {
@@ -636,7 +664,7 @@
     height: 0.9em;
     flex: 0 0 auto;
     object-fit: contain;
-    filter: drop-shadow(0 0 10px rgba(167, 122, 255, 0.55));
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 0 10px rgba(167, 122, 255, 0.55));
     opacity: 0.92;
   }
 
@@ -786,6 +814,26 @@
 }
 
 @layer components {
+  /* Roman numeral chrome for indices */
+  .index-numeral {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: var(--accent, var(--vermilion));
+  }
+
+  .index-numeral::after {
+    width: 26px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+    opacity: 0.45;
+  }
+
   /* =========================================================
      Interaction helpers
      ========================================================= */

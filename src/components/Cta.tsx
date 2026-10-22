@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { ArrowUpLeft, ArrowUpRight } from "lucide-react";
 import { CONTACT, SOCIAL_CHANNELS } from "../data";
-import { Magnetic, Reveal } from "./ui";
+import { Magnetic, Numeral, Reveal } from "./ui";
 import { ParticleMorph } from "./ParticleMorph";
 
 const SOCIAL_IMAGES = SOCIAL_CHANNELS.map((channel) => channel.image);
@@ -17,7 +17,10 @@ export function Cta({ onOrder }: { onOrder: () => void }) {
             <i aria-hidden="true" />
             ظرفیت محدود برای همکاری در فصل جدید
           </span>
-          <span dir="ltr">06 — CONTACT / START A PROJECT</span>
+          <span className="cta__index" dir="ltr">
+            <Numeral value={6} className="numeral--section" />
+            <span aria-hidden="true">—</span> CONTACT / START A PROJECT
+          </span>
         </Reveal>
 
         <div className="cta__hero">

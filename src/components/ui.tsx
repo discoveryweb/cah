@@ -10,6 +10,7 @@ import {
 import { ArrowUpLeft } from "lucide-react";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
+import { toRoman } from "../utils/roman";
 
 /** The supplied CAHEN identity mark, keyed to a transparent raster asset. */
 export function LogoMark({ className }: { className?: string }) {
@@ -160,6 +161,24 @@ export function SplitText({
   );
 }
 
+/** Roman numeral used for section and item indices across the site. */
+export function Numeral({
+  value,
+  className,
+  suffix,
+}: {
+  value: string | number;
+  className?: string;
+  suffix?: string;
+}) {
+  return (
+    <span className={cn("numeral", className)} dir="ltr">
+      {toRoman(value)}
+      {suffix ? <span className="numeral__suffix">{suffix}</span> : null}
+    </span>
+  );
+}
+
 export function SectionHead({
   index,
   label,
@@ -180,8 +199,10 @@ export function SectionHead({
   return (
     <Reveal className={cn("section-head", className)} as="header">
       <div className="section-head__aside">
-        <span className="section-head__index" dir="ltr">
-          {index} — {label.toUpperCase()}
+        <span className="section-head__index">
+          <Numeral value={index} className="numeral--section" />
+          <span className="section-head__rule" aria-hidden="true" />
+          <span className="section-head__label">{label}</span>
         </span>
         <span className="label label--plain" dir="ltr">
           {latin}

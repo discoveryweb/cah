@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight, Mouse, ArrowUpLeft } from "lucide-react";
 import { cn } from "../utils/cn";
+import { toRoman } from "../utils/roman";
 
 export type GalleryItem = {
   id: string;
@@ -241,7 +242,7 @@ export function CircularGallery({
                     <span className="gallery__card-top" dir="ltr">
                       <span>CAHEN / SELECTED</span>
                       <span>
-                        {project.index} / {String(items.length).padStart(2, "0")}
+                        {toRoman(project.index)} / {toRoman(items.length)}
                       </span>
                     </span>
                     <span className="gallery__card-mark" dir="ltr">
@@ -263,7 +264,7 @@ export function CircularGallery({
               </span>
 
               <span className="gallery__counter" dir="ltr" aria-hidden="true">
-                {activeProject.index} <i /> {String(items.length).padStart(2, "0")}
+                {toRoman(activeProject.index)} <i /> {toRoman(items.length)}
               </span>
             </div>
           </div>
@@ -272,7 +273,7 @@ export function CircularGallery({
             <div className="gallery__details-top" dir="ltr">
               <span>CAHEN / SELECTED WORKS</span>
               <span>
-                {activeProject.index} — {String(items.length).padStart(2, "0")}
+                {toRoman(activeProject.index)} — {toRoman(items.length)}
               </span>
             </div>
 
@@ -327,7 +328,7 @@ export function CircularGallery({
                   aria-current={activeIndex === index ? "true" : undefined}
                   onClick={() => goToProject(index)}
                 >
-                  <span>{project.index}</span>
+                  <span>{toRoman(project.index)}</span>
                   <em>{project.name}</em>
                 </button>
               ))}

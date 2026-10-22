@@ -4,7 +4,7 @@ import { CONTACT, NAV_LINKS, SOCIAL_CHANNELS } from "../data";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
-import { Brand } from "./ui";
+import { Brand, Numeral } from "./ui";
 import { TehranClock } from "./SiteChrome";
 
 const SEARCH_INDEX = [
@@ -296,7 +296,7 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
             </div>
 
             <span className="menu__eyebrow" dir="ltr">
-              INDEX — ۰۱ / ۰۶
+              INDEX — I / VI
             </span>
 
             <nav aria-label="منوی اصلی" className="menu__list">
@@ -313,9 +313,7 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
                     aria-current={active === link.id ? "location" : undefined}
                     onClick={() => setMenuOpen(false)}
                   >
-                    <span className="menu__num" dir="ltr">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+                    <Numeral value={index + 1} className="menu__num" />
                     <span className="menu__label">
                       {link.label}
                       <small dir="ltr">{link.latin}</small>

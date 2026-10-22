@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpLeft, X } from "lucide-react";
 import { WORK } from "../data";
-import { Button, Reveal } from "./ui";
+import { Button, Numeral, Reveal } from "./ui";
+import { toRoman } from "../utils/roman";
 import { CircularGallery } from "./CircularGallery";
 
 type Project = (typeof WORK)[number];
@@ -20,8 +21,10 @@ export function Work({ onOrder }: { onOrder: () => void }) {
       <div className="frame">
         <Reveal className="work__head" as="header">
           <div className="section-head__aside">
-            <span className="work__index" dir="ltr">
-              02 — WORK
+            <span className="work__index">
+              <Numeral value={2} className="numeral--section" />
+              <span className="work__index-sep" aria-hidden="true" />
+              WORK
             </span>
             <span className="label label--plain" dir="ltr">
               SELECTED WORK
@@ -131,7 +134,7 @@ function ProjectOverlay({
     >
       <div className="project__bar">
         <span className="project__bar-label" dir="ltr">
-          CASE STUDY — {project.index} / {String(projects.length).padStart(2, "0")}
+          CASE STUDY — {toRoman(project.index)} / {toRoman(projects.length)}
         </span>
         <button type="button" className="project__close" onClick={onClose} ref={closeRef}>
           <span>بستن</span>

@@ -1,6 +1,6 @@
 import { ArrowUpLeft, Timer } from "lucide-react";
 import { PROCESS_STEPS } from "../data";
-import { Reveal, SectionHead } from "./ui";
+import { Numeral, Reveal, SectionHead } from "./ui";
 
 export function Process() {
   return (
@@ -11,7 +11,7 @@ export function Process() {
     >
       <div className="frame">
         <SectionHead
-          index="04"
+          index="IV"
           label="فرایند"
           latin="Method"
           id="process-title"
@@ -46,9 +46,7 @@ export function Process() {
             {PROCESS_STEPS.map((step, index) => (
               <li key={step.number}>
                 <Reveal className="process__item" delay={index * 80}>
-                  <span className="process__num" dir="ltr">
-                    {step.number}
-                  </span>
+                  <Numeral value={step.number} className="process__num" />
                   <div className="process__body">
                     <span className="process__label" dir="ltr">
                       {step.latin}

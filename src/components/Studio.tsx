@@ -1,6 +1,6 @@
 import { ArrowUpLeft } from "lucide-react";
 import { PRINCIPLES, STATS } from "../data";
-import { Marquee, Reveal, SectionHead } from "./ui";
+import { Marquee, Numeral, Reveal, SectionHead } from "./ui";
 
 const STUDIO_FACTS = [
   { label: "تأسیس", value: "۱۳۹۸", latin: "FOUNDED" },
@@ -22,7 +22,7 @@ export function Studio() {
 
       <div className="frame">
         <SectionHead
-          index="05"
+          index="V"
           label="استودیو"
           latin="The Studio"
           id="studio-title"
@@ -61,7 +61,7 @@ export function Studio() {
                 STUDIO PROFILE
               </span>
               <span className="studio__card-index" dir="ltr">
-                / 05
+                / V
               </span>
             </div>
 
@@ -87,9 +87,7 @@ export function Studio() {
         <ul className="studio__values" aria-label="ارزش‌های استودیو">
           {PRINCIPLES.map((principle, index) => (
             <Reveal as="li" className="studio__value" key={principle.number} delay={index * 90}>
-              <span className="studio__value-num" dir="ltr">
-                {principle.number}
-              </span>
+              <Numeral value={principle.number} className="studio__value-num" />
               <h3 className="studio__value-title">{principle.title}</h3>
               <p className="studio__value-text">{principle.text}</p>
               <ArrowUpLeft className="studio__value-arrow" aria-hidden="true" />

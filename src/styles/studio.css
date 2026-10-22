@@ -279,9 +279,9 @@
     border-radius: 11px;
     background: rgba(129, 84, 246, 0.14);
     color: var(--vermilion-soft);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.06em;
+    font-family: var(--font-serif);
+    font-size: 13px;
+    letter-spacing: 0.08em;
   }
 
   .studio__value-title {

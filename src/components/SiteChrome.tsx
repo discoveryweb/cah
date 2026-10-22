@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { NAV_LINKS } from "../data";
+import { toRoman } from "../utils/roman";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 
 /** Hairline scroll progress fixed to the very top of the viewport. */
@@ -88,7 +89,7 @@ export function ChapterRail() {
               title={link.label}
             >
               <span className="rail__num" dir="ltr">
-                {String(index + 1).padStart(2, "0")}
+                {toRoman(index + 1)}
               </span>
               <span className="rail__tick" aria-hidden="true" />
               <span className="sr-only">{link.label}</span>

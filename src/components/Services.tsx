@@ -2,7 +2,8 @@ import { useState } from "react";
 import { ArrowUpLeft } from "lucide-react";
 import { SERVICES } from "../data";
 import { cn } from "../utils/cn";
-import { Reveal, SectionHead } from "./ui";
+import { Numeral, Reveal, SectionHead } from "./ui";
+import { toRoman } from "../utils/roman";
 
 export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
   const [open, setOpen] = useState<number | null>(0);
@@ -16,7 +17,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
     >
       <div className="frame">
         <SectionHead
-          index="03"
+          index="III"
           label="توانمندی‌ها"
           latin="Capabilities"
           id="services-title"
@@ -47,9 +48,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
                     id={`service-trigger-${index}`}
                     onClick={() => setOpen(isOpen ? null : index)}
                   >
-                    <span className="service__num" dir="ltr">
-                      {service.number}
-                    </span>
+                    <Numeral value={service.number} className="service__num" />
                     <span className="service__name">
                       <strong>{service.title}</strong>
                       <span dir="ltr">{service.latin}</span>
@@ -74,7 +73,7 @@ export function Services({ onOrder }: { onOrder: (service?: string) => void }) {
                   <div className="service__panel-inner">
                     <div className="service__content">
                       <span className="service__watermark" aria-hidden="true" dir="ltr">
-                        {service.number}
+                        {toRoman(service.number)}
                       </span>
                       <div className="service__lede">
                         <p className="service__desc">{service.text}</p>

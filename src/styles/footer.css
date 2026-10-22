@@ -23,6 +23,17 @@
     pointer-events: none;
   }
 
+  .cta__index {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cta__index .numeral--section {
+    font-size: 1.4rem;
+    letter-spacing: 0.16em;
+  }
+
   .cta__top {
     display: flex;
     flex-wrap: wrap;
@@ -208,7 +219,7 @@
   }
 
   .footer__brand .brand__mark {
-    filter: drop-shadow(0 6px 18px rgba(94, 60, 220, 0.6)) saturate(1.05);
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 18px rgba(94, 60, 220, 0.6));
   }
 
   .footer__statement {

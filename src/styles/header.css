@@ -53,18 +53,18 @@
     width: 44px;
     height: 38px;
     object-fit: contain;
-    /* The supplied chrome mark keeps its own colour and carries a violet halo. */
-    filter: drop-shadow(0 6px 18px rgba(94, 60, 220, 0.55)) saturate(1.05);
+    /* The supplied chrome mark, nudged toward the site's indigo and haloed in violet. */
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 18px rgba(94, 60, 220, 0.6));
     transition: filter 500ms var(--ease), transform 600ms var(--ease);
   }
 
   .brand:hover .brand__mark {
     transform: rotate(-4deg) scale(1.06);
-    filter: drop-shadow(0 8px 24px rgba(140, 96, 255, 0.85)) saturate(1.15);
+    filter: hue-rotate(26deg) saturate(1.2) drop-shadow(0 8px 24px rgba(140, 96, 255, 0.9));
   }
 
   .header--invert .brand__mark {
-    filter: drop-shadow(0 6px 20px rgba(94, 60, 220, 0.6)) saturate(1.08);
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 20px rgba(94, 60, 220, 0.65));
   }
 
   .brand__type {
@@ -431,7 +431,7 @@
     width: 36px;
     height: 30px;
     object-fit: contain;
-    filter: drop-shadow(0 6px 18px rgba(94, 60, 220, 0.6));
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 18px rgba(94, 60, 220, 0.6));
   }
 
   .menu__brand-type {
@@ -570,11 +570,15 @@
   }
 
   .menu__num {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.12em;
+    display: inline-flex;
+    width: clamp(26px, 3vw, 36px);
+    align-items: baseline;
     color: var(--vermilion);
-    opacity: 0.8;
+    font-family: var(--font-serif);
+    font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+    letter-spacing: 0.12em;
+    line-height: 1;
+    opacity: 0.95;
   }
 
   .menu__label {

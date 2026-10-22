@@ -1,0 +1,207 @@
+@layer components {
+  /* =========================================================
+     The identity plate — the CAHEN mark rebuilt from particles
+     ========================================================= */
+  .mark-stage {
+    position: relative;
+    display: grid;
+    aspect-ratio: 1;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--card-line);
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at 50% 34%, rgba(108, 68, 232, 0.5), transparent 62%),
+      linear-gradient(160deg, rgba(34, 28, 78, 0.96), rgba(8, 8, 24, 0.98));
+    box-shadow:
+      0 42px 96px -50px rgba(0, 0, 0, 0.95),
+      0 0 0 1px rgba(255, 255, 255, 0.035) inset,
+      0 34px 70px -44px rgba(129, 84, 246, 0.85);
+    place-items: center;
+  }
+
+  .mark-stage::after {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, transparent 60%, rgba(6, 5, 20, 0.58));
+    content: "";
+    pointer-events: none;
+  }
+
+  .mark-stage__grid {
+    position: absolute;
+    z-index: 0;
+    inset: 6%;
+    background-image:
+      linear-gradient(rgba(190, 176, 255, 0.075) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(190, 176, 255, 0.075) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(circle, #000 16%, transparent 74%);
+    -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 74%);
+    pointer-events: none;
+  }
+
+  .mark-stage__ring {
+    position: absolute;
+    z-index: 0;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .mark-stage__ring--outer {
+    width: 78%;
+    aspect-ratio: 1;
+    border: 1px solid rgba(190, 176, 255, 0.2);
+    box-shadow:
+      0 0 0 26px rgba(190, 176, 255, 0.03),
+      0 0 0 58px rgba(190, 176, 255, 0.017);
+  }
+
+  .mark-stage__ring--inner {
+    width: 54%;
+    aspect-ratio: 1;
+    border: 1px dashed rgba(190, 176, 255, 0.22);
+    animation: mark-stage-rotate 60s linear infinite;
+  }
+
+  @keyframes mark-stage-rotate {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .mark-stage__object {
+    position: relative;
+    z-index: 1;
+    width: 86%;
+    aspect-ratio: 1;
+  }
+
+  .mark-stage__corner {
+    position: absolute;
+    z-index: 2;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(214, 198, 255, 0.44);
+    pointer-events: none;
+  }
+
+  .mark-stage__corner--tl {
+    top: 14px;
+    left: 14px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .mark-stage__corner--br {
+    right: 14px;
+    bottom: 14px;
+    border-top: 0;
+    border-left: 0;
+  }
+
+  .mark-stage__tag {
+    position: absolute;
+    z-index: 4;
+    color: rgba(226, 216, 255, 0.58);
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .mark-stage__tag--tl {
+    top: 16px;
+    left: 22px;
+  }
+
+  .mark-stage__tag--tr {
+    top: 16px;
+    right: 22px;
+  }
+
+  .mark-stage__tag--bl {
+    bottom: 18px;
+    left: 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(226, 216, 255, 0.68);
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+
+  .mark-stage__tag--bl i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--vermilion);
+    box-shadow: 0 0 10px rgba(167, 122, 255, 0.9);
+    animation: mark-stage-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes mark-stage-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(0.72);
+    }
+  }
+
+  .mark-stage__tag--br {
+    right: 22px;
+    bottom: 18px;
+  }
+
+  /* The particle mark is shifted from its blue chrome into the site violet. */
+  .mark-stage .particle-logo-canvas,
+  .mark-stage .particle-logo-static {
+    filter: hue-rotate(26deg) saturate(1.12) contrast(1.02)
+      drop-shadow(0 0 46px rgba(130, 90, 255, 0.45));
+  }
+
+  @media (max-width: 767px) {
+    .mark-stage {
+      border-radius: 22px;
+    }
+
+    .mark-stage__tag {
+      font-size: 6.5px;
+      letter-spacing: 0.16em;
+    }
+
+    .mark-stage__tag--tl,
+    .mark-stage__tag--tr {
+      top: 12px;
+    }
+
+    .mark-stage__tag--tl {
+      left: 16px;
+    }
+
+    .mark-stage__tag--tr {
+      right: 16px;
+    }
+
+    .mark-stage__tag--bl {
+      bottom: 13px;
+      left: 16px;
+      font-size: 8px;
+    }
+
+    .mark-stage__tag--br {
+      right: 16px;
+      bottom: 13px;
+    }
+  }
+}

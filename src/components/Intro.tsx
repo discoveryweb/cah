@@ -4,7 +4,8 @@ import cahenMark from "../assets/cahen-mark.png";
 import studioImage from "../assets/studio.jpg";
 import { PRINCIPLES } from "../data";
 import { useParallax } from "../hooks/useParallax";
-import { Reveal, SectionHead } from "./ui";
+import { MarkStage } from "./MarkStage";
+import { Numeral, Reveal, SectionHead } from "./ui";
 
 export function Intro() {
   const portraitRef = useRef<HTMLDivElement>(null);
@@ -14,7 +15,7 @@ export function Intro() {
     <section id="about" className="chapter theme-paper intro section" aria-labelledby="intro-title">
       <div className="frame">
         <SectionHead
-          index="01"
+          index="I"
           label="درباره"
           latin="The Practice"
           id="intro-title"
@@ -61,9 +62,7 @@ export function Intro() {
             <ul className="intro__principles" aria-label="اصول کاری کاهن">
               {PRINCIPLES.map((principle) => (
                 <li className="intro__principle" key={principle.number}>
-                  <span className="intro__principle-num" dir="ltr">
-                    {principle.number}
-                  </span>
+                  <Numeral value={principle.number} className="intro__principle-num" />
                   <div>
                     <p className="intro__principle-title">{principle.title}</p>
                     <p className="intro__principle-text">{principle.text}</p>
@@ -95,7 +94,46 @@ export function Intro() {
             </span>
             <figcaption className="intro__caption">
               <span>دفتر ما — تهران</span>
-              <span dir="ltr">PLATE 02</span>
+              <span dir="ltr">PLATE II</span>
+            </figcaption>
+          </Reveal>
+        </div>
+
+        <div className="intro__identity">
+          <Reveal className="intro__identity-copy" delay={60}>
+            <span className="intro__identity-label" dir="ltr">
+              IDENTITY / MARK — I
+            </span>
+            <h3 className="intro__identity-title">
+              نشانِ ما، از <span className="accent">ذرات</span> ساخته شده.
+            </h3>
+            <p className="intro__identity-text">
+              نشان کاهن یک فرمِ ثابت نیست؛ از هزاران ذره ساخته می‌شود که با حرکتِ ماوس جابه‌جا
+              می‌شوند و بعد به جای خودشان برمی‌گردند. همان ایده‌ای که در کارمان دنبال می‌کنیم:
+              نظم، بدون ایستایی.
+            </p>
+
+            <ul className="intro__identity-facts">
+              <li>
+                <span dir="ltr">I</span>
+                <p>هفت‌هزار ذره، در سه‌بعدی</p>
+              </li>
+              <li>
+                <span dir="ltr">II</span>
+                <p>تعامل با اشاره‌گر، روی هر دستگاه</p>
+              </li>
+              <li>
+                <span dir="ltr">III</span>
+                <p>نسخهٔ ثابت برای حالت کاهش حرکت</p>
+              </li>
+            </ul>
+          </Reveal>
+
+          <Reveal className="intro__identity-stage" variant="scale" delay={120}>
+            <MarkStage />
+            <figcaption className="intro__identity-caption">
+              <span>نشان کاهن — پرتره‌ای از ذرات</span>
+              <span dir="ltr">FIG. II</span>
             </figcaption>
           </Reveal>
         </div>
