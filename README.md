@@ -119,6 +119,36 @@ original placeholders (a `hello@cahen.studio` email and links to the platforms'
 home pages). `src/content/normalize.ts` adopts the real values for those exact
 strings only; anything an editor typed is left alone.
 
+## Delivery
+
+The site is measured, not assumed. `npm run product:check` runs against the real
+`dist/` and fails the release if any of this drifts:
+
+| | |
+|---|---|
+| **One scroll listener** | every piece of chrome used to install its own `scroll` + RAF; `src/utils/scrollFrame.ts` is now the only one, passive, visibility-aware, and it hands every subscriber the same already-read `scrollY` |
+| **First payload** | entry JS < 130 KB gzip, CSS < 45 KB gzip, no image over 60 KB, no font over 60 KB, nothing base64'd into the bundle |
+| **Fonts** | four files (Estedad Arabic + Latin, JetBrains Mono Latin, Instrument Serif roman + italic) served from `/fonts` with a one-year immutable cache and `preload` on the Persian cut; the 16-file font packages are no longer imported, and Vazirmatn/Space Grotesk were removed entirely |
+| **Images** | every photograph is WebP (1 MB → 236 KB for the whole asset folder); the brand mark is a violet 400 px WebP instead of a 377 KB PNG |
+| **The film** | mounts with `preload="none"` and is fetched on idle (or first scroll), so 5 MB of keyframes never competes with the entrance |
+| **The entrance** | finishes when the typeface and the hero's first frame are in — floor 0.9–1.1 s, ceiling 1.7–1.95 s — instead of always pouring for the full duration |
+| **The 3D layer** | glTF/Draco loaders are dynamically imported only if a model is requested; the site renders its mark from an image, so ~700 KB never ships on first load |
+| **Admin CSS** | the control room's stylesheet is a lazy chunk (35 KB), not part of the public first paint |
+
+And the product surface:
+
+- a 1200 × 630 social card built from the studio's own night frame
+- a violet app icon in 48/180/192/512 px, plus an `apple-touch-icon`
+- `ProfessionalService` structured data with the real email, channels and city
+- canonical URL, `og:locale`, image dimensions and alt text
+- a Persian, on-brand `404.html` with `noindex`
+- `robots.txt` that keeps `/shenataisoni` and `/api/` out of the index, and a
+  `sitemap.xml` that lists only the public page
+- a `<noscript>` line with the studio's email and channels
+- security headers (CSP, HSTS, frame-ancestors, permissions) and cache policy
+  per path: immutable for assets and fonts, revalidate for the shell, `no-store`
+  for the control room
+
 ## Glass
 
 Every card is cut from one pane (`src/styles/glass.css`): a translucent violet
@@ -182,7 +212,7 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Seven checks run entirely offline:
+Eight checks run entirely offline:
 
 - `npm run hero:check` — 30 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
 - `npm run mobile:check` — 31 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
@@ -190,6 +220,7 @@ Seven checks run entirely offline:
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
+- `npm run product:check` — 59 assertions on the built output: payload budgets, font and image weight, the single scroll listener, metadata, icons, structured data, 404, sitemap, robots, cache and security headers, focus states, reduced motion, alt text and one `<h1>`.
 - `npm run typecheck` — the TypeScript build, also part of `npm run build`.
 
 All of them run in `npm run verify`.

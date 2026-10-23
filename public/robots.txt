@@ -1,0 +1,8 @@
+# CAHEN — https://cahen.ir
+User-agent: *
+Allow: /
+# The control room is not part of the public site.
+Disallow: /shenataisoni
+Disallow: /api/
+
+Sitemap: https://cahen.ir/sitemap.xml

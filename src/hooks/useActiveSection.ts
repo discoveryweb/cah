@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NAV_LINKS } from "../data";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 /**
  * Tracks which chapter currently owns the reading position. Pass `false` when
@@ -10,11 +11,9 @@ export function useActiveSection(enabled = true): string {
 
   useEffect(() => {
     if (!enabled) return;
-    let frame = 0;
 
-    const update = () => {
-      frame = 0;
-      const probe = window.scrollY + window.innerHeight * 0.34;
+    const update = (y: number) => {
+      const probe = y + window.innerHeight * 0.34;
       let current: string = NAV_LINKS[0].id;
 
       for (const link of NAV_LINKS) {
@@ -24,26 +23,14 @@ export function useActiveSection(enabled = true): string {
       }
 
       const doc = document.documentElement;
-      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 6) {
+      if (window.innerHeight + y >= doc.scrollHeight - 6) {
         current = NAV_LINKS[NAV_LINKS.length - 1].id;
       }
 
       setActive((previous) => (previous === current ? previous : current));
     };
 
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
+    return onScrollFrame(update);
   }, [enabled]);
 
   return active;
@@ -54,11 +41,9 @@ export function useInvertAt(position: "top" | "middle"): boolean {
   const [invert, setInvert] = useState(false);
 
   useEffect(() => {
-    let frame = 0;
     const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-invert]"));
 
     const update = () => {
-      frame = 0;
       const y =
         position === "middle"
           ? window.innerHeight / 2
@@ -76,19 +61,7 @@ export function useInvertAt(position: "top" | "middle"): boolean {
       setInvert((previous) => (previous === found ? previous : found));
     };
 
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
+    return onScrollFrame(update);
   }, [position]);
 
   return invert;

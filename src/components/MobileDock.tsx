@@ -6,6 +6,7 @@ import { openSiteMenu } from "../utils/bus";
 import { haptic } from "../utils/haptics";
 import { toRoman } from "../utils/roman";
 import { cn } from "../utils/cn";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 /**
  * The phone dock.
@@ -38,13 +39,11 @@ export function MobileDock({ onOrder }: { onOrder: () => void }) {
       return;
     }
 
-    let frame = 0;
     let last = false;
 
-    const update = () => {
-      frame = 0;
+    const update = (y: number) => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      const ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
       const meter = meterRef.current;
       if (meter) meter.style.transform = `scaleX(${ratio.toFixed(4)})`;
 
@@ -52,8 +51,8 @@ export function MobileDock({ onOrder }: { onOrder: () => void }) {
       const hero = document.getElementById("home");
       const pastFilm = hero
         ? hero.getBoundingClientRect().bottom <= window.innerHeight * 0.92
-        : window.scrollY > window.innerHeight;
-      const nearEnd = max > 0 && max - window.scrollY < window.innerHeight * 0.62;
+        : y > window.innerHeight;
+      const nearEnd = max > 0 && max - y < window.innerHeight * 0.62;
       const next = pastFilm && !nearEnd;
       if (next !== last) {
         last = next;
@@ -61,19 +60,7 @@ export function MobileDock({ onOrder }: { onOrder: () => void }) {
       }
     };
 
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
+    return onScrollFrame(update);
   }, [phone]);
 
   if (!phone) return null;

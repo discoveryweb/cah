@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "re
 import { ChevronLeft, ChevronRight, Mouse, ArrowUpLeft } from "lucide-react";
 import { cn } from "../utils/cn";
 import { toRoman } from "../utils/roman";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 export type GalleryItem = {
   id: string;
@@ -144,9 +145,9 @@ export function CircularGallery({
       setReducedMotion(motionQuery.matches);
       schedulePaint();
     };
-    const onScroll = () => {
+    const stopWatchingScroll = onScrollFrame(() => {
       if (isInView) schedulePaint();
-    };
+    });
     const visibilityObserver =
       typeof IntersectionObserver === "undefined"
         ? null
@@ -162,7 +163,6 @@ export function CircularGallery({
 
     reducedMotionRef.current = motionQuery.matches;
     setReducedMotion(motionQuery.matches);
-    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", schedulePaint, { passive: true });
     motionQuery.addEventListener("change", syncMotionPreference);
     if (scrollRef.current) {
@@ -173,7 +173,7 @@ export function CircularGallery({
     schedulePaint();
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      stopWatchingScroll();
       window.removeEventListener("resize", schedulePaint);
       motionQuery.removeEventListener("change", syncMotionPreference);
       visibilityObserver?.disconnect();

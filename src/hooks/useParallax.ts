@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 /**
  * Moves an element against the scroll direction as it passes the viewport.
@@ -15,10 +16,7 @@ export function useParallax(
     if (!node) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let frame = 0;
-
     const update = () => {
-      frame = 0;
       const rect = node.getBoundingClientRect();
       const viewport = window.innerHeight;
       if (rect.bottom < -200 || rect.top > viewport + 200) return;
@@ -27,18 +25,9 @@ export function useParallax(
       node.style.setProperty(property, `${offset.toFixed(2)}px`);
     };
 
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
+    const stop = onScrollFrame(update);
     return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
+      stop();
       node.style.removeProperty(property);
     };
   }, [ref, strength, property]);

@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { ArrowUpLeft } from "lucide-react";
-import cahenMark from "../assets/cahen-mark.png";
+import cahenMark from "../assets/cahen-mark.webp";
 import { useContent } from "../content/ContentProvider";
 import { renderRichText } from "../content/RichText";
 import { useParallax } from "../hooks/useParallax";

@@ -96,6 +96,8 @@ window.__mutationProbe = async (steps = 40) => {
   };
 };
 
+window.__promoted = false;
+
 window.__report = () => {
   const hero = document.querySelector(".hero");
   const video = document.querySelector("video");
@@ -222,6 +224,9 @@ async function mount({ reducedMotion = false, saveData = false } = {}) {
   };
   window.requestAnimationFrame = (callback) => setTimeout(() => callback(Date.now()), 0);
   window.cancelAnimationFrame = (id) => clearTimeout(id);
+  // Real browsers have this; jsdom does not. The engine falls back to a timer.
+  window.requestIdleCallback = (callback) => setTimeout(callback, 0);
+  window.cancelIdleCallback = (id) => clearTimeout(id);
 
   window.eval(script);
   const video = window.document.querySelector("video");
@@ -255,7 +260,11 @@ const near = (a, b, tolerance) => Math.abs(a - b) <= tolerance;
   check("the video is muted, inline, loopless and has no controls",
     Boolean(report.video?.muted && !report.video?.controls && !report.video?.loop));
   check("it is never asked to autoplay", report.video?.autoplay === false);
-  check("it preloads fully, so seeks never hit the network", report.video?.preload === "auto");
+  check(
+    "the clip is fetched once the page is idle, not during the entrance",
+    report.video?.preload === "auto" && report.loads === 1,
+    `preload=${report.video?.preload} loads=${report.loads}`,
+  );
   check("the film is shown only once it is usable", report.ready === "true");
   check("no CSS custom property is animated per frame", report.overlayFilmP === "");
   check("the overlay is driven by a plain opacity", report.overlayOpacity !== "");

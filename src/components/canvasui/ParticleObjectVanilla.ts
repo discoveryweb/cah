@@ -1,8 +1,10 @@
 import { getCanvasPixelRatio, createCanvasResizeObserver } from "./canvas-viewport";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+/* The glTF loaders are imported only if a model is actually requested: they
+   are ~700 KB of decoder between them, and this site renders its mark from an
+   image. Keeping them out of the particle chunk is the single biggest saving
+   in the 3D layer. */
 import { createRectCache } from "./rect-cache";
 
 export interface ParticleObjectOptions {
@@ -601,11 +603,6 @@ export function createParticleObject(
   let loadToken = 0;
   let disposed = false;
 
-  const loader = new GLTFLoader();
-  const draco = new DRACOLoader();
-  draco.setDecoderPath(config.dracoDecoderPath);
-  loader.setDRACOLoader(draco);
-
   function clearPoints() {
     if (!points) return;
     fitGroup.remove(points);
@@ -680,7 +677,15 @@ export function createParticleObject(
       if (!kind) throw new Error("Unrecognized asset format");
 
       if (kind === "glb" || kind === "gltf") {
+        const [{ GLTFLoader }, { DRACOLoader }] = await Promise.all([
+          import("three/addons/loaders/GLTFLoader.js"),
+          import("three/addons/loaders/DRACOLoader.js"),
+        ]);
+        if (disposed || token !== loadToken) return;
+        const draco = new DRACOLoader();
         draco.setDecoderPath(config.dracoDecoderPath);
+        const loader = new GLTFLoader();
+        loader.setDRACOLoader(draco);
         const resourcePath = src.slice(0, src.lastIndexOf("/") + 1);
         const data = kind === "glb" ? buffer : new TextDecoder().decode(bytes);
         const gltf = await loader.parseAsync(data, resourcePath);
@@ -688,6 +693,10 @@ export function createParticleObject(
           disposeObject(gltf.scene);
           return;
         }
+        draco.dispose();
+        /* Deliberately not cached across loads: resolving the decoder from a
+           remote origin would need a CSP exception, and this site never asks
+           for a model. A mesh is decoded once and handed to the cloud. */
         clearAsset();
         assetSource = { kind: "mesh", scene: gltf.scene };
       } else {
@@ -1041,7 +1050,6 @@ export function createParticleObject(
       controls.dispose();
       clearAsset();
       material.dispose();
-      draco.dispose();
       renderer.dispose();
     },
   };

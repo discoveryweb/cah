@@ -1,3 +1,5 @@
+import { onScrollFrame } from "../../utils/scrollFrame";
+
 export function createRectCache(element: Element) {
   let current = element.getBoundingClientRect();
 
@@ -8,10 +10,7 @@ export function createRectCache(element: Element) {
   const observer = new ResizeObserver(refresh);
   observer.observe(element);
   window.addEventListener("resize", refresh, { passive: true });
-  window.addEventListener("scroll", refresh, {
-    capture: true,
-    passive: true,
-  });
+  const stopWatchingScroll = onScrollFrame(refresh);
 
   return {
     get current() {
@@ -20,7 +19,7 @@ export function createRectCache(element: Element) {
     destroy() {
       observer.disconnect();
       window.removeEventListener("resize", refresh);
-      window.removeEventListener("scroll", refresh, true);
+      stopWatchingScroll();
     },
   };
 }

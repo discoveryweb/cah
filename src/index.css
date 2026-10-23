@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/fonts.css";
 @import "./styles/base.css";
 @import "./styles/header.css";
 @import "./styles/hero.css";
@@ -13,12 +14,13 @@
 @import "./styles/typography.css";
 @import "./styles/glass.css";
 @import "./styles/mobile.css";
-@import "./styles/admin.css";
 
 @theme {
   --font-sans: "Estedad Variable", "Vazirmatn Variable", Tahoma, sans-serif;
   /* Persian text in mono/serif slots falls back to the same Persian sans. */
-  --font-mono: "JetBrains Mono Variable", "Vazirmatn Variable", ui-monospace, monospace;
+  /* Persian glyphs in a mono slot fall back to the site's own Persian face,
+     not to a second family: one voice, one download. */
+  --font-mono: "JetBrains Mono Variable", "Estedad Variable", ui-monospace, monospace;
   --font-serif: "Instrument Serif", "Estedad Variable", Georgia, serif;
 
   --color-paper: #0a0a1e;

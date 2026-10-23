@@ -3,6 +3,7 @@ import { ArrowUp } from "lucide-react";
 import { NAV_LINKS } from "../data";
 import { toRoman } from "../utils/roman";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 /** Hairline scroll progress fixed to the very top of the viewport. */
 export function ScrollProgress() {
@@ -11,28 +12,14 @@ export function ScrollProgress() {
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    let frame = 0;
 
-    const update = () => {
-      frame = 0;
+    const update = (y: number) => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      const ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
       bar.style.transform = `scaleX(${ratio.toFixed(4)})`;
     };
 
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
+    return onScrollFrame(update);
   }, []);
 
   return <span ref={barRef} className="progress" aria-hidden="true" />;
@@ -42,26 +29,16 @@ export function BackToTop() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
+    const update = (y: number) => {
       // Same rule as the dock: once the film is behind you.
       const hero = document.getElementById("home");
       const threshold = hero
         ? Math.max(560, hero.offsetTop + hero.offsetHeight - window.innerHeight * 0.92)
         : 900;
-      setVisible(window.scrollY > threshold);
+      setVisible(y > threshold);
     };
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-    };
+
+    return onScrollFrame(update);
   }, []);
 
   return (

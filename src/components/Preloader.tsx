@@ -387,16 +387,20 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     }
 
     /*
-     * The pour is the entrance, so it is tuned per device: a phone reaches the
-     * site on a slower connection and a smaller screen, and three and a half
-     * seconds of ceremony before the first screen is bad manners. The curtain
-     * still gets a full second to lift, and the hero rises with it.
+     * The pour is the entrance, and it is driven by the page, not by a timer:
+     * it finishes as soon as the typefaces and the hero's first frame are in,
+     * with a floor so it never flashes and a ceiling so a slow network cannot
+     * hold the site hostage. A fast connection gets a quick, confident
+     * entrance; a slow one still sees the whole gesture.
      */
     const phone =
       window.matchMedia("(max-width: 767px)").matches ||
       (window.matchMedia("(pointer: coarse)").matches && window.innerHeight < 900);
-    const duration = phone ? 1250 : 1850;
+    const minDuration = phone ? 900 : 1100;
+    const maxDuration = phone ? 1700 : 1950;
     const hold = phone ? 220 : 340;
+    /** Re-targeted the moment the page is ready; always >= the elapsed time. */
+    let finishAt = maxDuration;
     const start = performance.now();
     let frame = 0;
     let exitTimer = 0;
@@ -407,7 +411,8 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       // Read the clock here rather than trusting the timestamp, so the pour is
       // correct in any environment.
       const now = performance.now();
-      const progress = Math.min(1, Math.max(0, (now - start) / duration));
+      const elapsed = now - start;
+      const progress = Math.min(1, Math.max(0, elapsed / Math.max(finishAt, 1)));
       // Ease-out: the pour starts fast and settles gently.
       const eased = 1 - Math.pow(1 - progress, 2.2);
       progressRef.current = eased;
@@ -436,11 +441,35 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       exitTimer = window.setTimeout(() => setGone(true), hold + 1000);
     };
 
+    /**
+     * "Ready" means the two things the first screen is waiting for: the Persian
+     * typeface (so the headline does not swap under the curtain) and the hero's
+     * first frame. Either one failing must not block the exit.
+     */
+    let settled = false;
+    const ready = () => {
+      if (settled || doneRef.current) return;
+      settled = true;
+      const elapsed = performance.now() - start;
+      // Give the pour a beat to finish after the page is ready, but never
+      // stretch past the ceiling or cut short the floor.
+      finishAt = Math.min(maxDuration, Math.max(minDuration, elapsed + 140));
+    };
+
+    const timeout = window.setTimeout(ready, maxDuration);
+    const poster = new Image();
+    poster.src = FILM.poster;
+    Promise.all([
+      document.fonts?.ready ?? Promise.resolve(),
+      typeof poster.decode === "function" ? poster.decode().catch(() => undefined) : Promise.resolve(),
+    ]).then(ready, ready);
+
     frame = window.requestAnimationFrame(tick);
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(exitTimer);
       window.clearTimeout(leaveTimer);
+      window.clearTimeout(timeout);
       root.classList.remove("is-loading");
     };
   }, [onDone]);

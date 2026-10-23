@@ -18,13 +18,12 @@
     "hero:check": "node scripts/check-hero.mjs",
     "mobile:check": "node scripts/check-mobile.mjs",
     "content:check": "node scripts/check-content.mjs",
-    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check"
+    "product:check": "node scripts/check-product.mjs",
+    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run product:check"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "@fontsource-variable/space-grotesk": "^5.3.0",
-    "@fontsource-variable/vazirmatn": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
     "@netlify/blobs": "^8.2.0",
     "clsx": "2.1.1",

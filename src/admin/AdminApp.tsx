@@ -19,7 +19,8 @@ import {
   Users,
   X,
 } from "lucide-react";
-import mark from "../assets/cahen-mark.png";
+import mark from "../assets/cahen-mark.webp";
+import "../styles/admin.css";
 import { resolveContent } from "../content/ContentProvider";
 import type {
   ActivityEntry,

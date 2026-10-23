@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldAlert } from "lucide-react";
-import mark from "../assets/cahen-mark.png";
+import mark from "../assets/cahen-mark.webp";
 import type { AdminUser } from "../content/types";
 import { api, ApiFailure, type SessionInfo } from "./api";
 import { Field, useToast } from "./ui";

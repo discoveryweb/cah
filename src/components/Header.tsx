@@ -3,10 +3,11 @@ import { ArrowUpLeft, Search, X } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { socialIcon } from "../content/socialIcons";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
-import cahenMark from "../assets/cahen-mark.png";
+import cahenMark from "../assets/cahen-mark.webp";
 import { cn } from "../utils/cn";
 import { SITE_MENU_EVENT } from "../utils/bus";
 import { haptic } from "../utils/haptics";
+import { onScrollFrame } from "../utils/scrollFrame";
 import { Brand, Numeral } from "./ui";
 
 const SEARCH_INDEX = [
@@ -32,26 +33,14 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
   const invert = useInvertAt("top");
 
   useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const y = window.scrollY;
+    const update = (y: number) => {
       setScrolled(y > 16);
       const delta = y - lastScroll.current;
       if (y > 520 && delta > 6 && !menuOpen && !searchOpen) setHidden(true);
       else if (delta < -4 || y < 320) setHidden(false);
       lastScroll.current = y;
     };
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", schedule, { passive: true });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-    };
+    return onScrollFrame(update);
   }, [menuOpen, searchOpen]);
 
   // The phone dock opens this menu from outside the header.

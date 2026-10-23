@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
-import cahenMark from "../assets/cahen-mark.png";
+import cahenMark from "../assets/cahen-mark.webp";
 import { supportsWebGL } from "../utils/capabilities";
 import { violetMarkTexture } from "../utils/markTexture";
 import type { ParticleObjectProps } from "./canvasui/ParticleObject";

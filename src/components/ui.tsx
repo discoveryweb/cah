@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { ArrowUpLeft } from "lucide-react";
-import cahenMark from "../assets/cahen-mark.png";
+import cahenMark from "../assets/cahen-mark.webp";
 import { cn } from "../utils/cn";
 import { toRoman } from "../utils/roman";
 

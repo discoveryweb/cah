@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { onScrollFrame } from "../utils/scrollFrame";
 
 type Options = {
   /** The tall track whose scroll distance maps onto the clip. */
@@ -198,7 +199,36 @@ export function useHeroFilm({ trackRef, overlayRef, progressRef, sectionRef, vid
       frame = settled ? 0 : window.requestAnimationFrame(loop);
     };
 
+    /**
+     * The film is 5 MB of every-frame keyframes: exactly what scrubbing needs,
+     * and exactly what must not compete with the entrance for the connection.
+     * The element mounts with `preload="none"`, so the poster paints instantly;
+     * the clip is fetched once the page is idle (or on the first scroll, if the
+     * reader is faster than the idle callback).
+     */
+    let loadQueued = false;
+    const loadFilm = () => {
+      if (loadQueued || disposed) return;
+      // Never restart a film the reader is already scrubbing.
+      if (video.currentTime > 0.05) return;
+      loadQueued = true;
+      try {
+        video.preload = "auto";
+        video.setAttribute("preload", "auto");
+        video.load();
+      } catch {
+        /* a browser that refuses still gets the poster */
+      }
+    };
+
+    const idle = (window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+    }).requestIdleCallback;
+    if (typeof idle === "function") idle(loadFilm, { timeout: 1200 });
+    else timers.push(window.setTimeout(loadFilm, 600));
+
     const wake = () => {
+      loadFilm();
       if (frame || disposed) return;
       lastTime = 0;
       frame = window.requestAnimationFrame(loop);
@@ -225,7 +255,8 @@ export function useHeroFilm({ trackRef, overlayRef, progressRef, sectionRef, vid
       measure();
       wake();
     };
-    window.addEventListener("scroll", wake, { passive: true });
+    // The shared frame notifies us after the scroll it already read.
+    const stopWatchingScroll = onScrollFrame(wake);
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
 
@@ -265,7 +296,7 @@ export function useHeroFilm({ trackRef, overlayRef, progressRef, sectionRef, vid
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("progress", onBuffered);
       video.removeEventListener("durationchange", measure);
-      window.removeEventListener("scroll", wake);
+      stopWatchingScroll();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
       observer?.disconnect();

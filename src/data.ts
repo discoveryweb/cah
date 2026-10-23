@@ -1,9 +1,9 @@
-import somaImage from "./assets/soma.jpg";
+import somaImage from "./assets/soma.webp";
 import instagramImage from "./assets/social/instagram.svg";
 import telegramImage from "./assets/social/telegram.svg";
 import whatsappImage from "./assets/social/whatsapp.svg";
-import orbitImage from "./assets/orbit.jpg";
-import auraImage from "./assets/aura.jpg";
+import orbitImage from "./assets/orbit.webp";
+import auraImage from "./assets/aura.webp";
 
 export const NAV_LINKS = [
   { id: "home", label: "خانه", latin: "Index" },

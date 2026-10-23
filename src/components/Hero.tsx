@@ -93,7 +93,8 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
                   src={source}
                   muted
                   playsInline
-                  preload="auto"
+                  /* The engine promotes this to "auto" when the page is idle. */
+                  preload="none"
                   disablePictureInPicture
                   disableRemotePlayback
                   tabIndex={-1}

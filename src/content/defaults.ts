@@ -1,8 +1,8 @@
-import auraImage from "../assets/aura.jpg";
-import heroStill from "../assets/hero-still.jpg";
-import orbitImage from "../assets/orbit.jpg";
-import somaImage from "../assets/soma.jpg";
-import studioNight from "../assets/studio-night.jpg";
+import auraImage from "../assets/aura.webp";
+import heroStill from "../assets/hero-still.webp";
+import orbitImage from "../assets/orbit.webp";
+import somaImage from "../assets/soma.webp";
+import studioNight from "../assets/studio-night.webp";
 import type { SiteContent } from "./types";
 
 /**
