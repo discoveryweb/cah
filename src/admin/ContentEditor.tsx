@@ -260,7 +260,7 @@ function AboutFields({ content, update, errors, disabled }: EditorProps) {
           onChange={(value) => update("about.portrait.image", value)}
           alt={about.portrait.alt}
           disabled={disabled}
-          aspect="4 / 5"
+          aspect="6 / 5"
         />
         <Field label="متن جایگزین تصویر" path="about.portrait.alt">
           <TextArea

@@ -80,8 +80,8 @@ export function Intro() {
               <img
                 src={about.portrait.image}
                 alt={about.portrait.alt}
-                width={1122}
-                height={1402}
+                width={1200}
+                height={896}
                 loading="lazy"
                 decoding="async"
               />

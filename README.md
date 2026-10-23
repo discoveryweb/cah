@@ -92,9 +92,26 @@ read and audited in one place.
   93 % pane, the sheet to 3 px): re-blurring a surface that changes every frame
   is the most expensive thing a phone can do here.
 
+- **The office plate is landscape** (a 6:5 crop of the night-light desk scene,
+  sticky beside the reading column on desktop) and **re-lit for the palette**:
+  the photograph is a night shot in the site's own violet, not a daylight photo
+  dropped into a dark page.
+
 `npm run mobile:check` runs the real Header, dock and preloader in jsdom at
-390 × 844 and pins 31 of these behaviours, including that the dock stays out of
+390 × 844 and pins 40 of these behaviours, including that the dock stays out of
 the tab order until it is on screen.
+
+## Glass
+
+Every card is cut from one pane (`src/styles/glass.css`): a translucent violet
+tint, a lit rim, an inner glow, and one diagonal reflection laid *under* the
+content with `z-index: -1` inside an `isolation: isolate` stacking context.
+
+The blur is deliberate: the dialog, the dock and back-to-top always blur; cards
+blur only on `(hover: hover) and (pointer: fine)` at ≥ 900 px, and the carousel
+card never does — a backdrop filter re-runs on every frame the page moves, which
+is exactly what made the hero feel broken before. On a phone the pane is still
+glass through tint, rim, glow and reflection, at no per-frame cost.
 
 ## Content and visual identity
 

@@ -1,0 +1,191 @@
+@layer components {
+  /* =========================================================
+     Glass
+
+     Every card on the site is cut from the same pane: a translucent
+     tint, a lit rim, a soft inner glow, and one diagonal reflection.
+
+     Performance rule learned the hard way on the hero: a real
+     backdrop blur re-runs on every frame the page moves. So the blur
+     is reserved for small floating surfaces (sheet, dialog, dock,
+     back-to-top) and for cards on pointer devices where it can be
+     afforded. On a phone the pane is still glass — the tint, the rim
+     and the reflection do the work — without a per-frame blur.
+     ========================================================= */
+  :root {
+    --glass-blur: 18px;
+    --glass-tint: linear-gradient(158deg, rgba(46, 38, 96, 0.52), rgba(10, 10, 28, 0.62));
+    --glass-rom: rgba(196, 178, 255, 0.26);
+    --glass-rom-lit: rgba(216, 200, 255, 0.48);
+    --glass-inner:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 0 24px -12px rgba(167, 122, 255, 0.55);
+    --glass-drop: 0 34px 80px -48px rgba(0, 0, 0, 0.96);
+    --glass-sheen:
+      linear-gradient(118deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 28%, transparent 54%),
+      radial-gradient(130% 90% at 10% -20%, rgba(167, 122, 255, 0.22), transparent 64%);
+  }
+
+  /* ---------- The pane ---------- */
+  .service,
+  .gallery__card,
+  .gallery__details,
+  .cta__social-panel,
+  .cta__channel,
+  .studio__sheet,
+  .modal__panel {
+    isolation: isolate;
+    border: 1px solid var(--glass-rom);
+    background-color: rgba(18, 15, 40, 0.5);
+    background-image: var(--glass-tint);
+    box-shadow: var(--glass-drop), var(--glass-inner);
+    transition:
+      border-color 380ms ease,
+      box-shadow 460ms var(--ease),
+      transform 460ms var(--ease);
+  }
+
+  /* Only the panes that are still in flow need a positioning context for the
+     reflection. The carousel card is positioned by the carousel and must be
+     left alone, and the sheet and the dialog already declare their own. */
+  .service,
+  .gallery__details,
+  .cta__social-panel,
+  .cta__channel {
+    position: relative;
+  }
+
+  /* ---------- The reflection, laid under the content ---------- */
+  .service::after,
+  .gallery__card::after,
+  .gallery__details::after,
+  .cta__social-panel::after,
+  .cta__channel::after,
+  .studio__sheet::after,
+  .modal__panel::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--glass-sheen);
+    content: "";
+    opacity: 0.85;
+    pointer-events: none;
+    transition: opacity 480ms var(--ease);
+  }
+
+  /* Plates that hold a photograph carry the reflection over it instead. */
+  .intro__portrait-frame::before,
+  .project__media::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--glass-sheen);
+    content: "";
+    opacity: 0.75;
+    pointer-events: none;
+    transition: opacity 480ms var(--ease);
+  }
+
+  /* A photograph already carries its own light: the reflection is quieter. */
+  .intro__portrait-frame::before,
+  .project__media::before {
+    opacity: 0.55;
+  }
+
+  /* ---------- The rim ---------- */
+  .intro__portrait-frame,
+  .project__media {
+    isolation: isolate;
+    border: 1px solid var(--glass-rom);
+    box-shadow: var(--glass-drop), var(--glass-inner);
+  }
+
+  /* ---------- Where a real blur is affordable ---------- */
+
+  /* Floating surfaces: always glass, always blurred. */
+  .modal__panel,
+  .to-top {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  }
+
+  .to-top {
+    border: 1px solid var(--glass-rom);
+    background: linear-gradient(150deg, rgba(40, 34, 82, 0.8), rgba(9, 9, 24, 0.86));
+    box-shadow: var(--glass-drop), var(--glass-inner);
+  }
+
+  /* Cards on a real pointer: the blur completes the material. */
+  @media (hover: hover) and (pointer: fine) and (min-width: 900px) {
+    .service,
+    .gallery__details,
+    .cta__social-panel,
+    .cta__channel,
+    .studio__sheet {
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    }
+
+    /* Light through the pane. */
+    .service:hover,
+    .cta__channel:hover,
+    .cta__social-panel:hover {
+      border-color: var(--glass-rom-lit);
+      box-shadow:
+        0 40px 96px -46px rgba(0, 0, 0, 0.98),
+        0 0 0 1px rgba(167, 122, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .service:hover::after,
+    .cta__channel:hover::after,
+    .cta__social-panel:hover::after {
+      opacity: 1;
+    }
+
+    .gallery__details:hover,
+    .intro__portrait-frame:hover,
+    .studio__sheet:hover {
+      border-color: var(--glass-rom-lit);
+    }
+  }
+
+  /* The carousel animates every frame: it gets glass, never a blur. */
+  .gallery__card {
+    box-shadow:
+      0 26px 60px -34px rgba(0, 0, 0, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  /* ---------- The stage plate keeps its violet depth ---------- */
+  .mark-stage {
+    border-color: var(--glass-rom);
+    box-shadow:
+      var(--glass-drop),
+      var(--glass-inner),
+      0 46px 100px -54px rgba(0, 0, 0, 0.98);
+  }
+
+  /* ---------- No blur engine: stay translucent, keep the light ---------- */
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .modal__panel,
+    .to-top {
+      background-color: rgba(20, 17, 44, 0.92);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .service,
+    .gallery__card,
+    .gallery__details,
+    .cta__social-panel,
+    .cta__channel,
+    .studio__sheet,
+    .modal__panel,
+    .to-top {
+      transition: none;
+    }
+  }
+}

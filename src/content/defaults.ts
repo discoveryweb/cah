@@ -2,7 +2,7 @@ import auraImage from "../assets/aura.jpg";
 import heroStill from "../assets/hero-still.jpg";
 import orbitImage from "../assets/orbit.jpg";
 import somaImage from "../assets/soma.jpg";
-import studioImage from "../assets/studio.jpg";
+import studioNight from "../assets/studio-night.jpg";
 import type { SiteContent } from "./types";
 
 /**
@@ -87,8 +87,8 @@ export const DEFAULT_CONTENT: SiteContent = {
     ],
     ctaLabel: "بیشتر دربارهٔ استودیو",
     portrait: {
-      image: studioImage,
-      alt: "میز کار استودیو با برگه‌های چاپ‌شده، ابزار و یک شیء سرامیکی نارنجی در نور طبیعی",
+      image: studioNight,
+      alt: "میز کار استودیو در نور شبانهٔ بنفش؛ برگه‌های چاپ‌شده، خط‌کش فلزی و دفترچهٔ نارنجی زیر نور بنفش",
       caption: "دفتر ما — تهران",
     },
   },

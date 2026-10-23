@@ -241,6 +241,8 @@ await sleep(200);
 
 /* ------------------------------------------------------- static contracts */
 
+const glass = fs.readFileSync(path.join(ROOT, "src/styles/glass.css"), "utf8");
+
 const css = fs.readFileSync(path.join(ROOT, "src/styles/mobile.css"), "utf8");
 const heroCss = fs.readFileSync(path.join(ROOT, "src/styles/hero.css"), "utf8");
 const headerCss = fs.readFileSync(path.join(ROOT, "src/styles/header.css"), "utf8");
@@ -292,6 +294,56 @@ check("presses are answered, not hovered", /\.btn:active/.test(css) && /:active/
     filmRule ? filmRule[1].replace(/\s+/g, " ").trim() : "rule missing",
   );
 }
+
+/* ---- the office plate and the glass material ---- */
+
+check(
+  "the office plate is landscape on a phone, not screen-sized",
+  /\.intro__portrait-frame \{[^}]*aspect-ratio: 1\.24/.test(css),
+);
+check(
+  "the office plate is capped and centred on a phone",
+  /\.intro__portrait \{[^}]*max-width: 100%/.test(css),
+);
+
+{
+  const panes = [
+    ".service",
+    ".gallery__card",
+    ".gallery__details",
+    ".cta__social-panel",
+    ".cta__channel",
+    ".studio__sheet",
+    ".modal__panel",
+  ];
+  const missing = panes.filter(
+    (selector) =>
+      !new RegExp(`${selector.replace(".", "\\.")}[^{]*\\{[^}]*border: 1px solid var\\(--glass-rom\\)`).test(glass),
+  );
+  check("every card class is cut from the glass pane", missing.length === 0, missing.join(", "));
+}
+
+check(
+  "the glass never steals the carousel's positioning",
+  !/\.gallery__card[^{]*\{[^}]*position: relative/.test(glass),
+);
+check("the pane carries a reflection layer", (glass.match(/var\(--glass-sheen\)/g) || []).length >= 2);
+check(
+  "the reflection is laid under the content, never over it",
+  /\.cta__channel::after,[\s\S]{0,160}?z-index: -1/.test(glass),
+);
+check(
+  "cards get a real blur on a pointer device only",
+  /@media \(hover: hover\) and \(pointer: fine\) and \(min-width: 900px\)[\s\S]*?backdrop-filter: blur/.test(glass),
+);
+check(
+  "the animated carousel never gets a per-frame blur",
+  !/\.gallery__card \{[^}]*backdrop-filter/.test(glass),
+);
+check(
+  "a browser without backdrop-filter still gets a solid pane",
+  /@supports not \(\(backdrop-filter/.test(glass),
+);
 
 /* -------------------------------------------------------------------- done */
 

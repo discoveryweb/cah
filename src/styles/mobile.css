@@ -549,6 +549,48 @@
       font-size: 17px;
     }
 
+    /* ---------- The office plate ---------- */
+    /* On a phone the plate is landscape: a desktop-proportioned portrait
+       filled the screen and pushed the studio's own words below the fold. */
+    .intro__portrait {
+      width: 100%;
+      max-width: 100%;
+      margin-inline: auto;
+    }
+
+    .intro__portrait-frame {
+      aspect-ratio: 1.24;
+      border-radius: 18px;
+      object-position: 50% 58%;
+    }
+
+    .intro__portrait-frame::after {
+      inset: 7px;
+      border-radius: 13px;
+    }
+
+    .intro__portrait-frame img {
+      object-position: 50% 62%;
+    }
+
+    .intro__badge {
+      right: 8px;
+      bottom: 10px;
+      width: 62px;
+      height: 62px;
+      font-size: 6px;
+    }
+
+    .intro__badge-star {
+      width: 20px;
+    }
+
+    .intro__caption {
+      margin-top: 8px;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+    }
+
     /* ---------- Touch feedback ---------- */
     /* A committed press is answered, everywhere, in the same 180 ms. */
     .btn,
