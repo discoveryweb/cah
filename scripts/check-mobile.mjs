@@ -274,6 +274,14 @@ check("the glass header blur is disabled on phones", /@media \(max-width: 767px\
 check("the phone instruction for the film is hidden on desktop", /\.hero__scroll-hint \{\s*display: none;/.test(heroCss));
 check("the phone shows that instruction instead", /\.hero__scroll-label \{\s*display: none;/.test(css));
 check("the scrub bar fills from the right", /\.hero__progress \{[^}]*transform-origin: right center/.test(css));
+check(
+  "a short phone drops the translation before the headline collides",
+  /@media \(max-width: 767px\) and \(max-height: 700px\)[\s\S]{0,160}\.hero__translation \{\s*display: none/.test(css),
+);
+check(
+  "a phone on its side still fits on one screen",
+  /@media \(max-width: 767px\) and \(max-height: 520px\)[\s\S]{0,600}\.hero__title \{\s*font-size/.test(css),
+);
 check("tap targets are at least 44px", /min-width: 44px;\s*\n\s*min-height: 44px/.test(css));
 check("presses are answered, not hovered", /\.btn:active/.test(css) && /:active/.test(css));
 {

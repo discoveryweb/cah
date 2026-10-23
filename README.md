@@ -93,7 +93,7 @@ read and audited in one place.
   is the most expensive thing a phone can do here.
 
 `npm run mobile:check` runs the real Header, dock and preloader in jsdom at
-390 × 844 and pins 29 of these behaviours, including that the dock stays out of
+390 × 844 and pins 31 of these behaviours, including that the dock stays out of
 the tab order until it is on screen.
 
 ## Content and visual identity
@@ -150,7 +150,7 @@ npm run admin:hash -- "a long unique passphrase"
 Six checks run entirely offline:
 
 - `npm run hero:check` — 30 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
-- `npm run mobile:check` — 29 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
+- `npm run mobile:check` — 31 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.

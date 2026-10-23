@@ -598,6 +598,26 @@
     }
   }
 
+  /**
+   * Short phones (and a phone with unusually tall browser chrome): the English
+   * translation is the first thing to go, so the headline never collides with
+   * the actions.
+   */
+  @media (max-width: 767px) and (max-height: 700px) {
+    .hero__translation {
+      display: none;
+    }
+
+    .hero__lede {
+      font-size: 12.5px;
+      line-height: 1.85;
+    }
+
+    .hero__foot {
+      gap: 12px;
+    }
+  }
+
   /* ---------- Phone, on its side ---------- */
   @media (max-width: 767px) and (max-height: 520px) {
     .hero__stage {
