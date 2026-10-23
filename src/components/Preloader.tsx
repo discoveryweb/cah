@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { FILM } from "../content/film";
 import { LogoMark } from "./ui";
 
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
@@ -385,8 +386,17 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       return () => window.clearTimeout(quickExit);
     }
 
-    // The sand takes just under two seconds to fill the word.
-    const duration = 1850;
+    /*
+     * The pour is the entrance, so it is tuned per device: a phone reaches the
+     * site on a slower connection and a smaller screen, and three and a half
+     * seconds of ceremony before the first screen is bad manners. The curtain
+     * still gets a full second to lift, and the hero rises with it.
+     */
+    const phone =
+      window.matchMedia("(max-width: 767px)").matches ||
+      (window.matchMedia("(pointer: coarse)").matches && window.innerHeight < 900);
+    const duration = phone ? 1250 : 1850;
+    const hold = phone ? 220 : 340;
     const start = performance.now();
     let frame = 0;
     let exitTimer = 0;
@@ -414,13 +424,16 @@ export function Preloader({ onDone }: { onDone: () => void }) {
 
       progressRef.current = 1;
       setCount(100);
-      // Let the full word glow for a beat before the curtain lifts.
-      leaveTimer = window.setTimeout(() => setLeaving(true), 340);
-      exitTimer = window.setTimeout(() => {
+
+      // Let the full word glow for a beat, then lift the curtain and release
+      // the page in the same move: the hero's lines rise while the veil is
+      // still travelling, so the entrance is one gesture instead of two.
+      leaveTimer = window.setTimeout(() => {
+        setLeaving(true);
         finish();
         root.classList.remove("is-loading");
-        setGone(true);
-      }, 1500);
+      }, hold);
+      exitTimer = window.setTimeout(() => setGone(true), hold + 1000);
     };
 
     frame = window.requestAnimationFrame(tick);
@@ -443,6 +456,12 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       }`}
       aria-hidden="true"
     >
+      {/* The blurred first frame of the hero film. The curtain lifts off this
+          exact picture and the hero shows it sharp: a focus pull, not a cut. */}
+      <div className="preloader__backdrop" aria-hidden="true">
+        <img src={FILM.posterBlur} alt="" width={1600} height={900} fetchPriority="high" decoding="async" />
+      </div>
+
       <span className="preloader__glow" aria-hidden="true" />
 
       <div className="preloader__inner">

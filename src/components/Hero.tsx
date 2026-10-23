@@ -2,27 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUpLeft } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { RichText, renderRichText } from "../content/RichText";
+import { FILM, prefersLightData, preferredSource } from "../content/film";
 import { useHeroFilm } from "../hooks/useHeroFilm";
 import { Button, Magnetic, Marquee } from "./ui";
-
-/** Bump when the film files change: the URLs are cached for a day. */
-const VERSION = "2026-10-23c";
-
-/**
- * The hero film is scrubbed by the scroll, never played: every frame is a
- * keyframe so the timeline can be placed anywhere in either direction.
- * Two sizes, chosen synchronously on the first render so the element never
- * reloads (a reload mid-scroll is what made the picture jump scenes).
- */
-const FILM = {
-  desktop: `/film/hero-scrub-1152.mp4?v=${VERSION}`,
-  mobile: `/film/hero-scrub-896.mp4?v=${VERSION}`,
-  poster: `/film/hero-poster.jpg?v=${VERSION}`,
-  posterBlur: `/film/hero-poster-blur.jpg?v=${VERSION}`,
-};
-
-const preferredSource = () =>
-  typeof window !== "undefined" && window.matchMedia("(min-width: 901px)").matches ? FILM.desktop : FILM.mobile;
 
 export function Hero({ onOrder }: { onOrder: () => void }) {
   const content = useContent();
@@ -35,6 +17,8 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
   const progressRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  /** Fixed for the session: a metered reader never downloads the clip. */
+  const [lightData] = useState(prefersLightData);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [failed, setFailed] = useState(false);
   const [source, setSource] = useState(preferredSource);
@@ -71,7 +55,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
     setFailed(true);
   }, []);
 
-  const still = reducedMotion || failed;
+  const still = reducedMotion || lightData || failed;
 
   return (
     <section
@@ -176,7 +160,10 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
 
                 <a href="#about" className="hero__scroll" aria-label="رفتن به بخش استودیو">
                   <span className="hero__scroll-line" aria-hidden="true" />
-                  <span>اسکرول کنید</span>
+                  <span className="hero__scroll-label">اسکرول کنید</span>
+                  {/* Phones get the instruction that actually matters: the film
+                      is the scroll. Desktop can see the cursor and the rail. */}
+                  <span className="hero__scroll-hint">با اسکرول، صحنه پیش می‌رود</span>
                   <ArrowUpLeft aria-hidden="true" />
                 </a>
               </div>

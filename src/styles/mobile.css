@@ -1,0 +1,652 @@
+@layer components {
+  /* =========================================================
+     Phone experience
+
+     The site is not a shrunken desktop on a phone: the reader holds
+     it in one hand, has no cursor, and leaves the header behind on
+     the first swipe. This layer is the whole phone contract —
+     safe areas, tap ergonomics, the dock, the hero composition and
+     the bottom sheet — so it can be read and audited in one place.
+     Everything here is scoped to <= 767 px.
+     ========================================================= */
+  @media (max-width: 767px) {
+    /* ---------- Base ---------- */
+    html {
+      /* A pull-to-refresh mid-film would reload the hero from the top. */
+      overscroll-behavior-y: contain;
+      scroll-padding-top: calc(var(--header-h) + 8px);
+    }
+
+    /* No 300 ms double-tap delay, and no accidental zoom on a tap. */
+    a,
+    button,
+    [role="button"],
+    label,
+    summary,
+    .gallery__card {
+      touch-action: manipulation;
+    }
+
+    /* Every control in reach of a thumb. */
+    .header__search,
+    .menu-btn,
+    .to-top,
+    .dock__cta,
+    .dock__chapter {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    /* Type set by the browser (form fields) must not rescale the layout. */
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+
+    /* The page hairline must clear the notch, or it hides under the clock. */
+    .progress {
+      top: env(safe-area-inset-top, 0px);
+    }
+
+    /* ---------- Entrance ---------- */
+    /* One line of ceremony, not five: the sand word and the frame behind it. */
+    .preloader__reserve {
+      display: none;
+    }
+
+    .preloader__top {
+      padding-bottom: 8px;
+    }
+
+    .preloader__sand {
+      height: min(30svh, 190px);
+    }
+
+    .preloader__bottom {
+      justify-content: center;
+      text-align: center;
+    }
+
+    .preloader__bottom span:last-child {
+      display: none;
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    /**
+     * Backdrop blur is the single most expensive thing a phone can paint while
+     * a scroll-driven film is running underneath it, so the frosted header
+     * becomes a near-opaque pane. At 93 % the difference is invisible.
+     */
+    .header--solid {
+      background: color-mix(in srgb, #07071a 93%, transparent);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .header__inner {
+      gap: 10px;
+    }
+
+    .brand__mark {
+      width: 34px;
+      height: 30px;
+    }
+
+    .brand__word {
+      font-size: 13px;
+      letter-spacing: 0.2em;
+    }
+
+    .brand__sub {
+      font-size: 6px;
+      letter-spacing: 0.24em;
+    }
+
+    .menu-btn {
+      border-radius: 14px;
+    }
+
+    /* ---------- Full-screen menu ---------- */
+    .menu__scroll {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .menu__inner {
+      gap: 14px;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+      padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px));
+    }
+
+    .menu__top {
+      padding-bottom: 12px;
+    }
+
+    .menu__label {
+      font-size: clamp(1.55rem, 8vw, 2.1rem);
+      line-height: 1.2;
+    }
+
+    .menu__link {
+      padding-block: 14px;
+      gap: 12px;
+    }
+
+    /* The arrow is decoration on a phone; the row is the target. */
+    .menu__arrow {
+      width: 16px;
+      height: 16px;
+      opacity: 0.5;
+    }
+
+    .menu__link:active {
+      color: var(--vermilion-soft);
+    }
+
+    .menu__cta {
+      min-height: 54px;
+    }
+
+    /* ---------- Hero ---------- */
+    .hero__overlay {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 10px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+    }
+
+    .hero__inner {
+      gap: 14px;
+    }
+
+    .hero__meta {
+      padding-bottom: 10px;
+    }
+
+    .hero__status {
+      font-size: 10.5px;
+    }
+
+    /**
+     * An editorial headline, not a caption. It is sized against the *shorter*
+     * viewport axis, so a tall phone gets an imposing line and a short one gets
+     * a smaller line instead of a headline that collides with the actions.
+     */
+    .hero__title {
+      max-width: 100%;
+      font-size: clamp(2rem, min(10.4vw, 5.6vh), 3.3rem);
+      line-height: 1.14;
+      letter-spacing: -0.042em;
+    }
+
+    /* Persian descenders and diacritics must not be clipped by the mask. */
+    .hero__line {
+      padding-block: 0.16em;
+      margin-block: -0.1em;
+    }
+
+    .hero__line-inner {
+      transition: transform 980ms var(--ease);
+    }
+
+    .hero__line--2 {
+      padding-inline-start: 0;
+    }
+
+    .hero__translation {
+      margin-top: 10px;
+      gap: 8px 10px;
+    }
+
+    .hero__translation em {
+      font-size: 1rem;
+    }
+
+    .hero__translation-line {
+      width: 24px;
+    }
+
+    /* Copy first, then one unambiguous action. */
+    .hero__foot {
+      gap: 14px;
+    }
+
+    .hero__lede {
+      font-size: 13px;
+      line-height: 1.9;
+    }
+
+    .hero__actions {
+      display: grid;
+      width: 100%;
+      gap: 12px;
+    }
+
+    .hero__actions .magnetic,
+    .hero__actions .btn {
+      width: 100%;
+    }
+
+    .hero__actions .btn {
+      min-height: 54px;
+      border-radius: 15px;
+      font-size: 13.5px;
+      letter-spacing: 0;
+    }
+
+    .hero__secondary {
+      justify-content: center;
+      padding-block: 4px;
+      border-bottom: 0;
+      font-size: 12.5px;
+      color: rgba(240, 237, 255, 0.72);
+    }
+
+    .hero__secondary svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    /* The scroll cue, now the thing that explains the film. */
+    .hero__scroll {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      color: rgba(239, 236, 255, 0.5);
+      font-family: var(--font-sans);
+      font-size: 10px;
+      font-weight: 420;
+      letter-spacing: 0;
+      padding-block: 12px;
+      text-transform: none;
+    }
+
+    .hero__scroll-label {
+      display: none;
+    }
+
+    .hero__scroll-line {
+      width: 30px;
+      height: 1px;
+      background: rgba(220, 210, 255, 0.24);
+    }
+
+    .hero__scroll svg {
+      width: 11px;
+      height: 11px;
+      opacity: 0.7;
+    }
+
+    /* The scrub bar: thicker, inset from the edge, filled from the right. */
+    .hero__progress {
+      right: max(var(--gutter), env(safe-area-inset-right, 0px));
+      left: max(var(--gutter), env(safe-area-inset-left, 0px));
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      height: 2px;
+      transform-origin: right center;
+      /* Right-handed fill: solid head on the leading (left) edge, quiet tail. */
+      background: linear-gradient(90deg, var(--vermilion-soft), rgba(211, 188, 255, 0));
+      opacity: 0.6;
+    }
+
+    .hero__ticker {
+      padding-block: 10px;
+    }
+
+    /* ---------- Stage entrance ---------- */
+    /* Chrome arrives after the headline, so the entrance has an order. */
+    .hero__meta {
+      opacity: 0;
+      transform: translateY(10px);
+      transition:
+        opacity 700ms var(--ease) 180ms,
+        transform 700ms var(--ease) 180ms;
+    }
+
+    .hero__translation,
+    .hero__foot {
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 760ms var(--ease) 320ms,
+        transform 760ms var(--ease) 320ms;
+    }
+
+    .is-ready .hero__meta,
+    .is-ready .hero__translation,
+    .is-ready .hero__foot {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ---------- The dock ---------- */
+    .dock {
+      position: fixed;
+      z-index: 95;
+      right: max(12px, env(safe-area-inset-right, 0px));
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      left: max(12px, env(safe-area-inset-left, 0px));
+      display: grid;
+      grid-template-columns: auto 1px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      padding: 6px 6px 6px 12px;
+      border: 1px solid rgba(190, 176, 255, 0.2);
+      border-radius: 999px;
+      background: linear-gradient(158deg, rgba(30, 26, 62, 0.94), rgba(8, 8, 22, 0.96));
+      box-shadow:
+        0 22px 50px -26px rgba(0, 0, 0, 0.95),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(calc(100% + 26px));
+      transition:
+        transform 560ms var(--ease),
+        opacity 300ms ease;
+    }
+
+    .dock--in {
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+    }
+
+    /* Page progress, drawn along the rim of the pill. */
+    .dock__meter {
+      position: absolute;
+      top: -1px;
+      right: 22px;
+      left: 22px;
+      height: 2px;
+      transform: scaleX(0);
+      transform-origin: right center;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--vermilion-soft), rgba(211, 188, 255, 0));
+      pointer-events: none;
+    }
+
+    .dock__chapter {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 0 4px 0 6px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      transition: opacity 240ms ease;
+    }
+
+    .dock__chapter:active {
+      opacity: 0.6;
+    }
+
+    .dock__num {
+      font-family: var(--font-serif);
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      line-height: 1;
+      color: var(--vermilion-soft);
+    }
+
+    .dock__name {
+      max-width: 11ch;
+      overflow: hidden;
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: rgba(246, 244, 255, 0.88);
+    }
+
+    /* Two bars: this chip is the way into the index. */
+    .dock__bars {
+      display: grid;
+      gap: 3px;
+      width: 12px;
+      margin-inline-start: 2px;
+    }
+
+    .dock__bars i {
+      height: 1.5px;
+      border-radius: 2px;
+      background: rgba(246, 244, 255, 0.5);
+    }
+
+    .dock__bars i:last-child {
+      width: 7px;
+    }
+
+    .dock__rule {
+      width: 1px;
+      height: 22px;
+      background: rgba(190, 176, 255, 0.16);
+    }
+
+    .dock__cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 44px;
+      padding-inline: 16px 12px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(112deg, #7a49f2 0%, #a76bff 100%);
+      box-shadow: 0 12px 30px -16px rgba(129, 84, 246, 0.95);
+      color: #fdfbff;
+      font-size: 12.5px;
+      font-weight: 520;
+      line-height: 1;
+      white-space: nowrap;
+      transition: transform 180ms var(--ease), filter 220ms ease;
+    }
+
+    .dock__cta svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .dock__cta:active {
+      transform: scale(0.97);
+      filter: brightness(1.08);
+    }
+
+    /* ---------- Back to top ---------- */
+    /* It only appears once the film has been left behind, above the dock. */
+    .to-top {
+      bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+      left: max(14px, env(safe-area-inset-left, 0px));
+      width: 42px;
+      height: 42px;
+      background: rgba(12, 12, 30, 0.88);
+    }
+
+    /* ---------- Order: a bottom sheet ---------- */
+    .modal {
+      align-items: flex-end;
+    }
+
+    .modal__backdrop {
+      -webkit-backdrop-filter: blur(3px);
+      backdrop-filter: blur(3px);
+    }
+
+    .modal__panel {
+      max-height: 91svh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      border-radius: 24px 24px 0 0;
+      border-bottom: 0;
+      animation: sheet-rise 480ms var(--ease) both;
+    }
+
+    @keyframes sheet-rise {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: none;
+      }
+    }
+
+    /* The grab handle that says "this came from the bottom edge". */
+    .modal__panel::before {
+      position: absolute;
+      z-index: 3;
+      top: 8px;
+      left: 50%;
+      width: 38px;
+      height: 4px;
+      margin-left: -19px;
+      border-radius: 999px;
+      background: rgba(223, 214, 255, 0.22);
+      content: "";
+    }
+
+    .modal__bar {
+      padding: 22px 20px 14px;
+      font-size: 8px;
+    }
+
+    .modal__scroll {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal__title {
+      font-size: clamp(1.5rem, 7.6vw, 2rem);
+    }
+
+    .field__input,
+    .field__textarea {
+      font-size: 16px;
+    }
+
+    .field__input {
+      height: 50px;
+    }
+
+    .modal__submit,
+    .modal .btn {
+      min-height: 54px;
+    }
+
+    /* ---------- Search ---------- */
+    .search__body {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 18px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    }
+
+    .search__input {
+      font-size: 17px;
+    }
+
+    /* ---------- Touch feedback ---------- */
+    /* A committed press is answered, everywhere, in the same 180 ms. */
+    .btn,
+    .cta__button,
+    .gallery__open,
+    .gallery__arrows button,
+    .service__trigger,
+    .header__search {
+      transition-property: transform, filter, background, color, border-color, box-shadow;
+      transition-duration: 180ms;
+    }
+
+    .btn:active,
+    .cta__button:active,
+    .gallery__open:active,
+    .gallery__arrows button:active,
+    .header__search:active {
+      transform: scale(0.975);
+      filter: brightness(1.07);
+    }
+
+    /* Cards answer a press on their media: the card's own transform belongs to
+       the carousel and is written inline, so it must not be touched here. */
+    .gallery__card:active .gallery__card-media {
+      transform: scale(0.965);
+      transition: transform 160ms var(--ease);
+    }
+
+    /* ---------- Calm mode ---------- */
+    @media (prefers-reduced-motion: reduce) {
+      .hero__meta,
+      .hero__translation,
+      .hero__foot {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+
+      .dock {
+        transition: none;
+      }
+    }
+
+    /* ---------- Footer ---------- */
+    .footer {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    }
+  }
+
+  /* ---------- Phone, on its side ---------- */
+  @media (max-width: 767px) and (max-height: 520px) {
+    .hero__stage {
+      min-height: 100svh;
+    }
+
+    .hero__overlay {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 4px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    }
+
+    .hero__inner {
+      gap: 8px;
+    }
+
+    .hero__title {
+      font-size: clamp(1.6rem, 6.4vh, 2.4rem);
+    }
+
+    .hero__translation,
+    .hero__lede,
+    .hero__scroll {
+      display: none;
+    }
+
+    .hero__foot {
+      gap: 10px;
+      padding-top: 10px;
+    }
+
+    .hero__actions {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .hero__actions .magnetic,
+    .hero__actions .btn {
+      width: auto;
+    }
+
+    .dock__bars {
+      display: none;
+    }
+  }
+
+  /* Tablets and up keep the desktop chrome; the dock never appears. */
+  @media (min-width: 768px) {
+    .dock {
+      display: none;
+    }
+  }
+}

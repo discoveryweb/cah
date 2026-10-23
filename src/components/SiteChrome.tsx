@@ -45,7 +45,12 @@ export function BackToTop() {
     let frame = 0;
     const update = () => {
       frame = 0;
-      setVisible(window.scrollY > 900);
+      // Same rule as the dock: once the film is behind you.
+      const hero = document.getElementById("home");
+      const threshold = hero
+        ? Math.max(560, hero.offsetTop + hero.offsetHeight - window.innerHeight * 0.92)
+        : 900;
+      setVisible(window.scrollY > threshold);
     };
     const schedule = () => {
       if (frame) return;

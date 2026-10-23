@@ -7,6 +7,7 @@ import { Hero } from "./components/Hero";
 import { Intro } from "./components/Intro";
 import { OrderModal } from "./components/OrderModal";
 import { Preloader } from "./components/Preloader";
+import { MobileDock } from "./components/MobileDock";
 import { Services } from "./components/Services";
 import { ChapterRail, BackToTop, ScrollProgress } from "./components/SiteChrome";
 import { Studio } from "./components/Studio";
@@ -42,6 +43,9 @@ export default function App() {
       </main>
 
       <Footer />
+
+      {/* Phone-only navigation dock: the header is gone once you scroll. */}
+      <MobileDock onOrder={() => openOrder()} />
 
       <OrderModal open={order.open} onClose={closeOrder} initialService={order.service} />
       <BackToTop />

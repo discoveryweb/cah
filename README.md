@@ -60,6 +60,42 @@ blurred thumbnail. Other flags: `--fit contain`, `--no-interpolate`, `--crf 29`,
 Diagnostics: open `/?film=debug` to print the media state (src, duration,
 currentTime, seeking, buffered, decode error) while scrolling.
 
+## On a phone
+
+Most visitors arrive on a phone, so the phone is designed, not shrunk. The whole
+contract lives in `src/styles/mobile.css` (scoped to `<= 767px`) so it can be
+read and audited in one place.
+
+- **The entrance is one gesture.** The preloader paints the hero film's *own*
+  first frame (the pre-blurred poster) behind the sand word; when the pour
+  finishes, the curtain lifts and the headline rises in the same beat, so the
+  page ends the entrance in a focus pull rather than a cut. On a phone the pour
+  is 1.25 s instead of 1.85 s, and the chrome is cut to one line.
+- **The film explains itself.** Under the copy, a single line says the scene
+  advances with the scroll, and the scrub hairline fills right-to-left.
+- **A dock instead of a disappearing header.** Once the film is behind you, a
+  slim pill at the bottom carries the current chapter (Roman numeral + name,
+  tapping it opens the index), the page progress along its rim, and the one
+  action the studio wants. It never appears over the film or over the closing
+  CTA.
+- **It behaves like an app, not a web page.** `viewport-fit=cover` with
+  `env(safe-area-inset-*)` on every fixed surface, a 62 px bar, ≥ 44 px tap
+  targets, `touch-action: manipulation`, press states instead of hover states,
+  `overscroll-behavior-y: contain` so a pull cannot reload the film, and 16 px
+  form fields so iOS never zooms on focus.
+- **The order form is a bottom sheet** with a grab handle and a spring-up
+  entrance; on a phone the keyboard is not summoned until the reader taps a
+  field.
+- **Data is respected.** If the browser reports `saveData`, `slow-2g` or ≤ 1 GB
+  of memory, the hero keeps the first frame and the clip is never requested.
+- **No backdrop blur on a phone** over the film (the header falls back to a
+  93 % pane, the sheet to 3 px): re-blurring a surface that changes every frame
+  is the most expensive thing a phone can do here.
+
+`npm run mobile:check` runs the real Header, dock and preloader in jsdom at
+390 × 844 and pins 29 of these behaviours, including that the dock stays out of
+the tab order until it is on screen.
+
 ## Content and visual identity
 
 - Page copy, navigation, services and selected projects are editable from the admin panel; the built-in defaults live in `src/content/defaults.ts`.
@@ -111,9 +147,10 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Five checks run entirely offline:
+Six checks run entirely offline:
 
-- `npm run hero:check` — 27 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
+- `npm run hero:check` — 30 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
+- `npm run mobile:check` — 29 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.

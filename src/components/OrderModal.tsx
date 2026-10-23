@@ -57,7 +57,17 @@ export function OrderModal({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => firstFieldRef.current?.focus(), 90);
+    /*
+     * On a phone the keyboard must not ambush the sheet as it slides up, so the
+     * focus lands on the close control inside the dialog instead of a field.
+     */
+    const focusTimer = window.setTimeout(() => {
+      if (window.matchMedia("(pointer: coarse)").matches) {
+        dialogRef.current?.querySelector<HTMLElement>(".modal__close")?.focus();
+        return;
+      }
+      firstFieldRef.current?.focus();
+    }, 90);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {

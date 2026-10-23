@@ -133,6 +133,9 @@ export function useHeroFilm({ trackRef, overlayRef, progressRef, sectionRef, vid
      */
     const showFilm = (force = false) => {
       if (announced || disposed) return;
+      // Never fade the poster away for a film with no frame decoded yet: on a
+      // slow phone that would leave an empty panel in the first screen.
+      if (video.readyState < 2) return;
       const coverage = duration > 0 ? bufferedTo / duration : 0;
       if (!force && coverage < 0.8 && performance.now() - startedAt < 3200) return;
       announced = true;

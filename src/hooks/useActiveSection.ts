@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { NAV_LINKS } from "../data";
 
-/** Tracks which chapter currently owns the reading position. */
-export function useActiveSection(): string {
+/**
+ * Tracks which chapter currently owns the reading position. Pass `false` when
+ * the caller is not on screen (the phone dock, on desktop) so no listener runs.
+ */
+export function useActiveSection(enabled = true): string {
   const [active, setActive] = useState<string>("home");
 
   useEffect(() => {
+    if (!enabled) return;
     let frame = 0;
 
     const update = () => {
@@ -40,7 +44,7 @@ export function useActiveSection(): string {
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
     };
-  }, []);
+  }, [enabled]);
 
   return active;
 }

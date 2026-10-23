@@ -142,7 +142,7 @@ await build({
 
 const script = fs.readFileSync(path.join(WORK, "bundle.js"), "utf8");
 
-async function mount({ reducedMotion = false } = {}) {
+async function mount({ reducedMotion = false, saveData = false } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, {
     runScripts: "outside-only",
     pretendToBeVisual: true,
@@ -151,6 +151,10 @@ async function mount({ reducedMotion = false } = {}) {
   const { window } = dom;
 
   window.IS_REACT_ACT_ENVIRONMENT = true;
+  Object.defineProperty(window.navigator, "connection", {
+    value: { saveData, effectiveType: saveData ? "3g" : "4g" },
+    configurable: true,
+  });
   window.__events = [];
   window.__seeks = [];
   window.fetch = () => Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
@@ -310,6 +314,15 @@ const near = (a, b, tolerance) => Math.abs(a - b) <= tolerance;
   check("reduced motion renders no video at all", report.video === null);
   check("reduced motion keeps the poster", Boolean(report.posterSrc?.includes("hero-poster.jpg")));
   check("reduced motion never reports the film as ready", report.ready === null || report.ready === "false");
+}
+
+{
+  // A reader who asked for less data must not be sent a 3 MB clip.
+  const window = await mount({ saveData: true });
+  const report = window.__report();
+  check("a metered connection never requests the film", report.video === null);
+  check("a metered connection keeps the first frame", Boolean(report.posterSrc?.includes("hero-poster.jpg")));
+  check("a metered connection still renders the hero", report.mode === "scrub");
 }
 
 {

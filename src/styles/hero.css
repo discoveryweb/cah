@@ -464,6 +464,10 @@
     white-space: nowrap;
   }
 
+  .hero__scroll-hint {
+    display: none;
+  }
+
   .hero__scroll svg {
     width: 12px;
     height: 12px;

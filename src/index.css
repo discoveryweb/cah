@@ -11,6 +11,7 @@
 @import "./styles/modal.css";
 @import "./styles/motion.css";
 @import "./styles/typography.css";
+@import "./styles/mobile.css";
 @import "./styles/admin.css";
 
 @theme {
@@ -73,6 +74,13 @@
 @media (min-width: 1024px) {
   :root {
     --header-h: 92px;
+  }
+}
+
+/* A phone gets a shorter bar: the film should own the screen, not the chrome. */
+@media (max-width: 767px) {
+  :root {
+    --header-h: 62px;
   }
 }
 

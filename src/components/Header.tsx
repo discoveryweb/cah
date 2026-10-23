@@ -4,6 +4,8 @@ import { useContent } from "../content/ContentProvider";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
+import { SITE_MENU_EVENT } from "../utils/bus";
+import { haptic } from "../utils/haptics";
 import { Brand, Numeral } from "./ui";
 
 const SEARCH_INDEX = [
@@ -50,6 +52,13 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
       window.removeEventListener("scroll", schedule);
     };
   }, [menuOpen, searchOpen]);
+
+  // The phone dock opens this menu from outside the header.
+  useEffect(() => {
+    const open = () => setMenuOpen(true);
+    window.addEventListener(SITE_MENU_EVENT, open);
+    return () => window.removeEventListener(SITE_MENU_EVENT, open);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -177,7 +186,10 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
               aria-label={menuOpen ? "بستن منو" : "باز کردن منو"}
               aria-expanded={menuOpen}
               aria-controls="site-menu"
-              onClick={() => setMenuOpen((value) => !value)}
+              onClick={() => {
+                haptic("open");
+                setMenuOpen((value) => !value);
+              }}
             >
               <span className="menu-btn__lines" aria-hidden="true">
                 <i />
@@ -285,7 +297,10 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
               <button
                 type="button"
                 className="menu__close"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  haptic("tap");
+                  setMenuOpen(false);
+                }}
                 tabIndex={menuOpen ? 0 : -1}
                 aria-label="بستن منو"
               >
@@ -309,7 +324,10 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
                     className={cn("menu__link", active === link.id && "menu__link--active")}
                     tabIndex={menuOpen ? 0 : -1}
                     aria-current={active === link.id ? "location" : undefined}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      haptic("tap");
+                      setMenuOpen(false);
+                    }}
                   >
                     <Numeral value={index + 1} className="menu__num" />
                     <span className="menu__label">
