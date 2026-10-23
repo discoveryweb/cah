@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { createHash } from "node:crypto";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const DIST = path.join(ROOT, "dist");
@@ -158,6 +159,29 @@ check("fonts are cached for a year", /\/fonts\/\*[\s\S]{0,200}immutable/.test(ne
 check("the HTML shell always revalidates", /for = "\/index.html"[\s\S]{0,160}must-revalidate/.test(netlify));
 check("the control room is never cached and never indexed", /for = "\/shenataisoni"[\s\S]{0,160}no-store[\s\S]{0,120}noindex/.test(netlify));
 check("a strict content security policy is set", /Content-Security-Policy = "default-src 'self'/.test(netlify));
+
+/* ---- the CSP is strict, and exactly as strict as it needs to be ---- */
+
+const csp = (/Content-Security-Policy = "([^"]+)"/.exec(netlify) || [])[1] || "";
+const scriptSrc = (/script-src ([^;]+);/.exec(csp) || [])[1] || "";
+
+check("script-src never falls back to 'unsafe-inline'", !/'unsafe-inline'/.test(scriptSrc), scriptSrc);
+check("script-src never allows arbitrary eval", !/'unsafe-eval'/.test(scriptSrc), scriptSrc);
+
+const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)];
+check("the shell has exactly one inline script", inlineScripts.length === 1, `${inlineScripts.length} found`);
+
+if (inlineScripts.length === 1) {
+  const [tag, body] = [inlineScripts[0][1], inlineScripts[0][2]];
+  check("the inline script is data, not executable code", /application\/ld\+json/.test(tag), tag.trim());
+  const digest = createHash("sha256").update(body, "utf8").digest("base64");
+  check(
+    "the inline block is allowed by its own hash, not by a blanket rule",
+    scriptSrc.includes(`'sha256-${digest}'`),
+    `expected sha256-${digest}`,
+  );
+}
+
 check("framing is denied", /frame-ancestors 'none'/.test(netlify));
 check("HSTS is set", /Strict-Transport-Security = "max-age=31536000/.test(netlify));
 check("permissions are narrowed", /Permissions-Policy = "camera=\(\), microphone=\(\), geolocation=\(\)/.test(netlify));

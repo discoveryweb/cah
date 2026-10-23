@@ -119,6 +119,23 @@ original placeholders (a `hello@cahen.studio` email and links to the platforms'
 home pages). `src/content/normalize.ts` adopts the real values for those exact
 strings only; anything an editor typed is left alone.
 
+## Routing (read this before editing `netlify.toml`)
+
+Netlify serves a static file **unless** a redirect claims the path with
+`force = true`. That one word took the site down: two catch-all 404 rules were
+written with `force`, so every request under `/assets` and `/fonts` — the
+stylesheet, the entry script and both typefaces — was answered with
+`/404.html` and a 404. The browser reported it as *“Refused to apply style …
+MIME type ('text/html')”*, and because the entry script was 404ing too, the page
+rendered nothing: a black screen.
+
+The rules are now unforced. A file that exists is always served as itself; the
+rule only catches a path that really is missing. `npm run routing:check` parses
+`netlify.toml`, applies Netlify's shadowing semantics to the actual `dist/`
+tree, and fails if any built file would not be served as itself, if
+`/shenataisoni` or `/api/*` stopped routing, or if a missing asset started
+returning the shell.
+
 ## Delivery
 
 The site is measured, not assumed. `npm run product:check` runs against the real

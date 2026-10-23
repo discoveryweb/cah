@@ -54,17 +54,22 @@
   force = true
 
 # A missing static asset is a 404, not the site shell.
+#
+# These two rules must NOT be forced. Netlify only lets a rule win over a real
+# file when `force = true`, and a forced catch-all here rewrote every request
+# under /assets and /fonts to /404.html — the stylesheet, the entry script and
+# both typefaces came back as text/html with a 404, which is a black page.
+# Without `force` a file that exists is always served as itself, and the rule
+# only catches genuinely missing paths.
 [[redirects]]
   from = "/assets/*"
   to = "/404.html"
   status = 404
-  force = true
 
 [[redirects]]
   from = "/fonts/*"
   to = "/404.html"
   status = 404
-  force = true
 
 [[redirects]]
   from = "/*"
@@ -83,7 +88,10 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     Cross-Origin-Opener-Policy = "same-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    # script-src keeps no 'unsafe-inline'. The only inline <script> in the shell
+    # is the JSON-LD block, so it is allowed by its exact hash instead of by a
+    # blanket policy. Any other inline script from any origin stays refused.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-l+OfQPH6NTO4fyZQd9ZnHwXg+QuxsKlDeVMfiJS8p20=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 # Self-hosted typefaces; the file names carry a ?v= tag, so a year is safe.
 [[headers]]
