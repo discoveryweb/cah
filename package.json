@@ -17,7 +17,8 @@
     "film:placeholder": "node scripts/hero-video.mjs --placeholder",
     "hero:check": "node scripts/check-hero.mjs",
     "mobile:check": "node scripts/check-mobile.mjs",
-    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run admin:check && npm run sms:check && npm run netlify:check"
+    "content:check": "node scripts/check-content.mjs",
+    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",

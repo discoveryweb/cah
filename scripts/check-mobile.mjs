@@ -74,6 +74,18 @@ window.__activate = async (selector) => {
   };
 };
 
+window.__menuSocials = () =>
+  Array.from(document.querySelectorAll(".menu__social-link")).map((link) => ({
+    href: link.getAttribute("href"),
+    label: link.getAttribute("aria-label"),
+    name: link.querySelector(".menu__social-name")?.textContent ?? null,
+    platform: link.querySelector(".menu__social-platform")?.textContent ?? null,
+    icon: link.querySelector(".menu__social-icon img")?.getAttribute("src") ?? null,
+    arrow: Boolean(link.querySelector(".menu__social-arrow")),
+  }));
+
+window.__menuMail = () => document.querySelector(".menu__mail")?.getAttribute("href") ?? null;
+
 window.__blurOverFilm = () => {
   const dock = document.querySelector(".dock");
   const header = document.querySelector(".header");
@@ -107,7 +119,7 @@ await build({
   platform: "browser",
   format: "iife",
   outfile: path.join(WORK, "bundle.js"),
-  loader: { ".jpg": "dataurl", ".png": "dataurl", ".webp": "dataurl", ".svg": "text", ".css": "empty" },
+  loader: { ".jpg": "dataurl", ".png": "dataurl", ".webp": "dataurl", ".svg": "dataurl", ".css": "empty" },
   jsx: "automatic",
   define: { "process.env.NODE_ENV": '"development"' },
   logLevel: "error",
@@ -237,6 +249,33 @@ await sleep(200);
     String(preloader.backdrop),
   );
   check("the sand word is still the entrance", preloader.hasCanvas && preloader.marks);
+}
+
+/* ------------------------------------------------------- the channels */
+
+{
+  const channels = window.__menuSocials();
+  check("the menu lists all three channels", channels.length === 3, JSON.stringify(channels.map((c) => c.name)));
+
+  const named = (platform) => channels.find((channel) => channel.platform === platform);
+
+  check("every channel carries its own icon in the menu", channels.every((c) => /^data:image\/svg/.test(c.icon || "")),
+    JSON.stringify(channels.map((c) => c.icon?.slice(0, 24))));
+  check("every channel has a visible name and platform", channels.every((c) => c.name && c.platform));
+  check("every channel shows where the tap goes", channels.every((c) => c.arrow && /پنجرهٔ تازه/.test(c.label || "")));
+
+  check("Telegram points at the studio channel", named("Telegram")?.href === "https://t.me/CAHENWEB", String(named("Telegram")?.href));
+  check(
+    "Instagram points at the studio profile",
+    named("Instagram")?.href === "https://www.instagram.com/CAHENWEB/",
+    String(named("Instagram")?.href),
+  );
+  check(
+    "WhatsApp opens a chat with the studio in E.164 digits",
+    named("WhatsApp")?.href === "https://wa.me/989023841612",
+    String(named("WhatsApp")?.href),
+  );
+  check("the menu mail link is the studio address", window.__menuMail() === "mailto:info@cahen.ir", String(window.__menuMail()));
 }
 
 /* ------------------------------------------------------- static contracts */

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ArrowUpLeft, Search, X } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
+import { socialIcon } from "../content/socialIcons";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import cahenMark from "../assets/cahen-mark.png";
 import { cn } from "../utils/cn";
@@ -342,9 +343,14 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
 
             <div className="menu__foot">
               <div>
-                <span className="menu__eyebrow" dir="ltr" style={{ marginBottom: 10 }}>
-                  ELSEWHERE
-                </span>
+                <div className="menu__elsewhere-head">
+                  <span className="menu__eyebrow" dir="ltr">
+                    ELSEWHERE
+                  </span>
+                  <span className="menu__handle" dir="ltr">
+                    {contact.handle}
+                  </span>
+                </div>
                 <div className="menu__socials">
                   {SOCIAL_CHANNELS.map((channel) => (
                     <a
@@ -354,9 +360,25 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
                       rel="noopener noreferrer"
                       className="menu__social-link"
                       tabIndex={menuOpen ? 0 : -1}
+                      aria-label={`${channel.name} — ${channel.platform} (در پنجرهٔ تازه)`}
                     >
-                      <span>{channel.name}</span>
-                      <em dir="ltr">{channel.platform}</em>
+                      <span className="menu__social-icon" aria-hidden="true">
+                        <img
+                          src={socialIcon(channel.icon)}
+                          alt=""
+                          width={20}
+                          height={20}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </span>
+                      <span className="menu__social-copy">
+                        <span className="menu__social-name">{channel.name}</span>
+                        <em className="menu__social-platform" dir="ltr">
+                          {channel.platform}
+                        </em>
+                      </span>
+                      <ArrowUpLeft className="menu__social-arrow" aria-hidden="true" />
                     </a>
                   ))}
                 </div>

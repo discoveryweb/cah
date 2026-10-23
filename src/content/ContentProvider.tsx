@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_CONTENT } from "./defaults";
+import { adoptPublishedAddresses } from "./normalize";
 import type { SiteContent } from "./types";
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -31,7 +32,7 @@ export function mergeContent(base: unknown, patch: unknown): unknown {
 }
 
 export const resolveContent = (stored: unknown): SiteContent =>
-  mergeContent(DEFAULT_CONTENT, stored ?? {}) as SiteContent;
+  adoptPublishedAddresses(mergeContent(DEFAULT_CONTENT, stored ?? {}) as SiteContent);
 
 interface ContentContextValue {
   content: SiteContent;

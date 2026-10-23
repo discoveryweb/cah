@@ -19,9 +19,14 @@ export const DEFAULT_CONTENT: SiteContent = {
       "کاهن یک استودیوی مستقل طراحی و توسعه است؛ برندها و محصولات دیجیتال را از دلِ مسئله طراحی می‌کنیم.",
   },
   contact: {
-    email: "hello@cahen.studio",
+    email: "info@cahen.ir",
+    /**
+     * Left empty on purpose: the number the studio shared is its WhatsApp
+     * line, published as a chat link below, not as a dial-out number in the
+     * footer. Fill this in the panel to also publish a `tel:` link.
+     */
     phone: "",
-    handle: "@cahen.studio",
+    handle: "@CAHENWEB",
     city: "تهران، ایران",
     latinCity: "TEHRAN / IRAN",
     responseTime: "کمتر از یک روز کاری",
@@ -34,15 +39,28 @@ export const DEFAULT_CONTENT: SiteContent = {
     { id: "contact", label: "تماس", latin: "Contact" },
   ],
   socials: [
-    { name: "تلگرام", platform: "Telegram", href: "https://t.me/", color: "#3fb6f2", icon: "telegram" },
+    {
+      name: "تلگرام",
+      platform: "Telegram",
+      href: "https://t.me/CAHENWEB",
+      color: "#3fb6f2",
+      icon: "telegram",
+    },
     {
       name: "اینستاگرام",
       platform: "Instagram",
-      href: "https://www.instagram.com/",
+      href: "https://www.instagram.com/CAHENWEB/",
       color: "#f2688c",
       icon: "instagram",
     },
-    { name: "واتساپ", platform: "WhatsApp", href: "https://www.whatsapp.com/", color: "#4fe08a", icon: "whatsapp" },
+    {
+      /* wa.me takes the number in E.164 digits, without the plus. */
+      name: "واتساپ",
+      platform: "WhatsApp",
+      href: "https://wa.me/989023841612",
+      color: "#4fe08a",
+      icon: "whatsapp",
+    },
   ],
   hero: {
     status: "پذیرش پروژه — همیشه باز",

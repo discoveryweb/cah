@@ -152,7 +152,7 @@ export function LinksPanel({ content, update, errors, disabled }: Props) {
               SOCIAL CHANNELS
             </span>
             <h2>کانال‌های ارتباطی</h2>
-            <p>آیکون هر کانال در بخش تماس سه‌بعدی رندر می‌شود؛ ترتیب همین فهرست است.</p>
+            <p>آیکون هر کانال در منوی اصلی، پابرگ و بخش تماس دیده می‌شود؛ ترتیب همین فهرست است.</p>
           </div>
           <button
             type="button"

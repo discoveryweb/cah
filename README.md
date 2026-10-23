@@ -101,6 +101,24 @@ read and audited in one place.
 390 × 844 and pins 40 of these behaviours, including that the dock stays out of
 the tab order until it is on screen.
 
+## Addresses
+
+`src/content/defaults.ts` is the only place the studio's public identity lives:
+`info@cahen.ir`, `t.me/CAHENWEB`, `instagram.com/CAHENWEB/` and a WhatsApp chat
+at `wa.me/989023841612` (E.164 digits, no plus — that is what `wa.me` expects).
+The email is rendered through `contact.email`, the channels through
+`contact.socials`, so the menu, footer, contact section and 3D social visual can
+never disagree.
+
+`contact.phone` is deliberately empty: the number the studio shared is its
+WhatsApp line, so it is published as a chat link rather than a dial-out number.
+Fill the field in the panel if a `tel:` link should appear in the footer too.
+
+A site published from the panel before these addresses existed still carries the
+original placeholders (a `hello@cahen.studio` email and links to the platforms'
+home pages). `src/content/normalize.ts` adopts the real values for those exact
+strings only; anything an editor typed is left alone.
+
 ## Glass
 
 Every card is cut from one pane (`src/styles/glass.css`): a translucent violet
@@ -164,10 +182,11 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Six checks run entirely offline:
+Seven checks run entirely offline:
 
 - `npm run hero:check` — 30 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
 - `npm run mobile:check` — 31 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
+- `npm run content:check` — 24 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; and a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
