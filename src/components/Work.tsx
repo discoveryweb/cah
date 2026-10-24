@@ -179,7 +179,14 @@ function ProjectOverlay({
           </div>
 
           <div className="project__media">
-            <img src={project.image} alt={project.alt} />
+            <img
+              src={project.image}
+              alt={project.alt}
+              width={1536}
+              height={1024}
+              loading="lazy"
+              decoding="async"
+            />
           </div>
 
           <div className="project__body">

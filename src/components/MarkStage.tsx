@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createRectCache } from "./canvasui/rect-cache";
 import { Move3d } from "lucide-react";
 import { ParticleLogo, type ParticleLogoStatus } from "./ParticleLogo";
 
@@ -13,40 +14,91 @@ export function MarkStage({ className }: { className?: string }) {
   const frame = useRef(0);
   const target = useRef({ x: 0, y: 0 });
   const current = useRef({ x: 0, y: 0 });
+  /** Asks the tilt spring for a frame; set by the effect, called by the pointer. */
+  const wake = useRef<() => void>(() => {});
 
   const handleStatus = useCallback((next: ParticleLogoStatus) => setStatus(next), []);
 
+  /**
+   * The tilt is a spring, and it only runs while it is actually moving and the
+   * plate is on screen. It used to start a frame loop on mount and write four
+   * custom properties every frame for the whole session — a permanent style
+   * recalculation three screens before the reader ever arrives, which is felt
+   * as a heavier page everywhere else.
+   */
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     if (window.matchMedia("(hover: none), (prefers-reduced-motion: reduce)").matches) return;
 
-    const render = () => {
-      current.current.x += (target.current.x - current.current.x) * 0.12;
-      current.current.y += (target.current.y - current.current.y) * 0.12;
+    let inView = false;
+    const paint = () => {
       stage.style.setProperty("--tilt-x", current.current.x.toFixed(3));
       stage.style.setProperty("--tilt-y", current.current.y.toFixed(3));
       stage.style.setProperty("--shift-x", `${(current.current.x * 12).toFixed(2)}px`);
       stage.style.setProperty("--shift-y", `${(current.current.y * 12).toFixed(2)}px`);
-      frame.current = window.requestAnimationFrame(render);
     };
-    frame.current = window.requestAnimationFrame(render);
-    return () => window.cancelAnimationFrame(frame.current);
+
+    const render = () => {
+      frame.current = 0;
+      const dx = target.current.x - current.current.x;
+      const dy = target.current.y - current.current.y;
+      current.current.x += dx * 0.12;
+      current.current.y += dy * 0.12;
+      paint();
+      // Settled: no frame is requested until the pointer asks for one.
+      if (inView && Math.abs(dx) + Math.abs(dy) > 0.002) {
+        frame.current = window.requestAnimationFrame(render);
+      }
+    };
+    const request = () => {
+      if (!frame.current && inView) frame.current = window.requestAnimationFrame(render);
+    };
+    wake.current = request;
+
+    const observer =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver(
+            ([entry]) => {
+              inView = Boolean(entry?.isIntersecting);
+              if (inView) request();
+            },
+            { rootMargin: "120px 0px" },
+          );
+    observer?.observe(stage);
+
+    return () => {
+      observer?.disconnect();
+      wake.current = () => {};
+      window.cancelAnimationFrame(frame.current);
+      frame.current = 0;
+    };
+  }, []);
+
+  const box = useRef<ReturnType<typeof createRectCache> | null>(null);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    box.current = createRectCache(stage);
+    return () => box.current?.destroy();
   }, []);
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const stage = stageRef.current;
     if (!stage) return;
-    const rect = stage.getBoundingClientRect();
+    const rect = box.current?.current ?? stage.getBoundingClientRect();
     target.current = {
       x: ((event.clientX - rect.left) / rect.width - 0.5) * 2,
       y: ((event.clientY - rect.top) / rect.height - 0.5) * 2,
     };
+    wake.current();
     if (!touched) setTouched(true);
   };
 
   const onPointerLeave = () => {
     target.current = { x: 0, y: 0 };
+    wake.current();
   };
 
   const label =

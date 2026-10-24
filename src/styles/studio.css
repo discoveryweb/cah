@@ -25,7 +25,7 @@
     transform: translateX(-50%);
     border-radius: 50%;
     background: radial-gradient(ellipse, rgba(124, 84, 255, 0.24), transparent 66%);
-    filter: blur(80px);
+    /* no blur: the gradient is already smooth */
     pointer-events: none;
   }
 

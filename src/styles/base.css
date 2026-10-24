@@ -602,21 +602,48 @@
     pointer-events: none;
   }
 
-  .preloader__backdrop img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: 50% 50%;
-    opacity: 0.5;
-    transform: scale(1.06);
+  /* The hero's light, drawn in CSS: the veil lifts straight into the page. */
+  .preloader__aurora {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    /* no blur: the gradient is already smooth */
+    opacity: 0.55;
+    transform: scale(1.08);
     transition:
       transform 1000ms var(--ease-io),
       opacity 1000ms var(--ease-io);
   }
 
-  .preloader--leaving .preloader__backdrop img {
+  .preloader__aurora--one {
+    top: -18%;
+    left: -10%;
+    width: 80vmax;
+    height: 80vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(122, 78, 255, 0.4) 0%,
+      rgba(88, 52, 210, 0.18) 44%,
+      transparent 72%
+    );
+  }
+
+  .preloader__aurora--two {
+    right: -20%;
+    bottom: -30%;
+    width: 86vmax;
+    height: 86vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(58, 40, 168, 0.46) 0%,
+      rgba(34, 24, 110, 0.2) 48%,
+      transparent 74%
+    );
+  }
+
+  .preloader--leaving .preloader__aurora {
     transform: scale(1);
-    opacity: 0.7;
+    opacity: 0.72;
   }
 
   .preloader__glow {
@@ -624,7 +651,7 @@
     inset: -10%;
     background: radial-gradient(circle at 50% 50%, rgba(150, 108, 255, 0.26), transparent 56%);
     opacity: 0;
-    filter: blur(34px);
+    /* no blur: the gradient is already smooth */
     transition: opacity 700ms var(--ease);
     pointer-events: none;
   }

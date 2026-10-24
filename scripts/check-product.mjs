@@ -65,7 +65,11 @@ check(
   fontFiles.map((file) => `${file}:${kb(size(DIST, "fonts", file))}`).join(" "),
 );
 
-check("the entrance frame is preloaded", /rel="preload"[\s\S]{0,120}hero-poster-blur\.jpg\?v=/.test(html));
+check(
+  "the entrance downloads no frame at all",
+  !/hero-poster|hero-scrub/.test(html),
+  "a preloaded film frame is back in index.html",
+);
 check("the Persian face is preloaded", /rel="preload"[\s\S]{0,160}estedad-arabic\.woff2/.test(html));
 check("the preloaded font is cross-origin tagged", /estedad-arabic\.woff2[^>]*crossorigin/.test(html));
 check("the first font preload comes before the entry script", html.indexOf("estedad-arabic.woff2") < html.indexOf("type=\"module\""));
@@ -185,7 +189,11 @@ if (inlineScripts.length === 1) {
 check("framing is denied", /frame-ancestors 'none'/.test(netlify));
 check("HSTS is set", /Strict-Transport-Security = "max-age=31536000/.test(netlify));
 check("permissions are narrowed", /Permissions-Policy = "camera=\(\), microphone=\(\), geolocation=\(\)/.test(netlify));
-check("the film keeps byte ranges", /\/film\/\*[\s\S]{0,220}Accept-Ranges = "bytes"/.test(netlify));
+check(
+  "the hero texture is cached for a repeat visit",
+  /\/hero\/\*[\s\S]{0,220}Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"/.test(netlify),
+);
+check("nothing is left behind for the removed film", !/\/film\//.test(netlify));
 
 /* ================================================================= craft */
 

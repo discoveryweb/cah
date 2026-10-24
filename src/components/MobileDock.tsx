@@ -7,6 +7,7 @@ import { haptic } from "../utils/haptics";
 import { toRoman } from "../utils/roman";
 import { cn } from "../utils/cn";
 import { onScrollFrame } from "../utils/scrollFrame";
+import { documentMetrics } from "../utils/documentMetrics";
 
 /**
  * The phone dock.
@@ -42,17 +43,15 @@ export function MobileDock({ onOrder }: { onOrder: () => void }) {
     let last = false;
 
     const update = (y: number) => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      // Cached measurements: see utils/documentMetrics.ts.
+      const { max, heroBottom, viewport } = documentMetrics();
       const ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
       const meter = meterRef.current;
       if (meter) meter.style.transform = `scaleX(${ratio.toFixed(4)})`;
 
-      // Out of the way of the film, and out of the way of the closing CTA.
-      const hero = document.getElementById("home");
-      const pastFilm = hero
-        ? hero.getBoundingClientRect().bottom <= window.innerHeight * 0.92
-        : y > window.innerHeight;
-      const nearEnd = max > 0 && max - y < window.innerHeight * 0.62;
+      // Out of the way of the opening screen, and out of the way of the CTA.
+      const pastFilm = heroBottom - y <= viewport * 0.92;
+      const nearEnd = max > 0 && max - y < viewport * 0.62;
       const next = pastFilm && !nearEnd;
       if (next !== last) {
         last = next;

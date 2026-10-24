@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { FILM } from "../content/film";
 import { LogoMark } from "./ui";
 
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
@@ -457,12 +456,9 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     };
 
     const timeout = window.setTimeout(ready, maxDuration);
-    const poster = new Image();
-    poster.src = FILM.poster;
-    Promise.all([
-      document.fonts?.ready ?? Promise.resolve(),
-      typeof poster.decode === "function" ? poster.decode().catch(() => undefined) : Promise.resolve(),
-    ]).then(ready, ready);
+    // The curtain now lifts onto light the page draws itself, so the only thing
+    // worth waiting for is the typeface: the headline must not swap under it.
+    Promise.resolve(document.fonts?.ready ?? null).then(ready, ready);
 
     frame = window.requestAnimationFrame(tick);
     return () => {
@@ -485,10 +481,12 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       }`}
       aria-hidden="true"
     >
-      {/* The blurred first frame of the hero film. The curtain lifts off this
-          exact picture and the hero shows it sharp: a focus pull, not a cut. */}
+      {/* The same violet field the hero is built from: the curtain lifts off the
+          picture the page already has, so the entrance is one gesture rather
+          than a cut. Nothing is downloaded for it. */}
       <div className="preloader__backdrop" aria-hidden="true">
-        <img src={FILM.posterBlur} alt="" width={1600} height={900} fetchPriority="high" decoding="async" />
+        <span className="preloader__aurora preloader__aurora--one" />
+        <span className="preloader__aurora preloader__aurora--two" />
       </div>
 
       <span className="preloader__glow" aria-hidden="true" />

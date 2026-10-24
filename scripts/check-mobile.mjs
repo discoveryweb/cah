@@ -98,9 +98,9 @@ window.__mountPreloader = async () => {
   const inner = createRoot(host);
   act(() => { inner.render(<Preloader onDone={() => {}} />); });
   await settle(60);
-  const img = host.querySelector(".preloader__backdrop img");
+  const backdrop = host.querySelector(".preloader__backdrop");
   const value = {
-    backdrop: img ? img.getAttribute("src") : null,
+    backdrop: backdrop ? backdrop.innerHTML + backdrop.className : null,
     hasCanvas: Boolean(host.querySelector(".preloader__sand-canvas")),
     marks: Boolean(host.querySelector(".preloader__mark")),
   };
@@ -244,10 +244,11 @@ await sleep(200);
 {
   const preloader = await window.__mountPreloader();
   check(
-    "the entrance paints the hero film's own frame",
-    Boolean(preloader.backdrop?.includes("/film/hero-poster-blur.jpg")),
-    String(preloader.backdrop),
+    "the entrance paints the same light the hero is built from",
+    /preloader__aurora/.test(String(preloader.backdrop)),
+    String(preloader.backdrop).slice(0, 80),
   );
+  check("the entrance downloads nothing to paint it", !/img|http/.test(String(preloader.backdrop)));
   check("the sand word is still the entrance", preloader.hasCanvas && preloader.marks);
 }
 
@@ -291,13 +292,12 @@ const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 check("the viewport opts into the notch", /viewport-fit=cover/.test(html));
 
 {
-  const film = fs.readFileSync(path.join(ROOT, "src/content/film.ts"), "utf8");
-  const version = /VERSION = "([^"]+)"/.exec(film)?.[1];
+  const heroSource = fs.readFileSync(path.join(ROOT, "src/components/Hero.tsx"), "utf8");
   check(
-    "the preloaded entrance frame matches the film version",
-    Boolean(version) && html.includes(`hero-poster-blur.jpg?v=${version}`),
-    String(version),
+    "the phone hero is one screen with the ticker underneath",
+    /className="hero__ticker"/.test(heroSource),
   );
+  check("no film is preloaded any more", !/hero-poster-blur/.test(html));
 }
 check("phones use a 62px bar", /--header-h:\s*62px/.test(rootCss));
 check("pull-to-refresh cannot reload the film", /overscroll-behavior-y:\s*contain/.test(css));
@@ -314,7 +314,10 @@ check("no blur on the header while the film runs", !/\.header--solid[^{]*\{[^}]*
 check("the glass header blur is disabled on phones", /@media \(max-width: 767px\)[\s\S]*?\.header--solid \{[\s\S]*?backdrop-filter: none/.test(css));
 check("the phone instruction for the film is hidden on desktop", /\.hero__scroll-hint \{\s*display: none;/.test(heroCss));
 check("the phone shows that instruction instead", /\.hero__scroll-label \{\s*display: none;/.test(css));
-check("the scrub bar fills from the right", /\.hero__progress \{[^}]*transform-origin: right center/.test(css));
+check(
+  "the phone hero never pins the page",
+  !/\.hero__stage \{[^}]*position: sticky/.test(heroCss) && !/\.hero__track/.test(heroCss),
+);
 check(
   "a short phone drops the translation before the headline collides",
   /@media \(max-width: 767px\) and \(max-height: 700px\)[\s\S]{0,160}\.hero__translation \{\s*display: none/.test(css),
@@ -326,11 +329,15 @@ check(
 check("tap targets are at least 44px", /min-width: 44px;\s*\n\s*min-height: 44px/.test(css));
 check("presses are answered, not hovered", /\.btn:active/.test(css) && /:active/.test(css));
 {
-  const filmRule = /\.hero__film-media\s*\{([^}]*)\}/.exec(heroCss);
+  // The one rule that must hold for the new opening screen: the aurora and the
+  // canvas are moved by transform only, and never by a per-frame custom property.
   check(
-    "the film surface still never animates its transform",
-    Boolean(filmRule) && !/transform:/.test(filmRule[1]),
-    filmRule ? filmRule[1].replace(/\s+/g, " ").trim() : "rule missing",
+    "the hero's light animates on the compositor only",
+    !/var\(--(film|hero)-p\)/.test(heroCss) && /\.hero__aurora \{[^}]*will-change: transform/.test(heroCss),
+  );
+  check(
+    "the light is dimmed for reduced motion, not removed",
+    /prefers-reduced-motion: reduce\)[\s\S]{0,140}\.hero__aurora \{\s*animation: none/.test(heroCss),
   );
 }
 

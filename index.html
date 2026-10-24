@@ -56,6 +56,9 @@
     <meta name="apple-mobile-web-app-title" content="CAHEN" />
     <meta name="format-detection" content="telephone=no" />
 
+    <!-- The hero object's height map: the only image the first screen needs. -->
+    <link rel="preload" as="image" href="/hero/mark-relief.webp" fetchpriority="high" />
+
     <!-- The Persian face is the first thing the entrance and the hero set. -->
     <link
       rel="preload"
@@ -71,8 +74,6 @@
       href="/fonts/estedad-latin.woff2?v=1"
       crossorigin="anonymous"
     />
-    <!-- The entrance frame. Keep the version in step with src/content/film.ts. -->
-    <link rel="preload" as="image" href="/film/hero-poster-blur.jpg?v=2026-10-23d" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>

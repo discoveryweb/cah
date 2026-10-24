@@ -13,6 +13,8 @@ export function Cursor() {
   const [mode, setMode] = useState<CursorMode>("default");
   const [label, setLabel] = useState("");
   const [hidden, setHidden] = useState(false);
+  /** Mirrors `hidden`, so a pointer stream never queues a redundant render. */
+  const hiddenRef = useRef(false);
 
   useEffect(() => {
     const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -32,18 +34,35 @@ export function Cursor() {
     let ringY = pointerY;
     let frame = 0;
 
+    /**
+     * The ring only animates while it is actually catching up. A permanent
+     * `requestAnimationFrame` loop — which this used to be — keeps the
+     * compositor awake for the entire session: it competes with scroll frames,
+     * blocks the browser from ever going idle, and drains a laptop battery for
+     * a cursor that is not moving. Settled means no frame is requested at all.
+     */
     const render = () => {
-      ringX += (pointerX - ringX) * 0.15;
-      ringY += (pointerY - ringY) * 0.15;
+      const dx = pointerX - ringX;
+      const dy = pointerY - ringY;
+      ringX += dx * 0.15;
+      ringY += dy * 0.15;
       ring.style.transform = `translate3d(${ringX.toFixed(2)}px, ${ringY.toFixed(2)}px, 0)`;
-      frame = window.requestAnimationFrame(render);
+      frame = Math.abs(dx) + Math.abs(dy) > 0.35 ? window.requestAnimationFrame(render) : 0;
+    };
+
+    const wake = () => {
+      if (!frame) frame = window.requestAnimationFrame(render);
     };
 
     const onMove = (event: PointerEvent) => {
       pointerX = event.clientX;
       pointerY = event.clientY;
       dot.style.transform = `translate3d(${pointerX}px, ${pointerY}px, 0)`;
-      setHidden(false);
+      if (hiddenRef.current) {
+        hiddenRef.current = false;
+        setHidden(false);
+      }
+      wake();
     };
 
     const onOver = (event: PointerEvent) => {
@@ -52,7 +71,7 @@ export function Cursor() {
 
       if (target.closest("input, textarea, select, [contenteditable='true']")) {
         setMode("default");
-        setHidden(true);
+        setHiddenOnce(true);
         return;
       }
 
@@ -73,14 +92,19 @@ export function Cursor() {
       setLabel("");
     };
 
-    const onLeave = () => setHidden(true);
-    const onEnter = () => setHidden(false);
+    const setHiddenOnce = (value: boolean) => {
+      if (hiddenRef.current === value) return;
+      hiddenRef.current = value;
+      setHidden(value);
+    };
+    const onLeave = () => setHiddenOnce(true);
+    const onEnter = () => setHiddenOnce(false);
 
     window.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerover", onOver, { passive: true });
     document.addEventListener("pointerleave", onLeave);
     document.addEventListener("pointerenter", onEnter);
-    frame = window.requestAnimationFrame(render);
+    wake();
 
     return () => {
       window.cancelAnimationFrame(frame);

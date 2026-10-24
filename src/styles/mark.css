@@ -28,11 +28,12 @@
     touch-action: pan-y;
   }
 
+  /* A soft blob drawn as a gradient rather than a solid circle with a 48 px
+     gaussian under it: same picture, no offscreen filter buffer. */
   .mark-stage__glow {
     position: absolute;
     z-index: 0;
     border-radius: 50%;
-    filter: blur(48px);
     pointer-events: none;
   }
 
@@ -41,7 +42,7 @@
     right: -12%;
     width: 62%;
     aspect-ratio: 1;
-    background: rgba(129, 84, 246, 0.5);
+    background: radial-gradient(circle, rgba(129, 84, 246, 0.5) 0%, rgba(129, 84, 246, 0.28) 42%, transparent 70%);
     animation: mark-glow 13s ease-in-out infinite alternate;
   }
 
@@ -50,7 +51,7 @@
     left: -14%;
     width: 56%;
     aspect-ratio: 1;
-    background: rgba(74, 52, 190, 0.42);
+    background: radial-gradient(circle, rgba(74, 52, 190, 0.42) 0%, rgba(74, 52, 190, 0.24) 44%, transparent 72%);
     animation: mark-glow 17s ease-in-out -6s infinite alternate-reverse;
   }
 
@@ -145,7 +146,7 @@
     aspect-ratio: 1;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(150, 110, 255, 0.34), transparent 66%);
-    filter: blur(26px);
+    /* no blur: the gradient is already smooth */
     pointer-events: none;
   }
 
@@ -378,6 +379,17 @@
       aspect-ratio: 1 / 1.02;
       border-radius: 22px;
       padding: 12px;
+    }
+
+    /* A CSS filter over a canvas that repaints every frame is re-rasterised
+       every frame. On a phone that alone costs more than the particle cloud;
+       the plate's own glow already carries the light. */
+    .mark-stage .particle-logo-canvas {
+      filter: none;
+    }
+
+    .mark-stage .particle-logo-ghost {
+      filter: saturate(1.2) brightness(1.08) blur(9px);
     }
 
     .mark-stage__rail {

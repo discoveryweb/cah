@@ -1,12 +1,22 @@
 const canvasDimensionLimits = new WeakMap<WebGLRenderingContext | WebGL2RenderingContext, number>();
 
+/**
+ * Phones report a device pixel ratio of 3. Filling 1.5× of that for a particle
+ * field is invisible to the eye and costs more than half of the frame budget,
+ * so a narrow viewport budgets lower. Desktop keeps its 2×.
+ */
+function pixelRatioBudget(): number {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return 2;
+  return window.matchMedia("(max-width: 767px)").matches ? 1.5 : 2;
+}
+
 /** Keep the existing DPR budget, then account for browser pinch zoom. */
 export function getCanvasPixelRatio(
   element: HTMLElement,
   context?: WebGLRenderingContext | WebGL2RenderingContext,
 ): number {
   const scale = window.visualViewport?.scale || 1;
-  const requested = Math.min(window.devicePixelRatio || 1, 2) * scale;
+  const requested = Math.min(window.devicePixelRatio || 1, pixelRatioBudget()) * scale;
   const width = Math.max(element.clientWidth, 1);
   const height = Math.max(element.clientHeight, 1);
   let maxDimension = 8192;

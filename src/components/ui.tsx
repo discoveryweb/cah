@@ -67,19 +67,33 @@ export function Reveal({
     const element = ref.current;
     if (!element) return;
 
+    const timers: number[] = [];
+
+    /**
+     * `will-change` is a promise to the compositor that a layer is worth
+     * keeping. Once the reveal has played out the promise is worthless, and
+     * every element that keeps it holds a full-size GPU texture for the rest of
+     * the session — dozens of them across this page. `reveal--settled` hands
+     * it back.
+     */
+    const revealNow = (target: HTMLElement) => {
+      target.classList.add("reveal--visible");
+      timers.push(window.setTimeout(() => target.classList.add("reveal--settled"), 1200));
+    };
+
     if (
       typeof IntersectionObserver === "undefined" ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
-      element.classList.add("reveal--visible");
-      return;
+      revealNow(element);
+      return () => timers.forEach((timer) => window.clearTimeout(timer));
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("reveal--visible");
+            revealNow(entry.target as HTMLElement);
             observer.unobserve(entry.target);
           }
         });
@@ -89,10 +103,10 @@ export function Reveal({
     observer.observe(element);
 
     // Content must remain available if an observer is throttled or unavailable.
-    const safetyTimer = window.setTimeout(() => element.classList.add("reveal--visible"), 6000);
+    timers.push(window.setTimeout(() => revealNow(element), 6000));
     return () => {
       observer.disconnect();
-      window.clearTimeout(safetyTimer);
+      timers.forEach((timer) => window.clearTimeout(timer));
     };
   }, [threshold]);
 

@@ -16,6 +16,11 @@
     opacity: 1;
   }
 
+  /* The reveal has finished: stop holding a compositor layer for it. */
+  .reveal--settled {
+    will-change: auto;
+  }
+
   .reveal[data-variant="mask"] {
     overflow: hidden;
     padding-bottom: 0.08em;

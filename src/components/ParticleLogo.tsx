@@ -7,9 +7,18 @@ import type { ParticleObjectProps } from "./canvasui/ParticleObject";
 const CORE_COUNT = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
 const BUDGET_SCALE = CORE_COUNT <= 2 ? 0.55 : CORE_COUNT <= 4 ? 0.8 : 1;
 
+/**
+ * A phone paints the same plate on a third of the pixels and has a fraction of
+ * the fill rate, so the cloud is rebuilt from fewer, slightly larger points.
+ * Above ~2.5k points the mark stops reading as particles and starts reading as
+ * a slow surface; below it, the silhouette is lost. This is that window.
+ */
+const COMPACT = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+const POINT_BUDGET = COMPACT ? 2400 : 9000;
+
 const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" | "onLoad" | "onError"> = {
-  count: Math.round(9000 * BUDGET_SCALE),
-  size: 2.55,
+  count: Math.round(POINT_BUDGET * BUDGET_SCALE),
+  size: COMPACT ? 3.1 : 2.55,
   sizeVariance: 0.3,
   /**
    * Empty keeps the mark's own chrome. The plate lifts its brightness in CSS so
@@ -20,9 +29,9 @@ const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" 
   scale: 3.5,
   cameraDistance: 4.1,
   fov: 62,
-  radius: 88,
-  strength: 0.66,
-  swirl: 0.46,
+  radius: COMPACT ? 58 : 88,
+  strength: COMPACT ? 0.52 : 0.66,
+  swirl: COMPACT ? 0.34 : 0.46,
   spring: 1.12,
   damping: 0.46,
   drift: 0.26,

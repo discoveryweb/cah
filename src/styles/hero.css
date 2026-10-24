@@ -10,174 +10,194 @@
   }
 
   /**
-   * The track's extra height is the scrub distance: one viewport of pinning
-   * plus ~2.4 screens of scroll maps onto the whole clip.
+   * The opening screen is exactly one screen, and deliberately not a full one:
+   * the ticker and a sliver of the section below stay visible, so the page
+   * never reads as a wall the reader has to break through. There is no track
+   * and nothing is pinned — scrolling moves the page, always.
    */
-  .hero__track {
-    position: relative;
-    height: 340svh;
-    min-height: 1500px;
-  }
-
   .hero__stage {
-    position: sticky;
-    top: 0;
+    position: relative;
     display: grid;
-    height: 100svh;
-    min-height: 640px;
+    min-height: min(calc(100svh - 64px), 980px);
     overflow: hidden;
     isolation: isolate;
     background: var(--paper-deep);
-    /* The film is full-bleed: scrims and the film itself reach the edges. */
     border-radius: 0;
   }
 
-  /* ---------- Film layers ---------- */
-  .hero__film {
+  @media (max-width: 767px) {
+    .hero__stage {
+      min-height: calc(100svh - 52px);
+    }
+  }
+
+  /* ---------- The light ---------- */
+  /**
+   * Three slow gradients, one grain, one canvas. Nothing here is a download:
+   * the whole opening screen weighs less than a single frame of the footage it
+   * replaces, and it is cut from the studio's own palette rather than borrowed
+   * from a stock render.
+   */
+  .hero__field {
     position: absolute;
     inset: 0;
     z-index: 0;
     overflow: hidden;
     background:
-      radial-gradient(120% 90% at 78% 8%, rgba(122, 86, 255, 0.28), transparent 62%),
-      var(--paper-deep);
+      radial-gradient(130% 105% at 50% 0%, #201f52 0%, #14133a 40%, #0a0a20 78%, #08081a 100%),
+      /* A lamp on the floor of the page: depth under the buttons, for free. */
+      radial-gradient(90% 46% at 50% 116%, rgba(120, 76, 255, 0.34) 0%, rgba(70, 44, 190, 0.14) 46%, transparent 76%);
+    will-change: transform, opacity;
   }
 
-  /**
-   * The frame is painted once and never re-scaled: a per-frame transform here
-   * made the browser re-rasterise the video surface on every scroll tick, which
-   * is what shimmered and lagged. Overlay fades use opacity only.
-   */
-  .hero__film-media {
+  .hero__aurora {
     position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-
-  .hero__poster,
-  .hero__video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: 50% 50%;
-  }
-
-  .hero__poster {
-    filter: saturate(0.94) contrast(1.02) brightness(0.92);
-    transform: scale(1.01);
-  }
-
-  /* 29 KB blurred thumbnail paints instantly, then the sharp poster lands. */
-  .hero__poster--blur {
-    filter: blur(14px) saturate(0.94) brightness(0.9);
-    transform: scale(1.06);
-  }
-
-  /**
-   * Until the first frame is decoded (and in reduced-motion mode) the poster
-   * drifts slowly, so the hero never looks like a frozen still.
-   */
-  .hero:not([data-film-ready="true"]) .hero__poster--full {
-    animation: film-drift 28s ease-in-out infinite alternate;
-  }
-
-  @keyframes film-drift {
-    from {
-      transform: scale(1.02) translate3d(0, 0, 0);
-    }
-    to {
-      transform: scale(1.1) translate3d(-1.2%, -1%, 0);
-    }
-  }
-
-  .hero__video {
-    opacity: 0;
-    filter: saturate(0.96) contrast(1.03) brightness(0.92);
-    transition: opacity 420ms var(--ease);
-    /* Decoded frame changes are the paint; no extra compositing hints needed. */
-  }
-
-  .hero[data-film-ready="true"] .hero__video {
-    opacity: 1;
-  }
-
-  .hero[data-film-ready="true"] .hero__poster {
-    opacity: 0;
-    transition: opacity 700ms var(--ease);
-  }
-
-  /* Once the film is on screen the drifting poster is dead weight. */
-  .hero[data-film-ready="true"] .hero__poster--full {
-    animation: none;
-  }
-
-  /**
-   * Just enough scrim for readable type. The film itself must stay clearly
-   * visible — an earlier, heavier overlay left the hero looking almost black.
-   */
-  .hero__film-scrim {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    background:
-      linear-gradient(180deg, rgba(5, 4, 16, 0.62) 0%, rgba(5, 4, 16, 0.08) 22%, rgba(5, 4, 16, 0.04) 46%, rgba(7, 6, 22, 0.55) 76%, rgba(10, 10, 30, 0.92) 100%),
-      linear-gradient(96deg, rgba(4, 3, 14, 0.5) 0%, rgba(4, 3, 14, 0.1) 42%, transparent 62%);
+    display: block;
+    border-radius: 50%;
+    /* no blur: the gradient is already smooth */
+    opacity: 0.62;
+    will-change: transform;
     pointer-events: none;
   }
 
-  /* Shown only when a browser refuses autoplay until the visitor interacts. */
-  .hero__play {
+  .hero__aurora--violet {
+    top: -18%;
+    left: -8%;
+    width: 78vmax;
+    height: 78vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(126, 82, 255, 0.6) 0%,
+      rgba(92, 56, 216, 0.32) 42%,
+      rgba(20, 16, 56, 0) 72%
+    );
+    animation: aurora-drift-a 46s var(--ease-io) infinite alternate;
+  }
+
+  .hero__aurora--indigo {
+    right: -22%;
+    bottom: -34%;
+    width: 86vmax;
+    height: 86vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(64, 44, 186, 0.66) 0%,
+      rgba(38, 27, 120, 0.34) 48%,
+      rgba(10, 10, 30, 0) 74%
+    );
+    animation: aurora-drift-b 62s var(--ease-io) infinite alternate;
+  }
+
+  .hero__aurora--lilac {
+    top: 26%;
+    left: 34%;
+    width: 46vmax;
+    height: 46vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(216, 194, 255, 0.28) 0%,
+      rgba(167, 122, 255, 0.16) 46%,
+      rgba(10, 10, 30, 0) 72%
+    );
+    animation: aurora-drift-c 38s var(--ease-io) infinite alternate;
+  }
+
+  @keyframes aurora-drift-a {
+    from {
+      transform: translate3d(-2%, -1%, 0) scale(1.02);
+    }
+    to {
+      transform: translate3d(5%, 4%, 0) scale(1.14);
+    }
+  }
+
+  @keyframes aurora-drift-b {
+    from {
+      transform: translate3d(2%, 3%, 0) scale(1.08);
+    }
+    to {
+      transform: translate3d(-4%, -3%, 0) scale(1);
+    }
+  }
+
+  @keyframes aurora-drift-c {
+    from {
+      transform: translate3d(-3%, 2%, 0) scale(0.96);
+    }
+    to {
+      transform: translate3d(3%, -4%, 0) scale(1.1);
+    }
+  }
+
+  /** A single raking light, the way a print plate catches a lamp. */
+  .hero__beam {
     position: absolute;
-    z-index: 5;
-    bottom: clamp(16px, 3vw, 34px);
-    left: var(--gutter);
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 18px 10px 14px;
-    border: 1px solid rgba(220, 210, 255, 0.4);
-    border-radius: 999px;
-    background: rgba(10, 8, 28, 0.55);
-    backdrop-filter: blur(10px);
-    color: #f4f1ff;
-    font: inherit;
-    font-size: 12.5px;
-    cursor: pointer;
-    transition: background 250ms var(--ease), border-color 250ms var(--ease), transform 250ms var(--ease);
+    inset: -20% -10%;
+    background: linear-gradient(
+      104deg,
+      transparent 30%,
+      rgba(214, 196, 255, 0.1) 46%,
+      rgba(167, 122, 255, 0.16) 52%,
+      transparent 68%
+    );
+    pointer-events: none;
   }
 
-  .hero__play:hover {
-    background: rgba(24, 18, 58, 0.72);
-    border-color: rgba(220, 210, 255, 0.7);
-    transform: translateY(-1px);
-  }
-
-  .hero__play-icon {
-    width: 0;
-    height: 0;
-    border-block: 6px solid transparent;
-    border-inline-start: 9px solid var(--vermilion-soft);
-  }
-
-  .hero__debug {
+  /**
+   * The object. A full-bleed canvas that paints the mark as a lit relief; it
+   * fades in over the CSS field once its first frame is drawn, so the first
+   * paint is never waiting for a shader to compile.
+   */
+  .hero__relief {
     position: absolute;
-    z-index: 9;
-    top: 90px;
-    right: 16px;
-    max-width: 320px;
-    max-height: 60vh;
-    overflow: auto;
-    padding: 10px 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    background: rgba(4, 3, 16, 0.86);
-    color: #b9f5cd;
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 10px;
-    line-height: 1.5;
-    white-space: pre-wrap;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 900ms var(--ease);
+    pointer-events: none;
+  }
+
+  .hero__relief.is-live {
+    opacity: 1;
+  }
+
+  /* With the object drawing, the CSS aurora steps back to being the room. */
+  .hero__field:has(.hero__relief.is-live) .hero__aurora {
+    opacity: 0.42;
+  }
+
+  .hero__field:has(.hero__relief.is-live) .hero__beam {
+    opacity: 0.5;
+  }
+
+  /** Print grain: the texture that makes a flat gradient read as paper. */
+  .hero__grain {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsdGVyPSJ1cmwoI24pIi8+PC9zdmc+");
+    background-size: 200px 200px;
+    /* Painted *under* the canvas, deliberately: a soft-light blend above a
+       surface that repaints at 60 fps is a full-screen blend every frame, while
+       below it the blend is computed once against the static field and the
+       glyph simply covers it. */
+    mix-blend-mode: soft-light;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /**
+   * Type has to sit on all of this and stay readable: a vignette at the edges,
+   * a lift under the headline, and one soft darkening at the foot where the
+   * lede and the buttons live.
+   */
+  .hero__veil {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(120% 80% at 50% 8%, transparent 30%, rgba(6, 5, 18, 0.55) 100%),
+      linear-gradient(180deg, rgba(6, 5, 18, 0.62) 0%, transparent 26%, transparent 46%, rgba(8, 7, 24, 0.72) 88%, rgba(10, 10, 30, 0.96) 100%);
     pointer-events: none;
   }
 
@@ -524,54 +544,24 @@
 }
 
 @layer components {
-  /* Scroll-scrub mode: the clip advances with the page, in both directions. */
-  .hero[data-film="scrub"] .hero__poster {
-    transition: opacity 700ms var(--ease);
-  }
+  /**
+   * Reduced motion: the light becomes a still plate. The gradients, the grain
+   * and the mark's assembled state all survive — the screen is as composed as
+   * ever, it simply does not move, and the parallax engine never runs.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .hero__aurora {
+      animation: none;
+    }
 
-  /* Poster-only fallback: reduced motion. */
-  .hero.is-still .hero__film-media {
-    transform: none !important;
-    will-change: auto;
-  }
-
-  .hero.is-still .hero__overlay {
-    opacity: 1;
-    transform: none;
-  }
-
-  /* ---------- Scrub progress ---------- */
-  .hero__progress {
-    position: absolute;
-    z-index: 4;
-    right: var(--gutter);
-    bottom: clamp(14px, 2.4vw, 26px);
-    left: var(--gutter);
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--vermilion-soft));
-    transform: scaleX(0);
-    transform-origin: left center;
-    pointer-events: none;
-    opacity: 0.75;
-  }
-
-  .hero.is-still .hero__progress {
-    display: none;
-  }
-
-  /* The poster is the final state when motion is off or the film failed. */
-  .hero.is-still .hero__video {
-    display: none;
+    .hero__field {
+      will-change: auto;
+    }
   }
 }
 
 @layer components {
   @media (max-width: 1023px) {
-    .hero__track {
-      height: 280svh;
-      min-height: 1300px;
-    }
-
     .hero__title {
       max-width: 24ch;
       font-size: clamp(2.2rem, 8.4vw, 4rem);
@@ -587,16 +577,25 @@
   }
 
   @media (max-width: 767px) {
-    /* Mobile keeps the pinned stage but needs less scroll travel per frame. */
-    .hero__track {
-      height: 260svh;
-      min-height: 1200px;
+    /* One screen on a phone too; the ticker underneath is the whole point. */
+    .hero__stage {
+      min-height: calc(100svh - 52px);
     }
 
-    .hero__stage {
-      position: sticky;
-      height: 100svh;
-      min-height: 560px;
+    /* No blur at all: a 78vmax layer with a gaussian on it is the most
+       expensive paint on the first screen, and it buys nothing over a gradient. */
+    .hero__aurora {
+      opacity: 0.58;
+    }
+
+    .hero__aurora--lilac {
+      opacity: 0.7;
+    }
+
+    /* The mark moves behind the meta strip on a narrow screen so it never
+       collides with the headline. */
+    .hero__constellation {
+      opacity: 0.8;
     }
 
     .hero__inner {
@@ -685,15 +684,6 @@
 
 @layer components {
   @media (prefers-reduced-motion: reduce) {
-    .hero__video {
-      display: none;
-    }
-
-    .hero__poster--full {
-      animation: none !important;
-      transform: none;
-    }
-
     .hero__scroll-line::after {
       animation: none;
       transform: none;

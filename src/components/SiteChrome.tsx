@@ -4,6 +4,7 @@ import { NAV_LINKS } from "../data";
 import { toRoman } from "../utils/roman";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
 import { onScrollFrame } from "../utils/scrollFrame";
+import { documentMetrics } from "../utils/documentMetrics";
 
 /** Hairline scroll progress fixed to the very top of the viewport. */
 export function ScrollProgress() {
@@ -14,7 +15,8 @@ export function ScrollProgress() {
     if (!bar) return;
 
     const update = (y: number) => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      // Cached: measuring the document here would relayout on every frame.
+      const { max } = documentMetrics();
       const ratio = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
       bar.style.transform = `scaleX(${ratio.toFixed(4)})`;
     };
@@ -29,13 +31,15 @@ export function BackToTop() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    let shown = false;
     const update = (y: number) => {
-      // Same rule as the dock: once the film is behind you.
-      const hero = document.getElementById("home");
-      const threshold = hero
-        ? Math.max(560, hero.offsetTop + hero.offsetHeight - window.innerHeight * 0.92)
-        : 900;
-      setVisible(y > threshold);
+      // Same rule as the dock: once the opening screen is behind you.
+      const { heroBottom, viewport } = documentMetrics();
+      const next = y > Math.max(560, heroBottom - viewport * 0.92);
+      // Only touch React when the answer actually flips.
+      if (next === shown) return;
+      shown = next;
+      setVisible(next);
     };
 
     return onScrollFrame(update);

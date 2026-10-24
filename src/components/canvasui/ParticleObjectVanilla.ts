@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
    are ~700 KB of decoder between them, and this site renders its mark from an
    image. Keeping them out of the particle chunk is the single biggest saving
    in the 3D layer. */
+import { isInlineImageSrc } from "./asset-source";
 import { createRectCache } from "./rect-cache";
 
 export interface ParticleObjectOptions {
@@ -514,12 +515,10 @@ function sniffKind(
   return null;
 }
 
-function rasterizeImage(blob: Blob): Promise<ImageData> {
+function rasterizeImageUrl(url: string): Promise<ImageData> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob);
     const image = new Image();
     image.onload = () => {
-      URL.revokeObjectURL(url);
       const width = image.naturalWidth || 1024;
       const height = image.naturalHeight || 1024;
       const ratio = Math.min(1, RASTER_SIZE / Math.max(width, height));
@@ -535,11 +534,15 @@ function rasterizeImage(blob: Blob): Promise<ImageData> {
       resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
     };
     image.onerror = () => {
-      URL.revokeObjectURL(url);
       reject(new Error("Could not decode the image"));
     };
     image.src = url;
   });
+}
+
+function rasterizeImage(blob: Blob): Promise<ImageData> {
+  const url = URL.createObjectURL(blob);
+  return rasterizeImageUrl(url).finally(() => URL.revokeObjectURL(url));
 }
 
 export function createParticleObject(
@@ -602,6 +605,10 @@ export function createParticleObject(
   let loadedSrc: string | null = null;
   let loadToken = 0;
   let disposed = false;
+  /** True when every particle sits at home with no velocity left. */
+  let resting = false;
+  /** Seconds spent without a push, used to decide when the cloud has settled. */
+  let calmFor = 0;
 
   function clearPoints() {
     if (!points) return;
@@ -617,6 +624,8 @@ export function createParticleObject(
     if (assetSource?.kind === "mesh") disposeObject(assetSource.scene);
     assetSource = null;
     builtCount = -1;
+    resting = false;
+    calmFor = 0;
     clearPoints();
   }
 
@@ -668,6 +677,20 @@ export function createParticleObject(
       return;
     }
     try {
+      /* Inline payloads never touch the network: `connect-src 'self'` refuses
+         `fetch()` of `data:`/`blob:`, while `img-src` allows the very same
+         payload to be drawn. Decoding it directly is both policy-safe and a
+         round trip cheaper. */
+      if (isInlineImageSrc(src)) {
+        const inlineData = await rasterizeImageUrl(src);
+        if (disposed || token !== loadToken) return;
+        clearAsset();
+        assetSource = { kind: "image", data: inlineData };
+        buildCloud();
+        config.onLoad?.();
+        return;
+      }
+
       const response = await fetch(src);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const buffer = await response.arrayBuffer();
@@ -893,6 +916,37 @@ export function createParticleObject(
 
     const swirl = Math.min(Math.max(config.swirl, 0), 2);
     const r2max = localRadius * localRadius;
+
+    /* The cloud is at rest whenever nothing pushes it and every particle is
+       back on its home point. In that state the loop below would copy 9k
+       positions to the GPU for a picture that cannot change — the most
+       expensive thing on this page, and on a phone it is the difference
+       between scrolling smoothly and not. The idle shimmer is in the vertex
+       shader, so the mark keeps breathing while the CPU does nothing. */
+    if (pushing) {
+      resting = false;
+      calmFor = 0;
+    } else {
+      if (resting) return;
+      calmFor += delta;
+      if (calmFor > 1.2) {
+        let moving = false;
+        for (let i = 0; i < v.length; i++) {
+          if (v[i] > 1e-4 || v[i] < -1e-4) {
+            moving = true;
+            break;
+          }
+        }
+        if (!moving) {
+          p.set(h);
+          v.fill(0);
+          resting = true;
+          positionAttr.needsUpdate = true;
+          return;
+        }
+        calmFor = 0;
+      }
+    }
 
     for (let i = 0; i < particleCount; i++) {
       const ix = i * 3;

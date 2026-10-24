@@ -71,6 +71,56 @@
   to = "/404.html"
   status = 404
 
+# A missing *file* must never be answered with the app shell. Without these, a
+# broken image or a renamed script fell through to the SPA catch-all and came
+# back as `200 text/html` — a silent failure that only shows up as a blank box.
+# Like the rules above they are unforced, so a real file always wins; Netlify
+# matches `*` anywhere in the pattern, so one rule covers every directory.
+[[redirects]]
+  from = "/*.js"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.css"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.woff2"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.png"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.webp"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.svg"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.mp4"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.wasm"
+  to = "/404.html"
+  status = 404
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -106,14 +156,14 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# The hero film is not fingerprinted, so it gets a short, revalidated cache:
-# fast repeat visits, and a replaced film is live within minutes. Scrubbing needs
-# byte ranges, and the file is served compressed only if the CDN supports it.
+# The hero's height map is not fingerprinted, so it gets a short, revalidated
+# cache: a repeat visit costs no request at all, and a replaced texture is live
+# within a day. It is preloaded on every page load, so this is the one asset
+# whose cache policy is worth stating explicitly.
 [[headers]]
-  for = "/film/*"
+  for = "/hero/*"
   [headers.values]
     Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
-    Accept-Ranges = "bytes"
 
 # The HTML shell must be revalidated so new deploys are picked up immediately.
 [[headers]]

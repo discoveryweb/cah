@@ -11,54 +11,106 @@ npm run dev
 
 Create a production build with `npm run build`; run the TypeScript check on its own with `npm run typecheck`.
 
-## The hero film
+## The opening screen
 
-The first screen is a full-bleed film **scrubbed by the scroll**, never played:
-scrolling down walks the clip forwards, scrolling up walks it backwards, frame
-for frame, and the hero stays pinned for ~3.4 screens before releasing into the
-page.
+One screen of type and one lit object: the studio's mark, rendered as machined
+violet metal by a hand-written WebGL2 fragment shader. **Nothing is pinned and
+nothing plays.**
 
-What makes it smooth (and what was wrong before):
+It replaced a film — a 3–5 MB stock render of a blue sci-fi corridor, scrubbed
+frame by frame with the page held for 3.4 viewports. That was someone else's
+picture, it cost megabytes before a reader saw a word, and it resisted the
+scroll. (The alternatives were tried and rejected on the evidence: a particle
+burst, drifting silk sheets and a raymarched lens all read as decoration rather
+than as an object with weight.)
 
-- **Nothing React owns moves.** The engine (`src/hooks/useHeroFilm.ts`) writes
-  only `video.currentTime` and two compositor-only styles per frame. An earlier
-  version kept the progress in React state and in a CSS custom property, so every
-  scroll tick re-rendered the whole hero and recalculated styles for its whole
-  subtree — that was the lag, and the lag is what looked like the picture jumping
-  to a different scene.
-- **The film surface is never transformed.** No scale, no parallax on the video:
-  a per-frame transform forces the browser to re-rasterise the video surface on
-  every tick, which is what shimmered. The overlay fades with a plain opacity.
-- **Every frame is a keyframe** (`-g 1 -keyint_min 1 -sc_threshold 0`), and the
-  encode is deliberately small (1152×648 desktop, 896×504 for ≤900 px) so a seek
-  decodes in a couple of milliseconds.
-- **Frame-grid snapping + coalesced seeks.** Targets are rounded to the 30 fps
-  grid (asking for a mid-frame timestamp lets the decoder pick either
-  neighbour — the wobble), one seek is in flight at a time, and the freshest
-  target wins on `seeked`.
-- **One source for the whole session.** The file is chosen in the first render
-  instead of being swapped after mount; a reload mid-scroll is what used to
-  restart the film at another scene.
-- **The film appears only once it is buffered**, so it cannot stall mid-scroll
-  and then snap to whatever the network produced.
-- **The glass header drops its backdrop blur** while the film is on screen: that
-  blur would otherwise re-blur a surface that changes every frame.
-- `prefers-reduced-motion` skips the video entirely and keeps the poster, with a
-  14 KB blurred thumbnail for the first paint.
+### What draws it — `src/components/HeroRelief.tsx`
 
-Rebuild the film after replacing the source clip:
+No three.js, no scene graph, no post-processing chain: one vertex shader, one
+fragment shader, one texture, one full-screen triangle.
 
-```bash
-npm run film:video -- inbox/uploads/<file>.mp4 \
-  --scrub --start 0.75 --duration 13.4 --badge 1014,642,262,52
-```
+- **The form.** `public/hero/mark-relief.webp` is the mark baked into a height
+  field: R = soft height, G/A = sharp coverage, B = fine detail. 86 KB (39 KB on
+  a phone), preloaded, and the only image the first screen needs.
+- **The lighting is real.** Per-pixel normals from the height field (four taps,
+  central differences), one key light sweeping across the piece over 24 s, one
+  cool fill, one rim, a specular lobe, fresnel, and occlusion from the form
+  itself — so it reads as a physical object rather than a picture of a logo.
+  The swept shadow is *not* a shifted sprite: that produced a hard patch.
+- **Aspect is handled properly.** Screen space keeps the long axis at 1, so the
+  object stays round at every width, and the composition is explicit per
+  breakpoint: `heroFocus()` centres it on a phone and pushes it right of centre
+  on a wide screen, where the type needs the left third. `heroScale()` is the
+  height, in screen units, that the texture square spans — a *larger* number is
+  a larger object.
+- **Orientation is a correctness requirement.** `gl_FragCoord.y` runs up the
+  screen while a texture's `v` runs down it, so the mapping negates `y` exactly
+  once, in `markSpace()`, and the upload leaves `UNPACK_FLIP_Y_WEBGL` alone.
+  Flipping in both places is how the mark ended up upside down once; the gate
+  now counts the negations and requires the texture not to be flipped back.
+- **Arrival** is light spreading outward from the centre over 2.6 s, not a fade.
 
-`--scrub` writes `hero-scrub-1152.mp4`, `hero-scrub-896.mp4`, the poster and its
-blurred thumbnail. Other flags: `--fit contain`, `--no-interpolate`, `--crf 29`,
-`--scrub-fps 30`, `--placeholder`.
+### It answers the pointer
 
-Diagnostics: open `/?film=debug` to print the media state (src, duration,
-currentTime, seeking, buffered, decode error) while scrolling.
+The piece is not a picture that reacts: the *surface* is disturbed, and every
+other term is derived from that disturbance, so the response is physical rather
+than decorative.
+
+- **The finger presses a lens.** A gaussian well under the pointer drags the
+  mark's own texcoord in its falloff — a bulge in the metal, not a scale on the
+  element. It eases in over ~0.2 s and keeps breathing while a pointer rests on
+  it, so a held hover never freezes.
+- **Taps and drags shed shockwaves.** A press lands a ring that travels outward
+  (`front = age · 0.40`), a second faster crest trailing it, and a dent behind
+  that heals — four slots (two on the reduced tier), 2.6 s each, dropped oldest
+  first. A drag spawns one every 110 ms, and only if the pointer actually
+  travelled, so a still finger stays calm.
+- **Everything is lit by the disturbance.** Energy from the lens and the crests
+  tilts the surface normal, gathers a caustic (blended toward lilac-white, never
+  added — adding clips to white and reads as a lamp) and bleeds a little glow
+  into the plate behind, so the mark seems lit from within rather than pasted on.
+- **Dispersion, inside the palette.** The crest is sampled twice, either side of
+  the true tone, and the two ends are laid on opposite flanks of the wave. Both
+  ends live in the studio's own violet ramp, so the fringe reads as refraction
+  and never as a rainbow.
+- **One projection, or the lens surfaces in the wrong place.** The pointer, the
+  shockwaves and the fragment itself all resolve through `markSpace()`. Passing
+  screen uv to a texture-space disturbance puts the bulge where the finger is
+  not, and the gate pins the shared projection for exactly that reason.
+
+Cost on arrival is unchanged: the interaction is uniforms and a few dozen ALU
+operations inside the draw that was already happening. On a touch screen the
+parallax is skipped entirely — the finger moving the surface *is* the effect —
+and `prefers-reduced-motion` never spawns a disturbance at all. Every listener
+is `passive` on the `.hero` section, so none of it can delay a scroll or a tap
+on the order form.
+
+### Performance ladder
+
+| tier | when | cost |
+|---|---|---|
+| full | a normal device | DPR 2 (1.5 on a phone) capped by a pixel budget, 60 fps, 1 texture upload |
+| reduced | ≤ 4 cores, ≤ 4 GB, `saveData` | DPR 1.25, 30 fps, half the shockwave slots |
+| still | `prefers-reduced-motion` | one frame, then no loop at all |
+| none | no WebGL2, or a shader that fails to compile | the CSS violet field underneath |
+
+The loop stops when the canvas is off screen or the tab is hidden, the pixel
+ratio is capped, and every GPU object is released on unmount. Failures are
+logged (`hero shader: …`), never swallowed into a black screen.
+
+`npm run hero:check` mounts the real component against a recording WebGL2
+context and holds all of it: the shaders parse as GLSL ES 3.00 and are not
+truncated, the normal/key/specular/fresnel terms are present, the renderer is
+raw WebGL2, shader errors are logged, there is a reduced tier, reduced motion
+draws once and stops, the loop halts when hidden, a phone loads the 512 texture,
+and no video or media request exists anywhere on the first screen.
+
+The interaction is tested end to end rather than by regex alone: the gate
+dispatches a real `pointerdown` on the hero, then reads back the uniforms that
+reached the stubbed GPU and requires the lens to be where the finger was and a
+shockwave to be in the ring buffer — then releases the pointer and requires the
+lens to let go. Orientation is pinned the same way: exactly one `-q.y`, inside
+the shared projection, with the upload unflipped.
 
 ## On a phone
 
@@ -66,31 +118,32 @@ Most visitors arrive on a phone, so the phone is designed, not shrunk. The whole
 contract lives in `src/styles/mobile.css` (scoped to `<= 767px`) so it can be
 read and audited in one place.
 
-- **The entrance is one gesture.** The preloader paints the hero film's *own*
-  first frame (the pre-blurred poster) behind the sand word; when the pour
-  finishes, the curtain lifts and the headline rises in the same beat, so the
-  page ends the entrance in a focus pull rather than a cut. On a phone the pour
-  is 1.25 s instead of 1.85 s, and the chrome is cut to one line.
-- **The film explains itself.** Under the copy, a single line says the scene
-  advances with the scroll, and the scrub hairline fills right-to-left.
-- **A dock instead of a disappearing header.** Once the film is behind you, a
+- **The entrance is one gesture.** The preloader paints the same violet aurora
+  the hero is built from, behind the sand word; when the pour finishes, the
+  curtain lifts and the headline rises in the same beat, so the page ends the
+  entrance in a dissolve rather than a cut. On a phone the pour is 1.25 s
+  instead of 1.85 s, and the chrome is cut to one line.
+- **The first screen fits.** One screen minus a deliberate peek at the ticker,
+  so the phone never shows a wall it has to break through before the page
+  starts.
+- **A dock instead of a disappearing header.** Once the hero is behind you, a
   slim pill at the bottom carries the current chapter (Roman numeral + name,
   tapping it opens the index), the page progress along its rim, and the one
-  action the studio wants. It never appears over the film or over the closing
+  action the studio wants. It never appears over the hero or over the closing
   CTA.
 - **It behaves like an app, not a web page.** `viewport-fit=cover` with
   `env(safe-area-inset-*)` on every fixed surface, a 62 px bar, ≥ 44 px tap
   targets, `touch-action: manipulation`, press states instead of hover states,
-  `overscroll-behavior-y: contain` so a pull cannot reload the film, and 16 px
+  `overscroll-behavior-y: contain` so a pull cannot reload the page, and 16 px
   form fields so iOS never zooms on focus.
 - **The order form is a bottom sheet** with a grab handle and a spring-up
   entrance; on a phone the keyboard is not summoned until the reader taps a
   field.
-- **Data is respected.** If the browser reports `saveData`, `slow-2g` or ≤ 1 GB
-  of memory, the hero keeps the first frame and the clip is never requested.
-- **No backdrop blur on a phone** over the film (the header falls back to a
-  93 % pane, the sheet to 3 px): re-blurring a surface that changes every frame
-  is the most expensive thing a phone can do here.
+- **Data is respected.** The opening screen requests no media at all, so a
+  metered phone pays nothing extra for the first impression.
+- **No backdrop blur on a phone** (the header falls back to a 93 % pane, the
+  sheet to 3 px): re-blurring a surface over content that moves is the most
+  expensive thing a phone can do here.
 
 - **The office plate is landscape** (a 6:5 crop of the night-light desk scene,
   sticky beside the reading column on desktop) and **re-lit for the palette**:
@@ -100,6 +153,49 @@ read and audited in one place.
 `npm run mobile:check` runs the real Header, dock and preloader in jsdom at
 390 × 844 and pins 40 of these behaviours, including that the dock stays out of
 the tab order until it is on screen.
+
+## Speed
+
+The page is judged on how it feels while scrolling on a mid-range Windows
+laptop and on a phone, not on how it looks in a screenshot. What that took:
+
+- **Two permanent frame loops, deleted.** The custom cursor ran a
+  `requestAnimationFrame` loop from first paint and never stopped, and the About
+  plate did the same three screens before a reader arrives. Both now run only
+  while something is actually moving (and the plate only while it is on screen),
+  so the compositor can go idle and a phone can sleep.
+- **The scroll frame measures nothing.** `scrollHeight`, `offsetTop` and up to
+  six `getBoundingClientRect()` boxes used to be read inside the scroll frame —
+  a forced synchronous relayout per scrolled frame. Positions are now measured
+  when the layout actually changes (`utils/documentMetrics.ts`, a
+  `ResizeObserver` on the body, the font-ready event) and read from memory;
+  `rect-cache.ts` invalidates on scroll and measures on demand.
+- **The pointer is applied once per frame.** The hero used to measure the canvas
+  and do its work on *every* pointer event; at mouse polling rate that is
+  thousands of layout reads a second. Events now stamp a position and the frame
+  loop consumes it.
+- **No full-screen blur anywhere it is not seen.** Eight decorative gaussian
+  filters sat on top of radial gradients that were already smooth; the fixed
+  header re-blurred the page under it on every scroll frame; the hero's grain
+  was a `soft-light` blend over a canvas repainting at 60 fps. The gradients are
+  now gradients, the header is a near-opaque pane at every width, and the grain
+  is painted *under* the object so its blend is computed once.
+- **The hero shader only shades the object.** Empty plate pixels used to run the
+  four normal taps, the whole lighting model and the dispersion; they now skip
+  it, which is coherent over large screen regions. On top of that the canvas is
+  held to a **pixel budget** (≈4.6 M on desktop, 2.2 M on a phone) rather than a
+  device-pixel-ratio cap, so a 2560 × 1440 display cannot ask a mid-range GPU
+  for 15 M fragments a frame.
+- **Compositor layers are handed back.** `will-change` is a promise that a layer
+  is worth keeping; every revealed section used to keep its promise forever. A
+  settled reveal now sets `will-change: auto`.
+- **Below-the-fold photography is lazy** (`loading="lazy"`, intrinsic size, async
+  decode), and the hero's height map has its own revalidated cache rule, because
+  it is preloaded on every visit.
+
+`npm run perf:check` tests all of it — including payload budgets for the entry
+bundle, the stylesheet, the fonts and the hero texture — because none of this is
+visible in a screenshot, which is exactly why it needs a test.
 
 ## Addresses
 
@@ -118,6 +214,29 @@ A site published from the panel before these addresses existed still carries the
 original placeholders (a `hello@cahen.studio` email and links to the platforms'
 home pages). `src/content/normalize.ts` adopts the real values for those exact
 strings only; anything an editor typed is left alone.
+
+## Previewing what actually ships
+
+`vite preview` serves `dist/` but knows nothing about `netlify.toml`: no
+redirects, no `[[headers]]`, and therefore no Content-Security-Policy. A page
+can look perfect there and come up black in production.
+
+```bash
+npm run build
+node scripts/serve-netlify.mjs 4180   # same rules, same MIME types, same CSP
+```
+
+That server reads the same file the deploy reads and applies Netlify's
+semantics (a real file wins unless a rule is forced, `404` rules carry their
+own status and type, `[[headers]]` layer over the response). If a page works
+here, the deploy has nothing left to surprise it with.
+
+The particle mark is the reason this exists: it is built from an inline `data:`
+payload, and `fetch()` of that payload is refused by `connect-src 'self'`. In
+dev there is no CSP header, so the bug was invisible; in production the loader
+threw and the mark quietly fell back to a flat image. `npm run mark:check`
+pins the rule — inline payloads are decoded through an `<img>`, never fetched —
+and checks the shipped chunk still does it.
 
 ## Routing (read this before editing `netlify.toml`)
 
@@ -147,8 +266,8 @@ The site is measured, not assumed. `npm run product:check` runs against the real
 | **First payload** | entry JS < 130 KB gzip, CSS < 45 KB gzip, no image over 60 KB, no font over 60 KB, nothing base64'd into the bundle |
 | **Fonts** | four files (Estedad Arabic + Latin, JetBrains Mono Latin, Instrument Serif roman + italic) served from `/fonts` with a one-year immutable cache and `preload` on the Persian cut; the 16-file font packages are no longer imported, and Vazirmatn/Space Grotesk were removed entirely |
 | **Images** | every photograph is WebP (1 MB → 236 KB for the whole asset folder); the brand mark is a violet 400 px WebP instead of a 377 KB PNG |
-| **The film** | mounts with `preload="none"` and is fetched on idle (or first scroll), so 5 MB of keyframes never competes with the entrance |
-| **The entrance** | finishes when the typeface and the hero's first frame are in — floor 0.9–1.1 s, ceiling 1.7–1.95 s — instead of always pouring for the full duration |
+| **The opening screen** | one 86 KB height map (39 KB on a phone) and one shader pass — no video, no 3D engine, no post-processing chain |
+| **The entrance** | finishes when the typeface is in — floor 0.9–1.1 s, ceiling 1.7–1.95 s — instead of always pouring for the full duration |
 | **The 3D layer** | glTF/Draco loaders are dynamically imported only if a model is requested; the site renders its mark from an image, so ~700 KB never ships on first load |
 | **Admin CSS** | the control room's stylesheet is a lazy chunk (35 KB), not part of the public first paint |
 
@@ -229,22 +348,25 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Eight checks run entirely offline:
+Ten checks run entirely offline:
 
-- `npm run hero:check` — 30 assertions: the film is paused and never autoplays; half the scroll lands mid-clip; scrolling back retraces the same frames; a scroll re-renders nothing and mutates only two compositor layers; the source never reloads; reduced motion keeps the poster.
-- `npm run mobile:check` — 31 assertions: the dock exists, hides over the film, arrives afterwards, opens the index and the sheet; the entrance paints the film's own frame; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur over the film.
+- `npm run hero:check` — 88 assertions: the shaders parse and are not truncated; the mark is upright (one `-q.y`, in the shared projection, upload unflipped); normals, key light, specular and fresnel are present; the pointer, the shockwaves and the fragment share one projection, and a real `pointerdown` reaches the GPU as a lens and a ring buffer entry; passive listeners only; raw WebGL2 with logged shader errors, a reduced tier, one frame for reduced motion, and a loop that halts when hidden; no video and no media request; nothing pinned; a scroll re-renders nothing and writes only transform and opacity.
+- `npm run mobile:check` — 51 assertions: the dock exists, arrives after the hero, opens the index and the sheet; the entrance paints the same light as the hero; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur on a phone.
 - `npm run content:check` — 24 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; and a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
-- `npm run product:check` — 59 assertions on the built output: payload budgets, font and image weight, the single scroll listener, metadata, icons, structured data, 404, sitemap, robots, cache and security headers, focus states, reduced motion, alt text and one `<h1>`.
+- `npm run mark:check` — 37 assertions: the particle mark is decoded from an inline payload instead of fetched (the CSP refusal that hid it), the phone budget, and the case-study card.
+- `npm run product:check` — 65 assertions on the built output: payload budgets, font and image weight, the single scroll listener, metadata, icons, structured data, 404, sitemap, robots, cache and security headers, focus states, reduced motion, alt text and one `<h1>`.
+- `npm run perf:check` — 31 assertions on speed: no idle frame loops, no layout
+  reads in the scroll frame, no decorative gaussian filters, an opaque header, a
+  lazy grid, a pixel budget on the hero, a bounded `will-change` count, and
+  gzipped budgets for the entry bundle (< 125 kB), the stylesheet (< 30 kB), the
+  fonts and the hero texture.
 - `npm run typecheck` — the TypeScript build, also part of `npm run build`.
 
 All of them run in `npm run verify`.
 
-If the film ever looks static, open `/?film=debug`: it prints the real media
-state (src, duration, currentTime, seeking, buffered, decode error) so a broken
-seek is never mistaken for a missing file.
 
 The panel is fully closed while these variables are missing: `/api/admin/session` reports `configured: false`, the UI shows the exact variables to set, and every login attempt returns `503`. There is no setup screen and no default password to guess.
 

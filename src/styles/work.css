@@ -296,11 +296,16 @@
   }
 
   /* ---------- Case-study panel ---------- */
+  /* The pane is a card like every other pane on the site: the shared radius,
+     the shared inset. Without them it read as a bare rectangle sitting next to
+     the rounded carousel, and its text ran into the border. */
   .gallery__details {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: clamp(12px, 1.6vw, 18px);
+    padding: clamp(14px, 1.8vw, 22px);
+    border-radius: var(--card-radius);
   }
 
   .gallery__details-top {
@@ -630,6 +635,11 @@
     .gallery__hint {
       bottom: -14px;
       font-size: 7px;
+    }
+
+    .gallery__details {
+      padding: 12px;
+      border-radius: var(--card-radius-sm);
     }
 
     .gallery__details-top {

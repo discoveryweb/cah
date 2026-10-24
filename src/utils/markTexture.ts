@@ -15,6 +15,12 @@ const STOPS: ReadonlyArray<readonly [number, readonly [number, number, number]]>
 
 const cache = new Map<string, Promise<string>>();
 
+/** The studio's violet ramp: indigo → violet → lilac → porcelain. Shared by
+ *  every place that draws the mark as light, so they cannot drift apart. */
+export function violetRamp(t: number): [number, number, number] {
+  return sampleRamp(Math.min(1, Math.max(0, t)));
+}
+
 function sampleRamp(t: number): [number, number, number] {
   for (let i = 1; i < STOPS.length; i += 1) {
     const [stopT, stopColor] = STOPS[i];

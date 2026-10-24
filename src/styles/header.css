@@ -14,22 +14,18 @@
     border-bottom: 1px solid transparent;
   }
 
+  /**
+   * A fixed, full-width bar with a backdrop filter is re-blurred against
+   * everything that scrolls underneath it — every frame, on every device. It is
+   * the most expensive thing on this page that no one can see, so the bar is a
+   * near-opaque pane at every width instead. At 92 % against a violet page the
+   * difference from the blurred version is invisible.
+   */
   .header--solid {
     border-bottom-color: rgba(190, 176, 255, 0.12);
-    background: color-mix(in srgb, #07071a 84%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(130%);
-    backdrop-filter: blur(18px) saturate(130%);
-  }
-
-  /**
-   * Over the scrub film the header gives up its backdrop blur: the surface
-   * behind it repaints on every seek, and re-blurring it each frame is the most
-   * expensive thing on the page. The tint is opaque enough to look identical.
-   */
-  html:has(.hero[data-film-active="true"]) .header--solid {
+    background: color-mix(in srgb, #07071a 92%, transparent);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background: color-mix(in srgb, #07071a 92%, transparent);
   }
 
   .header--hidden {
@@ -369,7 +365,6 @@
     border-radius: 50%;
     background: radial-gradient(circle, rgba(129, 84, 246, 0.4), transparent 66%);
     content: "";
-    filter: blur(60px);
     pointer-events: none;
   }
 

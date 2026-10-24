@@ -13,14 +13,14 @@
     "admin:check": "node scripts/check-admin.mjs",
     "sms:check": "node scripts/check-sms.mjs",
     "netlify:check": "node scripts/check-netlify.mjs",
-    "film:video": "node scripts/hero-video.mjs",
-    "film:placeholder": "node scripts/hero-video.mjs --placeholder",
     "hero:check": "node scripts/check-hero.mjs",
     "mobile:check": "node scripts/check-mobile.mjs",
     "content:check": "node scripts/check-content.mjs",
     "product:check": "node scripts/check-product.mjs",
     "routing:check": "node scripts/check-routing.mjs",
-    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check"
+    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check && npm run mark:check && npm run perf:check",
+    "mark:check": "node scripts/check-mark-mobile-card.mjs",
+    "perf:check": "node scripts/check-perf.mjs"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",
@@ -35,6 +35,7 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
+    "@shaderfrog/glsl-parser": "^7.0.1",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",

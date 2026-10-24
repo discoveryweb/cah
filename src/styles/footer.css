@@ -19,7 +19,7 @@
     border-radius: 50%;
     background: radial-gradient(circle, rgba(122, 86, 255, 0.32), transparent 68%);
     content: "";
-    filter: blur(30px);
+    /* no blur: the gradient is already smooth */
     pointer-events: none;
   }
 
@@ -297,7 +297,7 @@
     inset: -30% 10% -40%;
     background: radial-gradient(ellipse at 50% 60%, rgba(129, 84, 246, 0.28), transparent 66%);
     content: "";
-    filter: blur(50px);
+    /* no blur: the gradient is already smooth */
     pointer-events: none;
   }
 
@@ -827,7 +827,7 @@
     border-radius: 50%;
     background: radial-gradient(ellipse, rgba(122, 86, 255, 0.28), transparent 70%);
     content: "";
-    filter: blur(20px);
+    /* no blur: the gradient is already smooth */
     pointer-events: none;
   }
 

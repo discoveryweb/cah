@@ -137,12 +137,33 @@ check(
 
 /* ------------------------------------------------------- the routes that matter */
 
-const css = resolve("/assets/index-BukR6GMC.css");
+/* Read the stylesheet out of the built shell instead of naming a hash here:
+   a check that hardcodes a filename only tests yesterday's build. */
+const shellHtml = fs.readFileSync(path.join(DIST, "index.html"), "utf8");
+const cssPath = (/<link[^>]+href="(\/assets\/[^"]+\.css)"/.exec(shellHtml) || [])[1];
+check("the shell points at a stylesheet", Boolean(cssPath), cssPath ?? "none found");
+const css = resolve(cssPath ?? "/assets/missing.css");
 check("CSS is served as CSS, not as a document", css.kind === "static", `${css.kind} ${css.to ?? ""}`);
+check(
+  "and it is the file the shell asked for",
+  Boolean(cssPath) && (css.path ?? "").endsWith(cssPath.split("/").pop() ?? "\u0000"),
+  css.path ?? "",
+);
 
 for (const font of ["/fonts/estedad-arabic.woff2", "/fonts/estedad-latin.woff2"]) {
   const resolved = resolve(font);
   check(`${font} is served`, resolved.kind === "static", `${resolved.kind} ${resolved.to ?? ""}`);
+}
+
+/* A renamed or broken file must be a 404 with the page's own content type, in
+   any directory — not the shell dressed as a missing image. */
+for (const path of ["/film/hero-poster-blur.jpg", "/og-image-missing.jpg", "/assets/x.png", "/uploads/clip.mp4"]) {
+  const resolved = resolve(path);
+  check(
+    `a missing file is a 404, not the shell — ${path}`,
+    resolved.kind === "redirect" && resolved.to === "/404.html" && resolved.status === 404,
+    `${resolved.kind} ${resolved.to ?? ""} ${resolved.status ?? ""}`,
+  );
 }
 
 const controlRoom = resolve("/shenataisoni");

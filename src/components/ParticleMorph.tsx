@@ -216,8 +216,17 @@ export function ParticleMorph({
         return;
       }
 
+      /*
+       * A phone draws the same four logos through the same 2D context, but at
+       * roughly a third of the fill rate. Fewer, larger dots and 30 frames a
+       * second keep the morph readable without the stutter, and the glow radius
+       * is halved because every blurred fill costs extra on a mobile GPU.
+       */
+      const compact = window.matchMedia("(max-width: 767px)").matches;
+      const frameInterval = compact ? 1000 / 30 : FRAME_INTERVAL;
+      const glowScale = compact ? 0.5 : 1;
       try {
-        const count = Math.round(PARTICLE_BUDGET * density);
+        const count = Math.round(PARTICLE_BUDGET * density * (compact ? 0.6 : 1));
         const palette = images.map((_, index) => colors[index] ?? color).map((value) => value ?? "");
         const sampledLogos = await Promise.all(images.map((src, index) => sampleImage(src, count, palette[index] || undefined)));
         if (run !== session) return;
@@ -296,7 +305,7 @@ export function ParticleMorph({
         const draw = (now: number) => {
           animationFrame = 0;
           if (run !== session || !visible) return;
-          if (now - lastFrameAt < FRAME_INTERVAL) {
+          if (now - lastFrameAt < frameInterval) {
             animationFrame = requestAnimationFrame(draw);
             return;
           }
@@ -322,7 +331,7 @@ export function ParticleMorph({
           const glowIndex = morphing && rawProgress > 0.55 ? targetIndex : activeIndex;
           const glowColor = palette[glowIndex] || "#a77aff";
           context.shadowColor = glowColor;
-          context.shadowBlur = clamp(glow, 0, 1) * 14;
+          context.shadowBlur = clamp(glow, 0, 1) * 14 * glowScale;
           context.lineWidth = 0;
 
           for (let index = 0; index < count; index += 1) {
