@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { isLowEndDevice } from "../utils/capabilities";
+import { createRectCache } from "./canvasui/rect-cache";
 
 type MorphLayout = {
   width: number;
@@ -287,8 +288,13 @@ export function ParticleMorph({
         resizeObserver = new ResizeObserver(resize);
         resizeObserver.observe(wrapper);
 
+        /* Reading the canvas box inside a pointer handler forces a layout on
+           every mouse move — at pointer polling rate that is thousands of
+           layout flushes a second. The cache invalidates on scroll and resize
+           and measures on demand. */
+        const box = createRectCache(canvas);
         const onPointerMove = (event: PointerEvent) => {
-          const rect = canvas.getBoundingClientRect();
+          const rect = box.current;
           pointerX = event.clientX - rect.left;
           pointerY = event.clientY - rect.top;
           pointerActive = true;
@@ -297,6 +303,7 @@ export function ParticleMorph({
         canvas.addEventListener("pointermove", onPointerMove, { passive: true });
         canvas.addEventListener("pointerleave", onPointerLeave, { passive: true });
         removePointerListeners = () => {
+          box.destroy();
           canvas.removeEventListener("pointermove", onPointerMove);
           canvas.removeEventListener("pointerleave", onPointerLeave);
         };

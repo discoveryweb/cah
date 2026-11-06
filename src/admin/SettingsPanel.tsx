@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, LogOut, ShieldAlert, Sparkles } from "lucide-react";
+import { Download, LockKeyhole, LogOut, ShieldAlert } from "lucide-react";
 import type { AdminUser, MediaEntry, SiteContent } from "../content/types";
 import { api, ApiFailure } from "./api";
 import { formatBytes, formatDate, ROLE_LABELS } from "./draft";
@@ -217,7 +217,7 @@ export function SettingsPanel({
         </div>
         <div className="acard__body">
           <div className="anote">
-            {isOwner ? <ShieldAlert /> : <Sparkles />}
+            {isOwner ? <ShieldAlert /> : <LockKeyhole />}
             <span>
               {isOwner
                 ? dirty

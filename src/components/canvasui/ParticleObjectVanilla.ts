@@ -609,6 +609,8 @@ export function createParticleObject(
   let resting = false;
   /** Seconds spent without a push, used to decide when the cloud has settled. */
   let calmFor = 0;
+  const compact = window.matchMedia("(max-width: 767px)").matches;
+  let idleFrame = false;
 
   function clearPoints() {
     if (!points) return;
@@ -782,9 +784,17 @@ export function createParticleObject(
     }
   }
 
+  /* The simulation needs the viewport size every frame while it is being
+     pushed. Reading `clientWidth` there forces a layout each frame, so the size
+     is cached whenever the canvas actually resizes. */
+  let viewWidth = 1;
+  let viewHeight = 1;
+
   function resize() {
     const width = Math.max(canvas.clientWidth, 1);
     const height = Math.max(canvas.clientHeight, 1);
+    viewWidth = width;
+    viewHeight = height;
     const pr = getCanvasPixelRatio(canvas, renderer.getContext());
     renderer.setPixelRatio(pr);
     renderer.setSize(width, height, false);
@@ -867,8 +877,8 @@ export function createParticleObject(
     const pushAccel = 26 * config.strength;
 
     if (pointers.size && !reducedMotion && config.strength > 0) {
-      const width = Math.max(canvas.clientWidth, 1);
-      const height = Math.max(canvas.clientHeight, 1);
+      const width = viewWidth;
+      const height = viewHeight;
       points.updateWorldMatrix(true, false);
       inverseMatrix.copy(points.matrixWorld).invert();
       const worldScale = Math.max(fitGroup.scale.x, 1e-4);
@@ -1000,6 +1010,15 @@ export function createParticleObject(
     for (const pointer of pointers.values()) pointer.speed *= Math.exp(-3 * delta);
 
     if (delta > 0) simulate(delta);
+
+    /* On a phone, a cloud that has settled is a still picture with a very slow
+       shimmer. Drawing it every frame spends the whole GPU budget on a change
+       nobody can see, so it is drawn every other frame while it rests. */
+    if (compact && resting && pointers.size === 0) {
+      idleFrame = !idleFrame;
+      if (idleFrame) return;
+    }
+
     renderer.render(scene, camera);
   }
 

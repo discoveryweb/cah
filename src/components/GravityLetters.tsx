@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { cn } from "../utils/cn";
+import { createRectCache } from "./canvasui/rect-cache";
 
 type RebuildOrder = "sweep" | "rise" | "random";
 
@@ -440,8 +441,11 @@ export function GravityLetters({
 
     /* ---------------- Interaction ---------------- */
 
+    /* The canvas box, cached: a `getBoundingClientRect` in a pointer handler
+       forces a layout on every move, and this wordmark is dragged. */
+    const pointBox = createRectCache(canvas);
     const pointFrom = (event: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
+      const rect = pointBox.current;
       return { x: event.clientX - rect.left, y: event.clientY - rect.top };
     };
 
@@ -599,6 +603,7 @@ export function GravityLetters({
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
+      pointBox.destroy();
     };
   }, []);
 

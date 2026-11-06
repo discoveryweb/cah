@@ -58,7 +58,7 @@ await build({
   },
   logLevel: "error",
 });
-const { adoptPublishedAddresses } = await import(pathToFileURL(path.join(WORK, "normalize.mjs")).href);
+const { adoptPublishedAddresses, adoptRealPortfolio } = await import(pathToFileURL(path.join(WORK, "normalize.mjs")).href);
 const { contact, socials } = content;
 const byPlatform = (platform) => socials.find((channel) => channel.platform === platform);
 
@@ -170,6 +170,75 @@ check("no component hardcodes an address", offenders.length === 0, offenders.joi
 
   const clean = adoptPublishedAddresses(content);
   check("a correct document is returned untouched", clean === content);
+}
+
+/* ------------------------------------------------------------- portfolio */
+
+/**
+ * The gallery used to hold three demonstration plates. What it shows now is the
+ * work that actually shipped, each one linking to the site it lives on — so the
+ * portfolio is checked like any other published fact.
+ */
+const portfolio = content.work.items;
+check(
+  "the gallery shows the three shipped projects",
+  portfolio.map((item) => item.id).join(",") === "karixo,nirvana,meridian",
+  portfolio.map((item) => item.id).join(","),
+);
+check(
+  "no demonstration case study is left in the portfolio",
+  portfolio.every((item) => !["soma", "orbit", "aura"].includes(item.id.toLowerCase())) &&
+    portfolio.every((item) => !/^(SOMA|ORBIT|AURA)$/.test(item.name)),
+  portfolio.map((item) => item.name).join(" "),
+);
+check(
+  "every published project links to a live site",
+  portfolio
+    .filter((item) => item.published !== false)
+    .every((item) => /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(item.url ?? "")),
+  portfolio.map((item) => `${item.id}:${item.url ?? "—"}`).join(" "),
+);
+check(
+  "the live links point at the studios' own domains",
+  portfolio.map((item) => item.url).join(" ") ===
+    "https://karixo.ir https://nirvana3d.ir https://clinicmoo.netlify.app",
+  portfolio.map((item) => item.url).join(" "),
+);
+check(
+  "every project ships an image and its alt text",
+  portfolio.every((item) => Boolean(item.image) && item.alt.trim().length > 12),
+  portfolio.map((item) => item.alt.length).join(" "),
+);
+check(
+  "every project names a role, a sector and a year",
+  portfolio.every((item) => item.role.trim() && item.sector.trim() && item.year.trim()),
+);
+check(
+  "the metrics are the studio's own, not percentages invented for a demo",
+  portfolio.every((item) => item.metrics.length === 3 && item.metrics.every((metric) => metric.value && metric.label)),
+);
+
+{
+  /* A document published before the real portfolio existed still carries the
+     demo plates. It adopts the real one — but only while it is untouched. */
+  const legacy = {
+    ...content,
+    work: { ...content.work, items: content.work.items.map((item, index) => ({
+      ...item,
+      id: ["soma", "orbit", "aura"][index],
+      name: ["SOMA", "ORBIT", "AURA"][index],
+    })) },
+  };
+  const adopted = adoptRealPortfolio(legacy);
+  check(
+    "a document carrying the demo plates adopts the real portfolio",
+    adopted.work.items.map((item) => item.id).join(",") === "karixo,nirvana,meridian",
+    adopted.work.items.map((item) => item.id).join(","),
+  );
+
+  const edited = { ...legacy, work: { ...legacy.work, items: [{ ...legacy.work.items[0], id: "vatra" }, ...legacy.work.items.slice(1)] } };
+  check("a portfolio an editor shaped is never replaced", adoptRealPortfolio(edited) === edited);
+  check("a portfolio without items is left alone", adoptRealPortfolio({ ...content, work: { ...content.work, items: [] } }).work.items.length === 0);
 }
 
 /* --------------------------------------------- the stylesheet for the menu */

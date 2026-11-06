@@ -53,6 +53,9 @@ const publicStyles = [
   "motion.css",
   "glass.css",
   "modal.css",
+  "experience.css",
+  "liquid.css",
+  "light.css",
 ]
   .map((file) => read("src", "styles", file))
   .join("\n");
@@ -175,6 +178,62 @@ check(
   /for = "\/hero\/\*"[\s\S]{0,140}stale-while-revalidate/.test(netlify),
 );
 check("the removed film left no cache rule behind", !/\/film\//.test(netlify));
+
+/* ------------------------------------------------------- new-surface rules - */
+
+const header2 = read("src", "components", "Header.tsx");
+check(
+  "the nav list keeps one identity, so its measurement effect does not run per render",
+  /const NAV_LINKS = useMemo\(/.test(header2),
+);
+check(
+  "the header only touches React when its answer changes",
+  /if \(scrolled !== wasScrolled\)/.test(header2) && /if \(hidden !== wasHidden\)/.test(header2),
+);
+check(
+  "the nav indicator is placed inside a frame",
+  /frame = window\.requestAnimationFrame\(\(\) => \{[\s\S]{0,400}offsetWidth/.test(header2),
+);
+
+const gallery = read("src", "components", "CircularGallery.tsx");
+check(
+  "the gallery measures its track on layout change, not on scroll",
+  /createDocumentBox\(scrollArea\)\.read\(\)/.test(gallery) &&
+    !/getScrollProgress\(\)/.test(gallery),
+);
+check(
+  "gallery cards are moved with transforms, never left/top",
+  !/card\.style\.left/.test(gallery) && /translate3d\(calc\(-50% \+/.test(gallery),
+);
+check("gallery cards are not re-filtered every frame", !/card\.style\.filter/.test(gallery));
+
+const surface = read("src", "components", "SurfacePhysics.tsx");
+check("the surface field is a coarse grid, not a pixel buffer", /Math\.min\(250, Math\.ceil\(width \/ 5\)\)/.test(surface));
+check("its grain is generated once per resize", /noiseX\[i\] = Math\.sin\(i \* 12\.9898\)/.test(surface) && !/tx \+= \(-rx \/ d \* 7\.5 \+ Math\.sin/.test(surface));
+check("text coverage is a mask, not a search per cell", /if \(!force\) continue;/.test(surface) && !/rects\.find\(/.test(surface));
+check("only the disturbed crop is encoded", /patchCtx\.drawImage\(canvas, col0/.test(surface) && /patch\.toDataURL/.test(surface));
+check("the mask refreshes on layout change, not on a timer", /rectsVersion === documentLayoutVersion\(\)/.test(surface));
+
+const parallax = read("src", "hooks", "useParallax.ts");
+check("the parallax hook reads a cached box", /createDocumentBox\(node\)/.test(parallax));
+
+check(
+  "a low-tier machine is told so before first paint",
+  /dataset\.perf = 'low'/.test(read("public", "theme-init.js")),
+);
+check(
+  "the floating bar drops its backdrop blur on a low-tier machine",
+  /html\[data-perf="low"\] \.header__inner \{[\s\S]{0,160}backdrop-filter: none/.test(read("src", "styles", "experience.css")),
+);
+check(
+  "the footer wordmark is drawn in ink, not filtered into it",
+  !/footer__gravity[^{]*\{[^}]*filter: brightness/.test(read("src", "styles", "light.css")) &&
+    /wordmarkInk/.test(read("src", "components", "Footer.tsx")),
+);
+check(
+  "a settled particle cloud is drawn every other frame on a phone",
+  /if \(compact && resting && pointers\.size === 0\)/.test(read("src", "components", "canvasui", "ParticleObjectVanilla.ts")),
+);
 
 /* ---------------------------------------------------------------- budgets - */
 

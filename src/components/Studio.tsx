@@ -1,4 +1,4 @@
-import { useCallback, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowUpLeft, MoveUpRight } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { renderRichText } from "../content/RichText";
@@ -69,9 +69,18 @@ function StudioTenets() {
   const [active, setActive] = useState(0);
   const principles = useContent().principles;
 
+  /* The row's box is measured when the pointer arrives and reused while it
+     moves: re-measuring on every move would force a layout at mouse rate. */
+  const rowBoxes = useRef(new WeakMap<HTMLElement, DOMRect>());
+
+  const rememberRow = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const row = event.currentTarget;
+    rowBoxes.current.set(row, row.getBoundingClientRect());
+  }, []);
+
   const spotlight = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const row = event.currentTarget;
-    const rect = row.getBoundingClientRect();
+    const rect = rowBoxes.current.get(row) ?? row.getBoundingClientRect();
     row.style.setProperty("--spot-x", `${event.clientX - rect.left}px`);
     row.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
   }, []);
@@ -104,7 +113,7 @@ function StudioTenets() {
               <div
                 className="studio__tenet-inner"
                 data-active={active === index}
-                onPointerEnter={() => setActive(index)}
+                onPointerEnter={(event) => { rememberRow(event); setActive(index); }}
                 onPointerMove={spotlight}
               >
                 <span className="studio__tenet-num">

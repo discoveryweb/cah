@@ -189,6 +189,21 @@ function ProjectOverlay({
             />
           </div>
 
+          {project.url ? (
+            <a
+              className="project__live"
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              dir="ltr"
+            >
+              <span className="project__live-dot" aria-hidden="true" />
+              <span>{project.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
+              <span className="project__live-label">سایت زنده</span>
+              <ArrowUpLeft aria-hidden="true" />
+            </a>
+          ) : null}
+
           <div className="project__body">
             <div>
               <h3>روایت پروژه</h3>

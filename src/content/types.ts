@@ -35,6 +35,8 @@ export interface WorkItem {
   deliverables: string[];
   image: string;
   alt: string;
+  /** The shipped site, when the project is live. Rendered as a real link. */
+  url?: string;
   /** Unpublished work stays out of the public gallery. */
   published: boolean;
 }

@@ -135,13 +135,20 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), midi=()"
     Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+    X-Permitted-Cross-Domain-Policies = "none"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     # script-src keeps no 'unsafe-inline'. The only inline <script> in the shell
     # is the JSON-LD block, so it is allowed by its exact hash instead of by a
     # blanket policy. Any other inline script from any origin stays refused.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-l+OfQPH6NTO4fyZQd9ZnHwXg+QuxsKlDeVMfiJS8p20=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    #
+    # The rest is written to be tight enough to read: nothing may be evaluated
+    # (no wasm, no eval), nothing may be framed in or out, no inline event
+    # handler attributes, no plugins, no base-uri rewriting, no form posts to
+    # anywhere but us — and every request is upgraded to HTTPS first.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-07cPImGjTNWEbAlNm+QPA06l16O5c9CxYI2iehubgvI='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 # Self-hosted typefaces; the file names carry a ?v= tag, so a year is safe.
 [[headers]]
@@ -175,6 +182,35 @@
   for = "/"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store, max-age=0"
+
+[[headers]]
+  for = "/media/*"
+  [headers.values]
+    # Uploads are fingerprints, so they never change under their own name.
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    Content-Type = "application/xml; charset=utf-8"
+
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    Content-Type = "application/manifest+json; charset=utf-8"
 
 [[headers]]
   for = "/404.html"

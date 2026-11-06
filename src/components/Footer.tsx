@@ -3,12 +3,18 @@ import { useContent } from "../content/ContentProvider";
 import { socialIcon } from "../content/socialIcons";
 import { Brand } from "./ui";
 import { GravityLetters } from "./GravityLetters";
+import { useTheme } from "../hooks/useTheme";
 
 export function Footer() {
   const year = new Date().getFullYear();
   const content = useContent();
   const { contact, nav, socials, footer, meta } = content;
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  /* Drawn in the right ink rather than filtered into it: a CSS filter on this
+     canvas is re-applied every frame while the letters move. */
+  const theme = useTheme();
+  const wordmarkInk =
+    theme === "light" ? (["#3a2b55", "#7b57c4"] as const) : (["#f6f4ff", "#b39dff"] as const);
 
   return (
     <footer className="footer chapter theme-ink" data-invert>
@@ -94,7 +100,7 @@ export function Footer() {
             fontSize={340}
             fontWeight={600}
             fontFamily='"JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace'
-            colors={["#f6f4ff", "#b39dff"]}
+            colors={wordmarkInk}
             grainSize={4}
             grainScale={0.86}
             gravity={1}

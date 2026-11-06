@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Mouse, ArrowUpLeft } from "lucide-react";
 import { cn } from "../utils/cn";
 import { toRoman } from "../utils/roman";
 import { onScrollFrame } from "../utils/scrollFrame";
+import { createDocumentBox } from "../utils/layoutBoxes";
 
 export type GalleryItem = {
   id: string;
@@ -46,16 +47,39 @@ export function CircularGallery({
   const count = Math.max(items.length, 1);
   const activeProject = items[activeIndex] ?? items[0];
 
-  const getScrollProgress = useCallback(() => {
+  /* The scroll track and the sticky stage are measured when the layout changes
+     — never inside the scroll frame. This used to read `getComputedStyle`, two
+     `offsetHeight`s and a `getBoundingClientRect` on every scanned frame, which
+     forces a synchronous relayout while the reader is scrolling. */
+  const geometry = useRef<{ stickyTop: number; travel: number; start: number; stageWidth: number } | null>(null);
+
+  const measureGeometry = useCallback(() => {
     const scrollArea = scrollRef.current;
     const stickyStage = stickyRef.current;
-    if (!scrollArea || !stickyStage) return 0;
-
-    const stickyTop = Number.parseFloat(window.getComputedStyle(stickyStage).top) || 0;
-    const travelDistance = Math.max(1, scrollArea.offsetHeight - stickyStage.offsetHeight);
-    const distanceFromStart = stickyTop - scrollArea.getBoundingClientRect().top;
-    return clamp(distanceFromStart / travelDistance, 0, 1);
+    if (!scrollArea || !stickyStage) {
+      geometry.current = null;
+      return;
+    }
+    const track = createDocumentBox(scrollArea).read();
+    const stage = createDocumentBox(stickyStage).read();
+    geometry.current = {
+      stickyTop: Number.parseFloat(window.getComputedStyle(stickyStage).top) || 0,
+      travel: Math.max(1, track.height - stage.height),
+      start: track.top,
+      stageWidth: viewportRef.current?.clientWidth || 720,
+    };
   }, []);
+
+  const getScrollProgress = useCallback(
+    (scrollY: number) => {
+      if (!geometry.current) measureGeometry();
+      const box = geometry.current;
+      if (!box) return 0;
+      const distanceFromStart = box.stickyTop - (box.start - scrollY);
+      return clamp(distanceFromStart / box.travel, 0, 1);
+    },
+    [measureGeometry]
+  );
 
   const paintGallery = useCallback(
     (scrollProgress: number) => {
@@ -72,7 +96,7 @@ export function CircularGallery({
         setActiveIndex(nextActiveIndex);
       }
 
-      const width = viewport.clientWidth || 720;
+      const width = geometry.current?.stageWidth || viewport.clientWidth || 720;
       const radiusX = width * 0.42;
       const radiusZ = Math.min(150, width * 0.16);
 
@@ -88,17 +112,21 @@ export function CircularGallery({
         const tilt = -sine * 22;
         const scale = 0.78 + focus * 0.22;
 
-        const xOffset = `calc(50% ${x < 0 ? "-" : "+"} ${Math.abs(x).toFixed(2)}px)`;
-        const yOffset = `calc(50% ${y < 0 ? "-" : "+"} ${Math.abs(y).toFixed(2)}px)`;
-        card.style.left = xOffset;
-        card.style.top = yOffset;
-        card.style.transform = `translate3d(-50%, -50%, 0) translateZ(${z.toFixed(
+        /* Offsets live inside the transform. Writing `left`/`top` — which is
+           what this used to do — lays the card out again on every frame, while
+           a transform is composited. The per-card `filter` is gone for the same
+           reason: a filter re-rasterises the card (image, radius, shadow) sixty
+           times a second. The depth is carried by scale, opacity and z-index,
+           which are free. */
+        card.style.transform = `translate3d(calc(-50% + ${x.toFixed(2)}px), calc(-50% + ${y.toFixed(
           2
-        )}px) rotateY(${tilt.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
-        card.style.opacity = `${0.22 + focus * 0.78}`;
+        )}px), 0) translateZ(${z.toFixed(2)}px) rotateY(${tilt.toFixed(2)}deg) scale(${scale.toFixed(
+          3
+        )})`;
+        card.style.opacity = `${(0.16 + focus * 0.84).toFixed(3)}`;
         card.style.zIndex = `${10 + Math.round(focus * 100)}`;
-        card.style.filter = `brightness(${0.68 + focus * 0.32}) saturate(${0.8 + focus * 0.2})`;
-        card.dataset.front = String(index === nextActiveIndex);
+        const front = String(index === nextActiveIndex);
+        if (card.dataset.front !== front) card.dataset.front = front;
       });
     },
     [count, items.length]
@@ -108,7 +136,7 @@ export function CircularGallery({
     if (frameRef.current) return;
     frameRef.current = window.requestAnimationFrame(() => {
       frameRef.current = 0;
-      paintGallery(getScrollProgress());
+      paintGallery(getScrollProgress(window.scrollY || window.pageYOffset || 0));
     });
   }, [getScrollProgress, paintGallery]);
 
@@ -158,12 +186,16 @@ export function CircularGallery({
             },
             { rootMargin: "160px 0px" }
           );
+    const remeasure = () => {
+      measureGeometry();
+      schedulePaint();
+    };
     const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedulePaint);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(remeasure);
 
     reducedMotionRef.current = motionQuery.matches;
     setReducedMotion(motionQuery.matches);
-    window.addEventListener("resize", schedulePaint, { passive: true });
+    window.addEventListener("resize", remeasure, { passive: true });
     motionQuery.addEventListener("change", syncMotionPreference);
     if (scrollRef.current) {
       visibilityObserver?.observe(scrollRef.current);
@@ -174,14 +206,14 @@ export function CircularGallery({
 
     return () => {
       stopWatchingScroll();
-      window.removeEventListener("resize", schedulePaint);
+      window.removeEventListener("resize", remeasure);
       motionQuery.removeEventListener("change", syncMotionPreference);
       visibilityObserver?.disconnect();
       resizeObserver?.disconnect();
       if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
     };
-  }, [items.length, schedulePaint]);
+  }, [items.length, schedulePaint, measureGeometry]);
 
   if (!items.length || !activeProject) return null;
 

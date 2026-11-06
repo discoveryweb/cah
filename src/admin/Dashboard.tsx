@@ -130,7 +130,7 @@ export function Dashboard({
               <Save />
               ذخیرهٔ تغییرات
             </button>
-            <a className="abtn" href="/" target="_blank" rel="noreferrer">
+            <a className="abtn" href="/" target="_blank" rel="noopener noreferrer">
               دیدن سایت
               <ArrowUpRight />
             </a>
@@ -245,7 +245,7 @@ export function Dashboard({
             </span>
             <div className="achips">
               {SITE_LINKS.map((link) => (
-                <a key={link.href} href={`/${link.href}`} target="_blank" rel="noreferrer" className="achip">
+                <a key={link.href} href={`/${link.href}`} target="_blank" rel="noopener noreferrer" className="achip">
                   <span>{link.label}</span>
                   <em dir="ltr">{link.latin}</em>
                   <ArrowUpRight />

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_CONTENT } from "./defaults";
-import { adoptPublishedAddresses } from "./normalize";
+import { adoptPublishedAddresses, adoptRealPortfolio } from "./normalize";
 import type { SiteContent } from "./types";
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -32,7 +32,9 @@ export function mergeContent(base: unknown, patch: unknown): unknown {
 }
 
 export const resolveContent = (stored: unknown): SiteContent =>
-  adoptPublishedAddresses(mergeContent(DEFAULT_CONTENT, stored ?? {}) as SiteContent);
+  adoptRealPortfolio(
+    adoptPublishedAddresses(mergeContent(DEFAULT_CONTENT, stored ?? {}) as SiteContent),
+  );
 
 interface ContentContextValue {
   content: SiteContent;
@@ -70,17 +72,32 @@ export function ContentProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  // Keep the document head in step with the editable meta fields.
+  // Keep the document head in step with the editable meta fields. The social
+  // cards are edited from the same panel, so they follow the same values: a
+  // shared link that still shows the seeded description is a lie about the page.
   useEffect(() => {
     const { meta } = content;
-    if (meta.seoTitle) document.title = meta.seoTitle;
+    const setMeta = (selector: string, value: string) => {
+      const node = document.querySelector<HTMLMetaElement>(selector);
+      if (node) node.content = value;
+    };
+
+    if (meta.seoTitle) {
+      document.title = meta.seoTitle;
+      setMeta('meta[property="og:title"]', meta.seoTitle);
+      setMeta('meta[name="twitter:title"]', meta.seoTitle);
+    }
+
+    if (!meta.seoDescription) return;
     let description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!description) {
       description = document.createElement("meta");
       description.name = "description";
       document.head.appendChild(description);
     }
-    if (meta.seoDescription) description.content = meta.seoDescription;
+    description.content = meta.seoDescription;
+    setMeta('meta[property="og:description"]', meta.seoDescription);
+    setMeta('meta[name="twitter:description"]', meta.seoDescription);
   }, [content.meta.seoDescription, content.meta.seoTitle]);
 
   const value = useMemo(

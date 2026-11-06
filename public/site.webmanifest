@@ -1,0 +1,33 @@
+{
+  "name": "CAHEN — استودیوی طراحی و توسعهٔ دیجیتال",
+  "short_name": "CAHEN",
+  "description": "استودیوی مستقل طراحی و توسعهٔ دیجیتال: استراتژی برند، طراحی محصول، رابط و تجربهٔ کاربری، هویت بصری و توسعهٔ فرانت‌اند.",
+  "lang": "fa-IR",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8f7fc",
+  "theme_color": "#f8f7fc",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "maskable"
+    }
+  ]
+}

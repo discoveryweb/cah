@@ -17,8 +17,10 @@
     "mobile:check": "node scripts/check-mobile.mjs",
     "content:check": "node scripts/check-content.mjs",
     "product:check": "node scripts/check-product.mjs",
+    "seo:check": "node scripts/check-seo.mjs",
+    "security:check": "node scripts/check-security.mjs",
     "routing:check": "node scripts/check-routing.mjs",
-    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check && npm run mark:check && npm run perf:check && npm run theme:check",
+    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check && npm run seo:check && npm run security:check && npm run mark:check && npm run perf:check && npm run theme:check",
     "mark:check": "node scripts/check-mark-mobile-card.mjs",
     "perf:check": "node scripts/check-perf.mjs",
     "theme:check": "node scripts/check-theme.mjs"

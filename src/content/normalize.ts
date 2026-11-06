@@ -24,6 +24,24 @@ const PLACEHOLDER_HREFS = new Set([
   "https://www.whatsapp.com/",
 ]);
 
+/**
+ * The gallery was seeded with three demonstration case studies while the studio
+ * had no published client work. Those demo plates are placeholders, and a
+ * document saved from the panel before the real portfolio existed still carries
+ * them — which would hide the work that actually shipped.
+ *
+ * Only a list made *entirely* of the demo ids is replaced. The moment an editor
+ * adds a project, renames one or hides one, their list wins.
+ */
+const DEMO_WORK_IDS = new Set(["soma", "orbit", "aura"]);
+
+export function adoptRealPortfolio(content: SiteContent): SiteContent {
+  const items = content.work.items;
+  if (!items.length) return content;
+  if (items.some((item) => !DEMO_WORK_IDS.has(item.id))) return content;
+  return { ...content, work: { ...content.work, items: DEFAULT_CONTENT.work.items } };
+}
+
 export function adoptPublishedAddresses(content: SiteContent): SiteContent {
   let changed = false;
 

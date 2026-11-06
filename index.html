@@ -10,52 +10,145 @@
       name="description"
       content="کاهن استودیوی مستقل طراحی و توسعهٔ دیجیتال است؛ استراتژی برند، طراحی محصول، رابط و تجربهٔ کاربری، هویت بصری و توسعهٔ فرانت‌اند."
     />
+    <!-- Indexing is wanted, thumbnail-less previews are not. -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="application-name" content="CAHEN" />
+    <meta name="author" content="CAHEN Digital Studio" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>CAHEN — استودیوی طراحی و توسعهٔ دیجیتال</title>
+    <link rel="canonical" href="https://cahen.ir/" />
+    <link rel="alternate" hreflang="fa-IR" href="https://cahen.ir/" />
+    <link rel="alternate" hreflang="x-default" href="https://cahen.ir/" />
+
+    <!-- Open Graph: what a link looks like when it is shared on a phone. -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CAHEN" />
     <meta property="og:locale" content="fa_IR" />
+    <meta property="og:url" content="https://cahen.ir/" />
     <meta property="og:title" content="CAHEN — استودیوی طراحی و توسعهٔ دیجیتال" />
     <meta
       property="og:description"
       content="دیده‌شدن، حقِ کارِ خوب است. کاهن برندها و محصولات دیجیتال را از دل مسئله طراحی می‌کند."
     />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta property="og:site_name" content="CAHEN" />
     <meta property="og:image" content="https://cahen.ir/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://cahen.ir/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="نشان کاهن روی میز کار استودیو در نور بنفش شبانه" />
+
+    <!-- X / Twitter reads its own set; it must not be left to guess. -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CAHEN — استودیوی طراحی و توسعهٔ دیجیتال" />
+    <meta
+      name="twitter:description"
+      content="دیده‌شدن، حقِ کارِ خوب است. کاهن برندها و محصولات دیجیتال را از دل مسئله طراحی می‌کند."
+    />
     <meta name="twitter:image" content="https://cahen.ir/og-image.jpg" />
-    <meta name="author" content="CAHEN Digital Studio" />
-    <link rel="canonical" href="https://cahen.ir/" />
-    <title>CAHEN — استودیوی طراحی و توسعهٔ دیجیتال</title>
+    <meta name="twitter:image:alt" content="نشان کاهن روی میز کار استودیو در نور بنفش شبانه" />
+
+    <!--
+      One @graph, three nodes, one identity: the studio, the site and the page
+      all point at the same @id, so a crawler reads them as one entity instead
+      of three coincidental mentions. The service catalogue comes from the same
+      four areas the site describes.
+    -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "ProfessionalService",
-        "name": "CAHEN",
-        "alternateName": "کاهن",
-        "url": "https://cahen.ir/",
-        "logo": "https://cahen.ir/favicon.png",
-        "image": "https://cahen.ir/og-image.jpg",
-        "description": "استودیوی مستقل طراحی و توسعهٔ دیجیتال: استراتژی برند، طراحی محصول، رابط و تجربهٔ کاربری، هویت بصری و توسعهٔ فرانت‌اند.",
-        "email": "info@cahen.ir",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "تهران",
-          "addressCountry": "IR"
-        },
-        "areaServed": "IR",
-        "sameAs": [
-          "https://t.me/CAHENWEB",
-          "https://www.instagram.com/CAHENWEB/",
-          "https://wa.me/989023841612"
+        "@graph": [
+          {
+            "@type": "ProfessionalService",
+            "@id": "https://cahen.ir/#studio",
+            "name": "CAHEN",
+            "alternateName": "کاهن",
+            "url": "https://cahen.ir/",
+            "logo": "https://cahen.ir/favicon.png",
+            "image": "https://cahen.ir/og-image.jpg",
+            "description": "استودیوی مستقل طراحی و توسعهٔ دیجیتال: استراتژی برند، طراحی محصول، رابط و تجربهٔ کاربری، هویت بصری و توسعهٔ فرانت‌اند.",
+            "email": "info@cahen.ir",
+            "knowsLanguage": ["fa", "en"],
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "تهران",
+              "addressCountry": "IR"
+            },
+            "areaServed": {
+              "@type": "Country",
+              "name": "IR"
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "sales",
+              "email": "info@cahen.ir",
+              "availableLanguage": ["fa", "en"]
+            },
+            "sameAs": [
+              "https://t.me/CAHENWEB",
+              "https://www.instagram.com/CAHENWEB/",
+              "https://wa.me/989023841612"
+            ],
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "خدمات کاهن",
+              "itemListElement": [
+                {
+                  "@type": "Offer",
+                  "itemOffered": { "@type": "Service", "name": "استراتژی و طراحی محصول" }
+                },
+                {
+                  "@type": "Offer",
+                  "itemOffered": { "@type": "Service", "name": "طراحی رابط و تجربهٔ کاربری" }
+                },
+                {
+                  "@type": "Offer",
+                  "itemOffered": { "@type": "Service", "name": "توسعهٔ فرانت‌اند" }
+                },
+                {
+                  "@type": "Offer",
+                  "itemOffered": { "@type": "Service", "name": "هویت بصری و برندینگ" }
+                }
+              ]
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://cahen.ir/#website",
+            "url": "https://cahen.ir/",
+            "name": "CAHEN",
+            "alternateName": "کاهن",
+            "inLanguage": "fa-IR",
+            "publisher": { "@id": "https://cahen.ir/#studio" }
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://cahen.ir/#webpage",
+            "url": "https://cahen.ir/",
+            "name": "CAHEN — استودیوی طراحی و توسعهٔ دیجیتال",
+            "description": "دیده‌شدن، حقِ کارِ خوب است. کاهن برندها و محصولات دیجیتال را از دل مسئله طراحی می‌کند.",
+            "inLanguage": "fa-IR",
+            "isPartOf": { "@id": "https://cahen.ir/#website" },
+            "about": { "@id": "https://cahen.ir/#studio" },
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://cahen.ir/og-image.jpg",
+              "width": 1200,
+              "height": 630
+            }
+          }
         ]
       }
     </script>
+
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="apple-mobile-web-app-title" content="CAHEN" />
-    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- The hero object's height map: the only image the first screen needs. -->
     <link rel="preload" as="image" href="/hero/mark-relief.webp" fetchpriority="high" />
@@ -78,12 +171,22 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      A crawler that does not run JavaScript, and a visitor with it switched
+      off, still get the studio's name, what it does and how to reach it.
+      Kept as text (no headings, no links to nowhere) so it reads as content,
+      never as a keyword list.
+    -->
     <noscript>
       <div style="padding: 40px 24px; font-family: Tahoma, sans-serif; line-height: 1.9">
         <h1 style="font-size: 1.6rem; margin: 0 0 12px">کاهن — استودیوی طراحی و توسعهٔ دیجیتال</h1>
         <p style="margin: 0 0 12px; color: #514960; max-width: 60ch">
           برای دیدن نسخهٔ کامل سایت، جاوااسکریپت را در مرورگر خود فعال کنید. برای گفت‌وگو
           دربارهٔ یک پروژه: <a style="color: #7040ba" href="mailto:info@cahen.ir">info@cahen.ir</a>
+        </p>
+        <p style="margin: 0 0 12px; color: #514960; max-width: 60ch">
+          کاهن برندها و محصولات دیجیتال را از دلِ مسئله طراحی می‌کند: استراتژی و طراحی محصول،
+          طراحی رابط و تجربهٔ کاربری، توسعهٔ فرانت‌اند و هویت بصری.
         </p>
         <p style="margin: 0; color: #62596e; font-size: 12px" dir="ltr">
           CAHEN · TEHRAN · t.me/CAHENWEB · instagram.com/CAHENWEB

@@ -379,17 +379,22 @@ Ten checks run entirely offline:
 
 - `npm run hero:check` — 88 assertions: the shaders parse and are not truncated; the mark is upright (one `-q.y`, in the shared projection, upload unflipped); normals, key light, specular and fresnel are present; the pointer, the shockwaves and the fragment share one projection, and a real `pointerdown` reaches the GPU as a lens and a ring buffer entry; passive listeners only; raw WebGL2 with logged shader errors, a reduced tier, one frame for reduced motion, and a loop that halts when hidden; no video and no media request; nothing pinned; a scroll re-renders nothing and writes only transform and opacity.
 - `npm run mobile:check` — 51 assertions: the dock exists, arrives after the hero, opens the index and the sheet; the entrance paints the same light as the hero; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur on a phone.
-- `npm run content:check` — 24 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; and a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed.
+- `npm run content:check` — 34 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; the three shipped case studies (with their live links and alt text) and the absence of the old demonstration plates; a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed; and a stored portfolio that still holds the demo plates adopts the real one while a portfolio an editor shaped is left alone.
 - `npm run admin:check` — 63 assertions over the API and the security model.
 - `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
 - `npm run mark:check` — 37 assertions: the particle mark is decoded from an inline payload instead of fetched (the CSP refusal that hid it), the phone budget, and the case-study card.
 - `npm run product:check` — 65 assertions on the built output: payload budgets, font and image weight, the single scroll listener, metadata, icons, structured data, 404, sitemap, robots, cache and security headers, focus states, reduced motion, alt text and one `<h1>`.
-- `npm run perf:check` — 31 assertions on speed: no idle frame loops, no layout
-  reads in the scroll frame, no decorative gaussian filters, an opaque header, a
-  lazy grid, a pixel budget on the hero, a bounded `will-change` count, and
-  gzipped budgets for the entry bundle (< 125 kB), the stylesheet (< 30 kB), the
-  fonts and the hero texture.
+- `npm run perf:check` — 48 assertions on speed: no idle frame loops, no layout
+  reads in the scroll frame or in a pointer handler, gallery cards moved by
+  transform only, a coarse surface grid that encodes just the disturbed crop, a
+  text mask refreshed on layout change instead of on a timer, a footer wordmark
+  drawn in ink instead of filtered, a low-tier machine that paints without a
+  backdrop blur, an opaque header, a lazy grid, a pixel budget on the hero, a
+  bounded `will-change` count, and gzipped budgets for the entry bundle
+  (< 125 kB), the stylesheet (< 30 kB), the fonts and the hero texture.
+- `npm run seo:check` — 63 assertions on how the page is read by a crawler: one title and one description inside result limits, a canonical that agrees with `og:url`, `hreflang` for Persian, a complete Open Graph and X card, a linked manifest with 192 and 512 icons, one `@graph` whose studio, site and page nodes share an `@id` and carry the published addresses and four service offers, a sitemap dated at build time with one public URL, robots.txt that keeps the control room and the API out while advertising that sitemap, a noindexed 404, and a real section behind every navigation link.
+- `npm run security:check` — 55 assertions on the response and the code behind it: HSTS, framing denial, `nosniff`, COOP/CORP, a narrowed permission policy, and a CSP with no inline script, no eval of any kind (wasm included), no inline handlers, no frames, no plugins, a locked `base-uri`/`form-action` and HTTPS upgrades — with the one inline JSON-LD block allowed by its own hash; no source maps, no server secret or `VITE_`-leaked value in the bundle, no raw-HTML rendering or runtime evaluation, no new tab without `noopener`; and at the API, constant-time session and password comparisons, scrypt storage, an HttpOnly/SameSite=Strict/Secure cookie, per-address and per-account login throttles, an origin check on every state change, capped bodies, magic-byte upload sniffing with no SVG, a basename-only media name, prototype-pollution guards, uncached and sandboxed responses, `405` for anything unsupported, and an `.env` template with every credential left blank.
 - `npm run typecheck` — the TypeScript build, also part of `npm run build`.
 
 All of them run in `npm run verify`.
@@ -465,6 +470,17 @@ npm run netlify:check # function bundling + Blobs-backed routes
 ```
 
 The first two spin up the API on a random port against a temporary directory with throwaway credentials; the third bundles both functions with esbuild and runs them against a mock Netlify Blobs edge API. Together they cover origin checks, generic credential errors, cookie flags, tampered and revoked sessions, role limits, upload re-typing, path traversal, throttling, order queuing, SMS formatting, SPA/API routing and storage-outage behaviour.
+
+### Search and security, as a gate
+
+```bash
+npm run seo:check        # what a crawler and a link preview actually get
+npm run security:check   # headers, build hygiene, client code, the API
+```
+
+`seo:check` reads the built shell, the manifest, the sitemap and robots.txt and cross-checks them: one canonical that agrees with `og:url`, a title and description inside result limits, `hreflang` for Persian, a complete Open Graph and X card, one schema.org `@graph` whose studio/site/page nodes share an `@id`, four service offers, a sitemap dated by the build itself, and a real section behind every navigation link. `security:check` reads the same headers a browser will honour — CSP (no inline script, no eval of any kind, no frames, no plugins, locked `base-uri`/`form-action`, HTTPS upgrades, one hash for the JSON-LD block), HSTS, COOP/CORP, `nosniff`, the permission allowlist — then the build (no source maps, no server secret, no `VITE_` leak), the client code (no raw HTML, no runtime evaluation, every new tab `noopener`) and the API (constant-time comparisons, scrypt, cookie flags, login throttles, origin checks, body caps, magic-byte uploads, sandboxed media, `405`s).
+
+Two things live outside the repository and cannot be checked from here: the DNS records for `cahen.ir` (SPF/DKIM/DMARC for `info@cahen.ir`, and DNSSEC if the registrar offers it) and the hosting environment variables. Both are worth auditing once a year.
 
 ### Notes
 

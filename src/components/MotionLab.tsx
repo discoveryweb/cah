@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Aperture, Orbit, Waves } from "lucide-react";
-import { Reveal } from "./ui";
+import { LogoMark, Reveal } from "./ui";
 
 const STUDIES = [
   { id: "orbit", title: "مدار", label: "ORBIT", text: "حرکتی پیوسته برای روایت‌هایی که مسیر دارند.", icon: Orbit },
@@ -32,8 +32,8 @@ export function MotionLab() {
           </div>
         </Reveal>
         <Reveal className="motion-lab__plate" variant="scale">
-          <div className="motion-lab__plate-top" dir="ltr"><span>CAHEN / PLAYGROUND</span><span>LIVE STUDY ✳</span></div>
-          <div ref={visualRef} className="motion-lab__visual" data-mode={selected.id} aria-hidden="true"><i /><i /><i /><b>✳</b></div>
+          <div className="motion-lab__plate-top" dir="ltr"><span>CAHEN / PLAYGROUND</span><span>LIVE STUDY</span></div>
+          <div ref={visualRef} className="motion-lab__visual" data-mode={selected.id} aria-hidden="true"><i /><i /><i /><b><LogoMark className="motion-lab__mark" /></b></div>
           <div className="motion-lab__caption"><div><span dir="ltr">{selected.label} / MOTION</span><strong>{selected.title}</strong></div><p>{selected.text}</p></div>
         </Reveal>
       </div>

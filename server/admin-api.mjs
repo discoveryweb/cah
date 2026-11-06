@@ -53,6 +53,9 @@ const applySecurityHeaders = (response) => {
   response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  // Function responses are outside the static header rules, so the API says it
+  // itself: a JSON endpoint is nobody's search result.
+  response.setHeader("X-Robots-Tag", "noindex, nofollow");
   response.setHeader("Vary", "Origin, Cookie");
 };
 

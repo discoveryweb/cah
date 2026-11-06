@@ -77,6 +77,7 @@ const MIME = {
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".json": "application/json",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".xml": "application/xml",
   ".wasm": "application/wasm",
@@ -123,13 +124,23 @@ function resolve(urlPath) {
   return { file: null };
 }
 
+/**
+ * Header names are case-insensitive in HTTP, and Netlify merges its own
+ * `Content-Type` into the rule's rather than sending both. A plain
+ * `Object.assign` produced `content-type: application/octet-stream` *and*
+ * `Content-Type: application/manifest+json` for the same response, which is a
+ * different, wrong thing — so names are matched the way the protocol matches
+ * them and the rule always wins.
+ */
 function headersFor(urlPath, extra = {}) {
-  const merged = { ...extra };
+  const merged = new Map(Object.entries(extra).map(([key, value]) => [key.toLowerCase(), value]));
   for (const rule of headerRules) {
     if (splatMatch(rule.for, urlPath) === null) continue;
-    Object.assign(merged, rule.values);
+    for (const [key, value] of Object.entries(rule.values)) {
+      merged.set(key.toLowerCase(), value);
+    }
   }
-  return merged;
+  return Object.fromEntries(merged);
 }
 
 /* ------------------------------------------------------------------- server */

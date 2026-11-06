@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from "react";
 import { onScrollFrame } from "../utils/scrollFrame";
+import { createDocumentBox } from "../utils/layoutBoxes";
 
 /**
  * Moves an element against the scroll direction as it passes the viewport.
@@ -16,12 +17,17 @@ export function useParallax(
     if (!node) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const update = () => {
-      const rect = node.getBoundingClientRect();
+    /* The box is measured when the layout changes and read from memory in the
+       scroll frame; `getBoundingClientRect` per frame forces a relayout. */
+    const box = createDocumentBox(node);
+
+    const update = (scrollY: number) => {
+      const { top, height } = box.read();
+      const rectTop = top - scrollY;
       const viewport = window.innerHeight;
-      if (rect.bottom < -200 || rect.top > viewport + 200) return;
-      const progress = (rect.top + rect.height / 2 - viewport / 2) / viewport;
-      const offset = Math.max(-1, Math.min(1, progress)) * strength * rect.height;
+      if (rectTop + height < -200 || rectTop > viewport + 200) return;
+      const progress = (rectTop + height / 2 - viewport / 2) / viewport;
+      const offset = Math.max(-1, Math.min(1, progress)) * strength * height;
       node.style.setProperty(property, `${offset.toFixed(2)}px`);
     };
 

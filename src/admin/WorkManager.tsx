@@ -373,6 +373,17 @@ export function WorkManager({
               <TextInput value={draft.alt} onChange={(value) => patchDraft("alt", value)} />
             </Field>
 
+            <Field
+              label="نشانی سایت زنده"
+              path="url"
+              hint="اختیاری؛ اگر پر شود، در صفحهٔ پروژه یک لینک «سایت زنده» نمایش داده می‌شود."
+            >
+              <TextInput
+                value={draft.url ?? ""}
+                onChange={(value) => patchDraft("url", value.trim())}
+              />
+            </Field>
+
             <div className="agrid agrid--2">
               <Field label="معرفی پروژه" path="intro">
                 <TextArea value={draft.intro} onChange={(value) => patchDraft("intro", value)} rows={3} />

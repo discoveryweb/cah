@@ -39,8 +39,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
           <HeroSand />
           <span className="hero__orbit-ring hero__orbit-ring--outer" />
           <span className="hero__orbit-ring hero__orbit-ring--inner" />
-          <span className="hero__orbit-cross">✳</span>
-          <span className="hero__orbit-label" dir="ltr">INDEPENDENT DIGITAL STUDIO <b>✦</b> EST. FOR WHAT’S NEXT</span>
+          <span className="hero__orbit-label" dir="ltr">INDEPENDENT DIGITAL STUDIO <b>—</b> EST. FOR WHAT’S NEXT</span>
         </div>
         <div className="hero__field" ref={fieldRef} aria-hidden="true">
           <span className="hero__aurora hero__aurora--violet" />

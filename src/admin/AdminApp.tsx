@@ -611,7 +611,7 @@ function AdminRoot() {
                 <LogOut />
               </button>
             </div>
-            <a className="admin-side__link" href="/" target="_blank" rel="noreferrer">
+            <a className="admin-side__link" href="/" target="_blank" rel="noopener noreferrer">
               <span>دیدن سایت</span>
               <ArrowUpRight />
             </a>

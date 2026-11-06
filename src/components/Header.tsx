@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowUpLeft, Search, X, Home, Layers3, Sparkles, Aperture, Send, Orbit } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { ArrowUpLeft, Search, X, Home, Layers3, Gem, Aperture, Send, Orbit } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { socialIcon } from "../content/socialIcons";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
@@ -11,10 +11,10 @@ import { onScrollFrame } from "../utils/scrollFrame";
 import { Brand, Numeral } from "./ui";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-const NAV_ICONS: Record<string, typeof Home> = { home: Home, work: Layers3, services: Sparkles, studio: Aperture, contact: Send, animations: Orbit };
+const NAV_ICONS: Record<string, typeof Home> = { home: Home, work: Layers3, services: Gem, studio: Aperture, contact: Send, animations: Orbit };
 
 const SEARCH_INDEX = [
-  { keys: ["کار", "پروژه", "نمونه", "soma", "orbit", "aura", "پرتفولیو"], id: "work" },
+  { keys: ["کار", "پروژه", "نمونه", "karixo", "nirvana", "meridian", "پرتفولیو"], id: "work" },
   { keys: ["خدمت", "توانمندی", "طراحی", "توسعه", "برند", "هویت", "محصول"], id: "services" },
   { keys: ["استودیو", "درباره", "تیم", "cahen", "کاهن", "ما"], id: "studio" },
   { keys: ["انیمیشن", "حرکت", "motion", "animation"], id: "animations" },
@@ -24,12 +24,20 @@ const SEARCH_INDEX = [
 export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean }) {
   const content = useContent();
   const { contact, socials: SOCIAL_CHANNELS } = content;
-  // Older published documents may predate the motion chapter.
-  const NAV_LINKS = content.nav.some((link) => link.id === "animations") ? content.nav : [
-    ...content.nav.slice(0, Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
-    { id: "animations", label: "انیمیشن‌ها", latin: "Motion" },
-    ...content.nav.slice(Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
-  ];
+  /* Older published documents may predate the motion chapter. Memoised on the
+     content itself: a fresh array on every render made the indicator effect
+     below run on every render, and that effect measures the DOM. */
+  const NAV_LINKS = useMemo(
+    () =>
+      content.nav.some((link) => link.id === "animations")
+        ? content.nav
+        : [
+            ...content.nav.slice(0, Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
+            { id: "animations", label: "انیمیشن‌ها", latin: "Motion" },
+            ...content.nav.slice(Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
+          ],
+    [content.nav],
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -48,25 +56,54 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
     const nav = navRef.current;
     const indicator = indicatorRef.current;
     if (!nav || !indicator) return;
+
+    /* Written inside a frame so the measurement never lands in the middle of a
+       render, and only when the active chapter or the layout changed. */
+    let frame = 0;
     const positionIndicator = () => {
-      const link = nav.querySelector<HTMLElement>(".nav__link--active");
-      if (!link) { indicator.style.opacity = "0"; return; }
-      indicator.style.width = `${link.offsetWidth}px`;
-      indicator.style.transform = `translateX(${link.offsetLeft}px)`;
-      indicator.style.opacity = "1";
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const link = nav.querySelector<HTMLElement>(".nav__link--active");
+        if (!link) {
+          indicator.style.opacity = "0";
+          return;
+        }
+        indicator.style.width = `${link.offsetWidth}px`;
+        indicator.style.transform = `translateX(${link.offsetLeft}px)`;
+        indicator.style.opacity = "1";
+      });
     };
+
     positionIndicator();
     window.addEventListener("resize", positionIndicator);
-    return () => window.removeEventListener("resize", positionIndicator);
+    // A font swap changes every link's width; wait for the faces once.
+    void document.fonts?.ready.then(positionIndicator).catch(() => {});
+    return () => {
+      window.removeEventListener("resize", positionIndicator);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [active, NAV_LINKS]);
 
   useEffect(() => {
+    /* `setState` with an unchanged value still enters React's scheduler. Doing
+       that on every scroll frame is how a header ends up re-rendering the whole
+       nav sixty times a second, so the previous answer is kept in refs. */
+    let wasScrolled = false;
+    let wasHidden = false;
     const update = (y: number) => {
-      setScrolled(y > 16);
+      const scrolled = y > 16;
+      if (scrolled !== wasScrolled) {
+        wasScrolled = scrolled;
+        setScrolled(scrolled);
+      }
       const delta = y - lastScroll.current;
-      if (y > 520 && delta > 6 && !menuOpen && !searchOpen) setHidden(true);
-      else if (delta < -4 || y < 320) setHidden(false);
       lastScroll.current = y;
+      const hidden = y > 520 && delta > 6 && !menuOpen && !searchOpen ? true : delta < -4 || y < 320 ? false : wasHidden;
+      if (hidden !== wasHidden) {
+        wasHidden = hidden;
+        setHidden(hidden);
+      }
     };
     return onScrollFrame(update);
   }, [menuOpen, searchOpen]);

@@ -29,6 +29,10 @@ export function HeroSand() {
     let inView = true, disposed = false, imageReady = false;
     let x = new Float32Array(0), y = new Float32Array(0), homeX = new Float32Array(0), homeY = new Float32Array(0);
     let vx = new Float32Array(0), vy = new Float32Array(0), sizes = new Float32Array(0), tones = new Uint8Array(0);
+    /* Indices grouped by tone, built once per build(): the draw used to walk
+       every grain three times to split them, which is three times the work for
+       the same three fills. */
+    let groups: number[][] = [[], [], []];
 
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -39,8 +43,9 @@ export function HeroSand() {
         : ["rgba(184, 130, 255, .56)", "rgba(229, 200, 255, .8)", "rgba(124, 245, 231, .88)"];
       for (let tone = 0; tone < colors.length; tone++) {
         ctx.fillStyle = colors[tone];
-        for (let i = 0; i < x.length; i++) {
-          if (tones[i] !== tone) continue;
+        const group = groups[tone];
+        for (let g = 0; g < group.length; g++) {
+          const i = group[g];
           const size = sizes[i];
           ctx.fillRect(x[i] - size / 2, y[i] - size / 2, size, size);
         }
@@ -85,6 +90,8 @@ export function HeroSand() {
         const light = Math.max(pixels[pixel * 4], pixels[pixel * 4 + 1], pixels[pixel * 4 + 2]);
         tones[i] = Math.random() > 0.985 ? 2 : light > 170 && Math.random() > 0.4 ? 1 : 0;
       }
+      groups = [[], [], []];
+      for (let i = 0; i < count; i++) groups[tones[i]].push(i);
       draw();
     };
 

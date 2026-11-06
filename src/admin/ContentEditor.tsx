@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUpLeft, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowUpLeft, Info, Plus, Trash2 } from "lucide-react";
 import type { SiteContent } from "../content/types";
 import { Field, ImagePicker, StringList, TextArea, TextInput } from "./ui";
 
@@ -344,7 +344,7 @@ function WorkFields({ content, update, errors, disabled }: EditorProps) {
   return (
     <>
       <div className="anote">
-        <Sparkles />
+        <Info />
         <span>
           برای افزودن یا ویرایش پروژه‌ها، از بخش «نمونه‌کارها» استفاده کنید؛ اینجا فقط متن‌های سرِ بخش
           و پابرگ آن است.

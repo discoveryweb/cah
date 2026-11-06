@@ -39,6 +39,15 @@
     backdrop-filter: blur(20px) saturate(145%);
     -webkit-backdrop-filter: blur(20px) saturate(145%);
   }
+  /* The floating pill is glass while the machine can afford a live backdrop
+     blur. On a low-tier device the same gradient is simply made opaque: the
+     look survives, the per-frame re-blur of everything scrolling underneath it
+     does not. */
+  html[data-perf="low"] .header__inner {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: linear-gradient(110deg, rgba(30, 21, 45, .97), rgba(13, 10, 22, .96) 55%, rgba(20, 26, 33, .96));
+  }
   .header--hidden { transform: translateY(-130%); }
   .brand__mark { width: 36px; height: 32px; }
   .brand__word { font-size: 15px; }
@@ -80,7 +89,6 @@
   .hero__orbit-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(205,178,255,.24); inset: 7%; box-shadow: 0 0 60px rgba(168,85,247,.06), inset 0 0 50px rgba(168,85,247,.05); }
   .hero__orbit-ring--outer { border-style: solid; transform: rotate(-18deg) scaleY(.85); }
   .hero__orbit-ring--inner { inset: 17%; border-color: rgba(94,252,232,.17); transform: rotate(26deg) scaleY(.82); }
-  .hero__orbit-cross { position: absolute; top: 18%; right: 13%; color: #9af9ed; font-size: 18px; text-shadow: 0 0 16px #5efce8; }
   .hero__orbit-label { position: absolute; bottom: 13%; left: 7%; color: rgba(229,215,255,.5); font: 9px var(--font-mono); letter-spacing: .18em; }
   .hero__orbit-label b { color: #5efce8; padding: 0 8px; }
 

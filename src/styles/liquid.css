@@ -51,7 +51,12 @@
   .motion-lab__visual i:nth-child(2) { inset: 20%; border-color: rgba(94,252,232,.45); animation-duration: 7s; animation-direction: reverse; }
   .motion-lab__visual i:nth-child(3) { inset: 30%; border-color: rgba(235,210,255,.55); animation-duration: 5s; }
   .motion-lab__visual i::after { content: ""; position: absolute; top: 12%; left: 12%; width: 10px; height: 10px; border-radius: 50%; background: #9ffbf1; box-shadow: 0 0 16px #5efce8; }
-  .motion-lab__visual b { z-index: 1; color: #fff; font-size: 42px; text-shadow: 0 0 26px #aa6cff; }
+  /* The mark sits on glass that is darker than it is, so the violet plumage
+     and its white edge highlights stay the brightest thing in the orbit. */
+  .motion-lab__visual b { z-index: 1; display: grid; place-items: center; width: clamp(74px, 15vw, 100px); aspect-ratio: 1; border: 1px solid rgba(216,187,255,.34); border-radius: 50%; background: radial-gradient(circle at 50% 118%, rgba(140,86,232,.5), rgba(20,14,38,.94) 64%); box-shadow: 0 14px 44px rgba(118,58,222,.42), inset 0 1px rgba(255,255,255,.22); }
+  /* Two classes deep on purpose: the mark also carries `.brand__mark`, whose
+     fixed header size must not win here. */
+  .motion-lab__visual b .motion-lab__mark { width: clamp(44px, 9vw, 60px); height: auto; object-fit: contain; filter: brightness(1.14) saturate(1.06) drop-shadow(0 0 20px rgba(170,108,255,.62)); }
   .motion-lab__visual[data-mode="wave"] i { animation: liquid-wave 3s ease-out infinite; }
   .motion-lab__visual[data-mode="wave"] i:nth-child(2) { animation-delay: .6s; }
   .motion-lab__visual[data-mode="wave"] i:nth-child(3) { animation-delay: 1.2s; }
