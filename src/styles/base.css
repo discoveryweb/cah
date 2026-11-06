@@ -487,87 +487,6 @@
   }
 
   /* =========================================================
-     Custom cursor
-     ========================================================= */
-  .cursor,
-  .cursor-ring {
-    position: fixed;
-    z-index: 300;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    will-change: transform;
-  }
-
-  .cursor {
-    width: 6px;
-    height: 6px;
-    margin: -3px 0 0 -3px;
-    border-radius: 50%;
-    background: var(--vermilion);
-    transition: opacity 220ms ease;
-  }
-
-  .cursor-ring {
-    display: grid;
-    width: 42px;
-    height: 42px;
-    margin: -21px 0 0 -21px;
-    place-items: center;
-    border: 1px solid var(--line-strong);
-    border-radius: 50%;
-    color: var(--paper);
-    transition:
-      width 420ms var(--ease),
-      height 420ms var(--ease),
-      margin 420ms var(--ease),
-      background 320ms ease,
-      border-color 320ms ease,
-      opacity 220ms ease;
-  }
-
-  .cursor-ring__label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    opacity: 0;
-    transition: opacity 240ms ease;
-  }
-
-  .cursor-ring--hover {
-    width: 66px;
-    height: 66px;
-    margin: -33px 0 0 -33px;
-    border-color: var(--vermilion);
-    background: color-mix(in srgb, var(--vermilion) 12%, transparent);
-  }
-
-  .cursor-ring--view {
-    width: 96px;
-    height: 96px;
-    margin: -48px 0 0 -48px;
-    border-color: transparent;
-    background: var(--vermilion);
-    color: var(--paper);
-  }
-
-  .cursor-ring--view .cursor-ring__label {
-    opacity: 1;
-  }
-
-  .cursor--hidden,
-  .cursor-ring--hidden {
-    opacity: 0;
-  }
-
-  @media (hover: none), (pointer: coarse) {
-    .cursor,
-    .cursor-ring {
-      display: none;
-    }
-  }
-
-  /* =========================================================
      Preloader — the brand word pours like an hourglass
      ========================================================= */
   .preloader {
@@ -1063,21 +982,6 @@
   html.is-loading,
   html.is-loading body {
     overflow: hidden;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    html.has-custom-cursor,
-    html.has-custom-cursor body,
-    html.has-custom-cursor a,
-    html.has-custom-cursor button {
-      cursor: none;
-    }
-
-    html.has-custom-cursor input,
-    html.has-custom-cursor textarea,
-    html.has-custom-cursor select {
-      cursor: auto;
-    }
   }
 
   button.link-arrow {

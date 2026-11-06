@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowUpLeft, Search, X } from "lucide-react";
+import { ArrowUpLeft, Search, X, Home, Layers3, Sparkles, Aperture, Send, Orbit } from "lucide-react";
 import { useContent } from "../content/ContentProvider";
 import { socialIcon } from "../content/socialIcons";
 import { useActiveSection, useInvertAt } from "../hooks/useActiveSection";
@@ -9,17 +9,27 @@ import { SITE_MENU_EVENT } from "../utils/bus";
 import { haptic } from "../utils/haptics";
 import { onScrollFrame } from "../utils/scrollFrame";
 import { Brand, Numeral } from "./ui";
+import { ThemeSwitch } from "./ThemeSwitch";
+
+const NAV_ICONS: Record<string, typeof Home> = { home: Home, work: Layers3, services: Sparkles, studio: Aperture, contact: Send, animations: Orbit };
 
 const SEARCH_INDEX = [
   { keys: ["کار", "پروژه", "نمونه", "soma", "orbit", "aura", "پرتفولیو"], id: "work" },
   { keys: ["خدمت", "توانمندی", "طراحی", "توسعه", "برند", "هویت", "محصول"], id: "services" },
   { keys: ["استودیو", "درباره", "تیم", "cahen", "کاهن", "ما"], id: "studio" },
+  { keys: ["انیمیشن", "حرکت", "motion", "animation"], id: "animations" },
   { keys: ["تماس", "همکاری", "پروژه", "مشاوره", "contact", "ایمیل"], id: "contact" },
 ];
 
 export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean }) {
   const content = useContent();
-  const { contact, nav: NAV_LINKS, socials: SOCIAL_CHANNELS } = content;
+  const { contact, socials: SOCIAL_CHANNELS } = content;
+  // Older published documents may predate the motion chapter.
+  const NAV_LINKS = content.nav.some((link) => link.id === "animations") ? content.nav : [
+    ...content.nav.slice(0, Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
+    { id: "animations", label: "انیمیشن‌ها", latin: "Motion" },
+    ...content.nav.slice(Math.max(0, content.nav.findIndex((link) => link.id === "studio"))),
+  ];
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -28,9 +38,27 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
   const [notFound, setNotFound] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
   const lastScroll = useRef(0);
   const active = useActiveSection();
   const invert = useInvertAt("top");
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const indicator = indicatorRef.current;
+    if (!nav || !indicator) return;
+    const positionIndicator = () => {
+      const link = nav.querySelector<HTMLElement>(".nav__link--active");
+      if (!link) { indicator.style.opacity = "0"; return; }
+      indicator.style.width = `${link.offsetWidth}px`;
+      indicator.style.transform = `translateX(${link.offsetLeft}px)`;
+      indicator.style.opacity = "1";
+    };
+    positionIndicator();
+    window.addEventListener("resize", positionIndicator);
+    return () => window.removeEventListener("resize", positionIndicator);
+  }, [active, NAV_LINKS]);
 
   useEffect(() => {
     const update = (y: number) => {
@@ -142,20 +170,25 @@ export function Header({ onOrder, ready }: { onOrder: () => void; ready: boolean
             <Brand />
           </a>
 
-          <nav className="nav" aria-label="ناوبری اصلی">
-            {NAV_LINKS.map((link) => (
+          <nav ref={navRef} className="nav" aria-label="ناوبری اصلی">
+            <span ref={indicatorRef} className="nav__indicator" aria-hidden="true" />
+            {NAV_LINKS.map((link) => {
+              const Icon = NAV_ICONS[link.id];
+              return (
               <a
                 key={link.id}
                 href={`#${link.id}`}
                 className={cn("nav__link", active === link.id && "nav__link--active")}
                 aria-current={active === link.id ? "location" : undefined}
               >
+                {Icon && <Icon className="nav__icon" aria-hidden="true" />}
                 {link.label}
               </a>
-            ))}
+            ); })}
           </nav>
 
           <div className="header__side">
+            <ThemeSwitch />
             <button
               type="button"
               className="header__search"

@@ -14,6 +14,9 @@
 @import "./styles/typography.css";
 @import "./styles/glass.css";
 @import "./styles/mobile.css";
+@import "./styles/experience.css";
+@import "./styles/liquid.css";
+@import "./styles/light.css";
 
 @theme {
   --font-sans: "Estedad Variable", "Vazirmatn Variable", Tahoma, sans-serif;
@@ -34,19 +37,19 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
   /* The identity palette: deep indigo ground, violet signal, porcelain type. */
-  --paper: #0a0a1e;
-  --paper-deep: #12122f;
+  --paper: #09070f;
+  --paper-deep: #100a1b;
   --ink: #f6f4ff;
-  --ink-deep: #05050f;
-  --vermilion: #a77aff;
-  --vermilion-soft: #d3bcff;
+  --ink-deep: #07050c;
+  --vermilion: #a855f7;
+  --vermilion-soft: #d8b4fe;
 
   --bg: var(--paper);
   --fg: var(--ink);
@@ -88,7 +91,7 @@
 }
 
 .theme-ink {
-  --bg: #07071a;
+  --bg: #09070f;
   --fg: #f6f4ff;
   --fg-soft: rgba(246, 244, 255, 0.7);
   --fg-mute: rgba(246, 244, 255, 0.42);
@@ -100,7 +103,8 @@
 }
 
 .theme-paper {
-  --bg: #0c0c23;
+  --bg: #0d0914;
   --accent: var(--vermilion);
   color-scheme: dark;
 }
+

@@ -1,0 +1,90 @@
+/* Liquid glass accents and the paired daylight palette. */
+@layer components {
+  .site { transition: background-color 500ms ease, color 500ms ease; }
+  .header__side { gap: 8px; }
+  .bubble, .header__search, .menu-btn, .cta__channel-icon, .menu__social-icon, .gallery__arrows button, .service__toggle, .to-top {
+    background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(181,133,255,.09) 48%, rgba(39,25,57,.35));
+    border: 1px solid rgba(215,196,255,.25);
+    box-shadow: inset 0 1px rgba(255,255,255,.28), inset 0 -4px 10px rgba(106,64,170,.12), 0 8px 22px rgba(16,6,37,.2);
+    transition: transform 420ms var(--ease), box-shadow 420ms var(--ease), border-color 420ms ease, background 420ms ease;
+  }
+  .bubble, .header__search { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; color: inherit; }
+  .bubble:hover, .header__search:hover, .menu-btn:hover, .gallery__arrows button:hover, .to-top:hover { transform: translateY(-2px) scale(1.06); border-color: rgba(118,239,236,.6); box-shadow: inset 0 1px rgba(255,255,255,.4), 0 0 22px rgba(133,92,246,.28), 0 8px 22px rgba(0,0,0,.2); }
+  .bubble:active, .header__search:active, .menu-btn:active, .gallery__arrows button:active, .btn:active, .cta__button:active, .gallery__open:active { transform: scale(.94); }
+  .theme-switch__icons { position: relative; display: block; width: 20px; height: 20px; }
+  .theme-switch__icons svg { position: absolute; inset: 0; width: 20px; height: 20px; transition: transform 500ms var(--ease), opacity 350ms ease; }
+  .theme-switch__sun { color: #ffdaa0; }
+  .theme-switch__moon { color: #bcecf0; }
+  .theme-switch__icons[data-theme="dark"] .theme-switch__moon, .theme-switch__icons[data-theme="light"] .theme-switch__sun { opacity: 0; transform: rotate(75deg) scale(.35); }
+  .theme-switch__icons[data-theme="dark"] .theme-switch__sun, .theme-switch__icons[data-theme="light"] .theme-switch__moon { opacity: 1; transform: rotate(0) scale(1); }
+  .nav__icon { box-sizing: content-box; padding: 5px; margin: -5px; border-radius: 50%; background: rgba(193,156,255,.09); box-shadow: inset 0 1px rgba(255,255,255,.15); }
+  .rail { padding: 12px 5px; border: 1px solid rgba(211,181,255,.16); border-radius: 999px; background: rgba(26,18,42,.65); box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 35px rgba(0,0,0,.18); }
+  .cta__channel-icon, .menu__social-icon { border-radius: 50%; }
+  .btn, .cta__button, .gallery__open, .header__cta, .hero__secondary { transition: transform 450ms var(--ease), box-shadow 450ms var(--ease), background 450ms ease, border-color 450ms ease; }
+  .btn:hover, .cta__button:hover, .gallery__open:hover, .header__cta:hover, .hero__secondary:hover { transform: translateY(-3px); }
+
+  /* This transparent layer filters the actual backdrop; it draws no artwork. */
+  .surface-filter-defs { position: fixed; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+  .surface-displacement { display: none; position: fixed; z-index: 1000; pointer-events: none; -webkit-backdrop-filter: url(#cahen-surface-filter); backdrop-filter: url(#cahen-surface-filter); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 420ms; }
+
+  /* An interactive motion chapter: each state is a real selectable study. */
+  .motion-lab { position: relative; overflow: hidden; background: radial-gradient(ellipse at 15% 50%, rgba(113,64,187,.19), transparent 48%), #100b19; color: var(--ink); }
+  .motion-lab__grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(32px,7vw,100px); }
+  .motion-lab__eyebrow, .motion-lab__plate-top, .motion-lab__caption span { font: 10px var(--font-mono); letter-spacing: .15em; color: #c5a5f8; }
+  .motion-lab__eyebrow { display: flex; align-items: center; gap: 10px; }
+  .motion-lab__eyebrow i { width: 25px; height: 1px; background: #5efce8; }
+  .motion-lab h2 { margin-top: 24px; max-width: 12ch; font-size: clamp(2.2rem,4.5vw,4.4rem); line-height: 1.35; }
+  .motion-lab h2 em { color: #c084fc; font-style: normal; }
+  .motion-lab__copy > p { max-width: 47ch; margin-top: 20px; color: var(--fg-soft); font-size: 14px; line-height: 2; }
+  .motion-lab__controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .motion-lab__controls button { display: inline-flex; min-height: 48px; align-items: center; gap: 8px; padding: 8px 15px; border: 1px solid rgba(215,193,255,.2); border-radius: 999px; background: rgba(255,255,255,.05); color: inherit; transition: transform 350ms var(--ease), background 350ms, border-color 350ms; }
+  .motion-lab__controls button[aria-pressed="true"] { background: rgba(168,85,247,.23); border-color: rgba(192,132,252,.65); }
+  .motion-lab__controls button:hover { transform: translateY(-3px); }
+  .motion-lab__controls button:active { transform: scale(.95); }
+  .motion-lab__controls svg { width: 17px; height: 17px; color: #c5a5f8; }
+  .motion-lab__plate { position: relative; overflow: hidden; padding: clamp(20px,3vw,34px); border: 1px solid rgba(216,187,255,.25); border-radius: 30px; background: linear-gradient(145deg, rgba(86,58,120,.34), rgba(15,12,27,.83)); box-shadow: 0 30px 80px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.16); }
+  .motion-lab__plate-top { display: flex; justify-content: space-between; gap: 10px; }
+  .motion-lab__visual { position: relative; display: grid; place-items: center; width: min(75%, 310px); margin: 25px auto; aspect-ratio: 1; }
+  .motion-lab__visual::before { position: absolute; inset: 10%; content: ""; border-radius: 50%; background: radial-gradient(circle, rgba(161,92,244,.5), rgba(75,46,155,.12) 45%, transparent 70%); }
+  .motion-lab__visual i { position: absolute; inset: 10%; border: 1px solid rgba(194,151,255,.55); border-radius: 50%; animation: liquid-orbit 10s linear infinite; }
+  .motion-lab__visual i:nth-child(2) { inset: 20%; border-color: rgba(94,252,232,.45); animation-duration: 7s; animation-direction: reverse; }
+  .motion-lab__visual i:nth-child(3) { inset: 30%; border-color: rgba(235,210,255,.55); animation-duration: 5s; }
+  .motion-lab__visual i::after { content: ""; position: absolute; top: 12%; left: 12%; width: 10px; height: 10px; border-radius: 50%; background: #9ffbf1; box-shadow: 0 0 16px #5efce8; }
+  .motion-lab__visual b { z-index: 1; color: #fff; font-size: 42px; text-shadow: 0 0 26px #aa6cff; }
+  .motion-lab__visual[data-mode="wave"] i { animation: liquid-wave 3s ease-out infinite; }
+  .motion-lab__visual[data-mode="wave"] i:nth-child(2) { animation-delay: .6s; }
+  .motion-lab__visual[data-mode="wave"] i:nth-child(3) { animation-delay: 1.2s; }
+  .motion-lab__visual[data-mode="pulse"] i { animation: liquid-pulse 3s ease-in-out infinite alternate; }
+  .motion-lab__visual[data-mode="pulse"] i:nth-child(2) { animation-delay: -.7s; }
+  .motion-lab__visual[data-mode="pulse"] i:nth-child(3) { animation-delay: -1.4s; }
+  @keyframes liquid-orbit { to { transform: rotate(360deg); } }
+  @keyframes liquid-wave { from { transform: scale(.4); opacity: .85; } to { transform: scale(1.35); opacity: 0; } }
+  @keyframes liquid-pulse { from { transform: scale(.86); opacity: .4; } to { transform: scale(1.12); opacity: 1; } }
+  .motion-lab__visual[data-mode] i { animation-play-state: paused; }
+  .motion-lab__visual[data-mode][data-visible="true"] i { animation-play-state: running; }
+  .motion-lab__caption { display: flex; align-items: end; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding-top: 18px; }
+  .motion-lab__caption div { display: grid; gap: 5px; }
+  .motion-lab__caption strong { font-size: 18px; }
+  .motion-lab__caption p { max-width: 25ch; color: var(--fg-soft); font-size: 12px; }
+
+  .modal--closing { pointer-events: none; }
+  .modal--closing .modal__panel { animation: liquid-sheet-out 260ms ease-in both; }
+  .modal--closing .modal__backdrop { animation: liquid-backdrop-out 260ms ease-in both; }
+  @keyframes liquid-sheet-out { to { opacity: 0; transform: translateY(20px) scale(.985); } }
+  @keyframes liquid-backdrop-out { to { opacity: 0; } }
+  @media (hover: hover) and (pointer: fine) {
+    .gallery__card-media img { transition: transform 700ms var(--ease); }
+    .gallery__card:hover .gallery__card-media img { transform: scale(1.055); }
+  }
+  @media (max-width: 767px) {
+    .header__side { gap: 3px; }
+    .bubble, .header__search { width: 44px; height: 44px; flex-basis: 44px; }
+    .motion-lab__grid { grid-template-columns: 1fr; gap: 32px; }
+    .motion-lab__visual { width: min(70%, 250px); }
+    .motion-lab__visual[data-mode] i { animation-play-state: paused; }
+  .motion-lab__visual[data-mode][data-visible="true"] i { animation-play-state: running; }
+  .motion-lab__caption { align-items: start; }
+  }
+  @media (prefers-reduced-motion: reduce) { .surface-displacement { display: none !important; } .motion-lab__visual i { animation: none !important; } }
+}

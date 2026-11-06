@@ -799,47 +799,42 @@ export function createParticleObject(
   applyOptions();
   loadAsset();
 
-  let pointerX = 0;
-  let pointerY = 0;
-  let pointerActive = false;
-  let pointerSpeed = 0;
-  let lastPointerX = 0;
-  let lastPointerY = 0;
-  let lastPointerTime = 0;
-  let shoveX = 0;
-  let shoveY = 0;
-
+  // At most three concurrent pointers keep multi-touch bounded on mobile GPUs.
+  // The passive handlers do not capture pointers, so vertical scrolling wins.
+  type Pointer = { x: number; y: number; time: number; speed: number; shoveX: number; shoveY: number };
+  const pointers = new Map<number, Pointer>();
   const rectCache = createRectCache(canvas);
 
   function onPointerMove(event: PointerEvent) {
+    if (event.pointerType === "touch" && event.type === "pointermove" && !pointers.has(event.pointerId)) return;
     const rect = rectCache.current;
-    pointerX = event.clientX - rect.left;
-    pointerY = event.clientY - rect.top;
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
     const now = performance.now();
-    if (pointerActive && lastPointerTime) {
-      const dt = Math.max((now - lastPointerTime) / 1000, 1e-3);
-      const dx = pointerX - lastPointerX;
-      const dy = pointerY - lastPointerY;
-      const speed = Math.hypot(dx, dy) / dt;
-      pointerSpeed += (speed - pointerSpeed) * 0.35;
-      if (speed > 1) {
-        const inv = 1 / Math.max(Math.hypot(dx, dy), 1e-3);
-        shoveX += (dx * inv - shoveX) * 0.4;
-        shoveY += (dy * inv - shoveY) * 0.4;
-      }
+    const previous = pointers.get(event.pointerId);
+    if (!previous && pointers.size >= 3) return;
+    if (!previous) {
+      pointers.set(event.pointerId, { x, y, time: now, speed: 0, shoveX: 0, shoveY: 0 });
+      return;
     }
-    lastPointerX = pointerX;
-    lastPointerY = pointerY;
-    lastPointerTime = now;
-    pointerActive = true;
+    const dt = Math.max((now - previous.time) / 1000, 1e-3);
+    const dx = x - previous.x, dy = y - previous.y;
+    const distance = Math.hypot(dx, dy);
+    const speed = Math.min(distance / dt, 2400);
+    previous.speed += (speed - previous.speed) * 0.4;
+    if (distance > 0.01) {
+      previous.shoveX += (dx / distance - previous.shoveX) * 0.4;
+      previous.shoveY += (dy / distance - previous.shoveY) * 0.4;
+    }
+    previous.x = x; previous.y = y; previous.time = now;
   }
 
-  function onPointerLeave() {
-    pointerActive = false;
-    pointerSpeed = 0;
-    lastPointerTime = 0;
+  function onPointerLeave(event: PointerEvent) {
+    pointers.delete(event.pointerId);
   }
 
+  canvas.addEventListener("pointerdown", onPointerMove, { passive: true });
+  canvas.addEventListener("pointerup", onPointerLeave, { passive: true });
   canvas.addEventListener("pointermove", onPointerMove, { passive: true });
   canvas.addEventListener("pointerleave", onPointerLeave, { passive: true });
   canvas.addEventListener("pointercancel", onPointerLeave, { passive: true });
@@ -867,52 +862,29 @@ export function createParticleObject(
     const dampingRate = 3 + 12 * Math.min(Math.max(config.damping, 0), 1);
     const decay = Math.exp(-dampingRate * delta);
 
-    let pushing = false;
-    let ox = 0,
-      oy = 0,
-      oz = 0,
-      dx = 0,
-      dy = 0,
-      dz = 1;
+    const rays: Array<{ ox: number; oy: number; oz: number; dx: number; dy: number; dz: number; sx: number; sy: number; sz: number; shove: number }> = [];
     let localRadius = 0;
-    let pushAccel = 0;
-    let shove = 0;
+    const pushAccel = 26 * config.strength;
 
-    if (pointerActive && !reducedMotion && config.strength > 0) {
+    if (pointers.size && !reducedMotion && config.strength > 0) {
       const width = Math.max(canvas.clientWidth, 1);
       const height = Math.max(canvas.clientHeight, 1);
-      ndc.set((pointerX / width) * 2 - 1, -(pointerY / height) * 2 + 1);
-      raycaster.setFromCamera(ndc, camera);
-
       points.updateWorldMatrix(true, false);
       inverseMatrix.copy(points.matrixWorld).invert();
-      localOrigin.copy(raycaster.ray.origin).applyMatrix4(inverseMatrix);
-      localDir.copy(raycaster.ray.direction).transformDirection(inverseMatrix);
-
       const worldScale = Math.max(fitGroup.scale.x, 1e-4);
-      const worldPerPx =
-        (2 *
-          camera.position.distanceTo(floatGroup.position) *
-          Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) /
-        height;
+      const worldPerPx = (2 * camera.position.distanceTo(floatGroup.position) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / height;
       localRadius = (Math.max(config.radius, 1) * worldPerPx) / worldScale;
-      pushAccel = 26 * config.strength;
-      shove = Math.min(pointerSpeed / 900, 2) * 14 * config.strength;
       camera.matrixWorld.extractBasis(camRight, camUp, camBack);
-      localShove
-        .set(0, 0, 0)
-        .addScaledVector(camRight, shoveX)
-        .addScaledVector(camUp, -shoveY)
-        .transformDirection(inverseMatrix);
-
-      ox = localOrigin.x;
-      oy = localOrigin.y;
-      oz = localOrigin.z;
-      dx = localDir.x;
-      dy = localDir.y;
-      dz = localDir.z;
-      pushing = true;
+      for (const pointer of pointers.values()) {
+        ndc.set((pointer.x / width) * 2 - 1, -(pointer.y / height) * 2 + 1);
+        raycaster.setFromCamera(ndc, camera);
+        localOrigin.copy(raycaster.ray.origin).applyMatrix4(inverseMatrix);
+        localDir.copy(raycaster.ray.direction).transformDirection(inverseMatrix);
+        localShove.set(0, 0, 0).addScaledVector(camRight, pointer.shoveX).addScaledVector(camUp, -pointer.shoveY).transformDirection(inverseMatrix);
+        rays.push({ ox: localOrigin.x, oy: localOrigin.y, oz: localOrigin.z, dx: localDir.x, dy: localDir.y, dz: localDir.z, sx: localShove.x, sy: localShove.y, sz: localShove.z, shove: Math.min(pointer.speed / 900, 2) * 14 * config.strength });
+      }
     }
+    const pushing = rays.length > 0;
 
     const swirl = Math.min(Math.max(config.swirl, 0), 2);
     const r2max = localRadius * localRadius;
@@ -956,29 +928,27 @@ export function createParticleObject(
       let vy = v[iy];
       let vz = v[iz];
 
-      if (pushing) {
-        const wx = p[ix] - ox;
-        const wy = p[iy] - oy;
-        const wz = p[iz] - oz;
-        const t = Math.max(wx * dx + wy * dy + wz * dz, 0);
-        let rx = wx - dx * t;
-        let ry = wy - dy * t;
-        let rz = wz - dz * t;
+      for (const ray of rays) {
+        const wx = p[ix] - ray.ox;
+        const wy = p[iy] - ray.oy;
+        const wz = p[iz] - ray.oz;
+        const t = Math.max(wx * ray.dx + wy * ray.dy + wz * ray.dz, 0);
+        let rx = wx - ray.dx * t;
+        let ry = wy - ray.dy * t;
+        let rz = wz - ray.dz * t;
         const dist2 = rx * rx + ry * ry + rz * rz;
         if (dist2 < r2max) {
           const dist = Math.sqrt(dist2);
           const inv = 1 / Math.max(dist, 1e-5);
-          rx *= inv;
-          ry *= inv;
-          rz *= inv;
+          rx *= inv; ry *= inv; rz *= inv;
           const fall = 1 - dist / localRadius;
           const f = fall * fall * delta;
-          const tx = dy * rz - dz * ry;
-          const ty = dz * rx - dx * rz;
-          const tz = dx * ry - dy * rx;
-          vx += (rx + tx * swirl) * pushAccel * f + localShove.x * shove * f;
-          vy += (ry + ty * swirl) * pushAccel * f + localShove.y * shove * f;
-          vz += (rz + tz * swirl) * pushAccel * f + localShove.z * shove * f;
+          const tx = ray.dy * rz - ray.dz * ry;
+          const ty = ray.dz * rx - ray.dx * rz;
+          const tz = ray.dx * ry - ray.dy * rx;
+          vx += (rx + tx * swirl) * pushAccel * f + ray.sx * ray.shove * f;
+          vy += (ry + ty * swirl) * pushAccel * f + ray.sy * ray.shove * f;
+          vz += (rz + tz * swirl) * pushAccel * f + ray.sz * ray.shove * f;
         }
       }
 
@@ -1027,7 +997,7 @@ export function createParticleObject(
       material.uniforms.uTime.value += delta;
     }
 
-    pointerSpeed *= Math.exp(-3 * delta);
+    for (const pointer of pointers.values()) pointer.speed *= Math.exp(-3 * delta);
 
     if (delta > 0) simulate(delta);
     renderer.render(scene, camera);
@@ -1093,11 +1063,14 @@ export function createParticleObject(
     destroy() {
       disposed = true;
       rectCache.destroy();
+      pointers.clear();
       loadToken += 1;
       stopLoop();
       observer.disconnect();
       viewObserver?.disconnect();
       motionQuery.removeEventListener("change", onMotionChange);
+      canvas.removeEventListener("pointerdown", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerLeave);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("pointercancel", onPointerLeave);

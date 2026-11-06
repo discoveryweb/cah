@@ -117,8 +117,8 @@ check("the shared frame pauses in a background tab", /visibilitychange/.test(fra
 check("a single <h1> markup entry: the shell has no duplicate", (html.match(/<h1/g) || []).length <= 1);
 check("the shell declares a language and a direction", /<html lang="fa" dir="rtl">/.test(html));
 check("the viewport opts into the notch", /viewport-fit=cover/.test(html));
-check("the theme colour matches the ground", /name="theme-color" content="#0a0a1e"/.test(html));
-check("the colour scheme is declared dark", /name="color-scheme" content="dark"/.test(html));
+check("the theme colour matches the ground", /name="theme-color" content="#f8f7fc"/.test(html));
+check("the colour scheme supports dark and light", /name="color-scheme" content="light dark"/.test(html));
 check("a canonical URL is set", /rel="canonical" href="https:\/\/cahen\.ir\/"/.test(html));
 check("the social card is declared with an absolute URL", /og:image" content="https:\/\/cahen\.ir\/og-image\.jpg"/.test(html));
 check("the social card declares its size", /og:image:width" content="1200"/.test(html) && /og:image:height" content="630"/.test(html));

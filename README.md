@@ -11,6 +11,33 @@ npm run dev
 
 Create a production build with `npm run build`; run the TypeScript check on its own with `npm run typecheck`.
 
+## Glass and interactive sand
+
+The glass visual layer is in `src/styles/experience.css` and `src/styles/liquid.css`; it builds on the existing
+sections and content model rather than replacing the editable copy, order flow,
+or navigation. The floating desktop navigation measures its selected item and
+moves one luminous indicator. The compact header and existing mobile dock avoid
+expensive backdrop blur while scrolling.
+
+`HeroSand.tsx` samples the existing CAHEN mark into a bounded 2D canvas field.
+It handles up to three passive pointers, applies repulsion and a directional wake,
+and uses attraction and damped springs to settle the grains. It pauses after settling and when
+off-screen, hidden, or reduced motion is requested. Particle counts and pixel
+ratio are reduced on compact or lower-capability devices. The separate 3D mark
+in `ParticleObjectVanilla.ts` retains its existing WebGL renderer, spring and
+velocity physics, and now handles up to three pointers as well. Both keep native
+vertical scrolling available on touch devices.
+
+The daylight palette is defined separately in `src/styles/light.css`. The blocking,
+same-origin `public/theme-init.js` selects a saved `cahen-theme` preference or
+light on a first visit before first paint; `ThemeSwitch.tsx` preserves manual selections.
+The native cursor is unchanged. `SurfacePhysics.tsx` uses a small, bounded
+SVG displacement field on the actual page backdrop for touch and mouse waves,
+and spring-driven grain-scale displacement over selected shaped text. It adds
+no ring graphics, leaves semantic text intact, and respects reduced motion. The
+effect is disabled where SVG backdrop filters are unsupported. The motion-study
+animation pauses while its panel is off-screen.
+
 ## The opening screen
 
 One screen of type and one lit object: the studio's mark, rendered as machined
@@ -31,7 +58,7 @@ fragment shader, one texture, one full-screen triangle.
 
 - **The form.** `public/hero/mark-relief.webp` is the mark baked into a height
   field: R = soft height, G/A = sharp coverage, B = fine detail. 86 KB (39 KB on
-  a phone), preloaded, and the only image the first screen needs.
+  a phone), preloaded. The sand field also samples the existing, locally bundled CAHEN mark.
 - **The lighting is real.** Per-pixel normals from the height field (four taps,
   central differences), one key light sweeping across the piece over 24 s, one
   cool fill, one rim, a specular lobe, fresnel, and occlusion from the form
@@ -161,9 +188,9 @@ laptop and on a phone, not on how it looks in a screenshot. What that took:
 
 - **Two permanent frame loops, deleted.** The custom cursor ran a
   `requestAnimationFrame` loop from first paint and never stopped, and the About
-  plate did the same three screens before a reader arrives. Both now run only
-  while something is actually moving (and the plate only while it is on screen),
-  so the compositor can go idle and a phone can sleep.
+  plate did the same three screens before a reader arrives. The custom cursor is
+  now removed; the plate runs only while visible and moving, so the compositor
+  can go idle and a phone can sleep.
 - **The scroll frame measures nothing.** `scrollHeight`, `offsetTop` and up to
   six `getBoundingClientRect()` boxes used to be read inside the scroll frame —
   a forced synchronous relayout per scrolled frame. Positions are now measured

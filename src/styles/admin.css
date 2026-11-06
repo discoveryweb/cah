@@ -5,6 +5,7 @@
      editorial numerals and hairline rules.
      ========================================================= */
   .admin {
+    color-scheme: dark;
     --admin-side: 274px;
     position: relative;
     min-height: 100vh;
@@ -2544,3 +2545,31 @@
     grid-column: auto;
   }
 }
+
+/* The control room follows the same saved palette as the public site. */
+[data-theme="light"] .admin {
+  color-scheme: light;
+  --paper: #f8f7fc; --paper-deep: #efebf8; --ink: #211a30; --ink-deep: #f3f0fa;
+  --vermilion: #7544d2; --vermilion-soft: #7241c1;
+  --fg: #211a30; --fg-soft: #514960; --fg-mute: #716981;
+  --line: rgba(87,62,123,.16); --line-strong: rgba(87,62,123,.3);
+  --card-line: rgba(118,83,161,.2); --card-line-hover: rgba(139,92,246,.5);
+  --card-bg-soft: linear-gradient(145deg, rgba(255,255,255,.92), rgba(242,238,251,.9));
+  --card-shadow: 0 22px 60px -38px rgba(88,55,137,.35), inset 0 1px rgba(255,255,255,.95);
+  background: radial-gradient(ellipse at 82% 0%, rgba(175,139,230,.18), transparent 46%), radial-gradient(ellipse at 4% 96%, rgba(56,217,232,.09), transparent 44%), #f8f7fc;
+  color: var(--ink);
+}
+[data-theme="light"] .admin-side, [data-theme="light"] .admin-top { background: rgba(250,248,254,.95); }
+[data-theme="light"] .auth__panel, [data-theme="light"] .amodal__panel, [data-theme="light"] .adash-hero { background: linear-gradient(145deg, #fff, #f0eafa); box-shadow: 0 24px 70px -40px rgba(88,55,137,.35); }
+[data-theme="light"] .auth__aside { background: radial-gradient(circle at 20% 10%, rgba(159,115,225,.22), transparent 56%), #f6f1fc; }
+[data-theme="light"] .ainput, [data-theme="light"] .atextarea, [data-theme="light"] .aselect, [data-theme="light"] .atabs, [data-theme="light"] .asearch, [data-theme="light"] .amodal__foot { background: rgba(255,255,255,.75); border-color: rgba(118,83,161,.24); }
+[data-theme="light"] .ainput:focus, [data-theme="light"] .atextarea:focus, [data-theme="light"] .aselect:focus { background: #fff; border-color: #9871d2; }
+[data-theme="light"] .ainput::placeholder, [data-theme="light"] .atextarea::placeholder, [data-theme="light"] .asearch input::placeholder { color: #80758b; }
+[data-theme="light"] .admin-nav__label, [data-theme="light"] .admin-nav__link small, [data-theme="light"] .admin-crumb span, [data-theme="light"] .aeyebrow, [data-theme="light"] .astat small, [data-theme="light"] .afield__key, [data-theme="light"] .arow__handle, [data-theme="light"] .atable th, [data-theme="light"] .auth__aside-foot, [data-theme="light"] .auth__foot, [data-theme="light"] .aactivity time, [data-theme="light"] .achip em, [data-theme="light"] .arecent li time, [data-theme="light"] .asearch svg, [data-theme="light"] .amcard__meta, [data-theme="light"] .akv span, [data-theme="light"] .aorder__code, [data-theme="light"] .aorder__head svg { color: #716981; }
+[data-theme="light"] .atoast, [data-theme="light"] .asave { background: rgba(250,248,254,.97); }
+[data-theme="light"] .abtn--danger, [data-theme="light"] .afield__error, [data-theme="light"] .auth__error, [data-theme="light"] .aissues, [data-theme="light"] .abadge--off, [data-theme="light"] .abadge--danger, [data-theme="light"] .aorder__error { color: #a22b4d; }
+[data-theme="light"] .abadge--warn, [data-theme="light"] .achecks li svg, [data-theme="light"] .awork__missing { color: #80500e; }
+[data-theme="light"] .abadge--on { color: #167149; }
+[data-theme="light"] .atoast { color: #211a30; }
+[data-theme="light"] .abadge--ok { color: #167149; }
+[data-theme="light"] .amedia__drop, [data-theme="light"] .awork__num { color: #eadcff; }

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Cursor } from "./components/Cursor";
+import { SurfacePhysics } from "./components/SurfacePhysics";
+import { MotionLab } from "./components/MotionLab";
 import { Cta } from "./components/Cta";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
@@ -28,7 +29,7 @@ export default function App() {
       </a>
 
       <Preloader onDone={handleReady} />
-      <Cursor />
+      <SurfacePhysics />
       <ScrollProgress />
       <Header onOrder={() => openOrder()} ready={ready} />
       <ChapterRail />
@@ -38,6 +39,7 @@ export default function App() {
         <Intro />
         <Work onOrder={() => openOrder()} />
         <Services onOrder={openOrder} />
+        <MotionLab />
         <Studio />
         <Cta onOrder={() => openOrder()} />
       </main>

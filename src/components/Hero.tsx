@@ -5,6 +5,7 @@ import { RichText, renderRichText } from "../content/RichText";
 import { useHeroParallax } from "../hooks/useHeroParallax";
 import { Button, Magnetic, Marquee } from "./ui";
 import { HeroRelief } from "./HeroRelief";
+import { HeroSand } from "./HeroSand";
 
 /**
  * The opening screen: type, light, and the studio's own mark.
@@ -34,6 +35,13 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
       data-hero="light"
     >
       <div className="hero__stage">
+        <div className="hero__orbit-art" aria-hidden="true">
+          <HeroSand />
+          <span className="hero__orbit-ring hero__orbit-ring--outer" />
+          <span className="hero__orbit-ring hero__orbit-ring--inner" />
+          <span className="hero__orbit-cross">✳</span>
+          <span className="hero__orbit-label" dir="ltr">INDEPENDENT DIGITAL STUDIO <b>✦</b> EST. FOR WHAT’S NEXT</span>
+        </div>
         <div className="hero__field" ref={fieldRef} aria-hidden="true">
           <span className="hero__aurora hero__aurora--violet" />
           <span className="hero__aurora hero__aurora--indigo" />
@@ -63,6 +71,7 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
             </div>
 
             <div className="hero__body">
+              <div className="hero__eyebrow" dir="ltr"><span /> CREATIVE STUDIO <b> / </b> DIGITAL EXPERIENCES</div>
               <h1 className="hero__title" id="hero-title">
                 <span className="hero__line">
                   <span className="hero__line-inner">{renderRichText(firstLine)}</span>

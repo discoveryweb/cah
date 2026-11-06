@@ -33,8 +33,7 @@
   .menu__legal,
   .modal__close,
   .field__label,
-  .preloader__bottom,
-  .cursor-ring__label {
+  .preloader__bottom {
     font-family: var(--font-sans);
     font-style: normal;
     font-weight: 480;
@@ -182,11 +181,6 @@
   .preloader__bottom {
     font-size: 10px;
     letter-spacing: 0.02em;
-  }
-
-  .cursor-ring__label {
-    font-size: 10px;
-    letter-spacing: 0.01em;
   }
 
   /* Persian numerals inside technical rows: tabular, never monospaced. */

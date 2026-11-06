@@ -28,6 +28,7 @@ export function OrderModal({
 }) {
   const content = useContent();
   const serviceOptions = content.services.items.map((item) => item.option || item.title);
+  const [visible, setVisible] = useState(open);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -40,6 +41,13 @@ export function OrderModal({
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (open) { setVisible(true); return; }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setVisible(false); return; }
+    const timer = window.setTimeout(() => setVisible(false), 260);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -104,7 +112,7 @@ export function OrderModal({
     };
   }, [open, initialService, onClose]);
 
-  if (!open) return null;
+  if (!open && !visible) return null;
 
   const validate = (): Errors => {
     const nextErrors: Errors = {};
@@ -177,7 +185,7 @@ export function OrderModal({
     cn("field__input", extra, invalid && "field__input--invalid");
 
   return (
-    <div className="modal">
+    <div className={cn("modal", !open && "modal--closing")} aria-hidden={!open || undefined} inert={!open || undefined}>
       <button
         type="button"
         className="modal__backdrop"

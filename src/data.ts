@@ -9,6 +9,7 @@ export const NAV_LINKS = [
   { id: "home", label: "خانه", latin: "Index" },
   { id: "work", label: "کارها", latin: "Work" },
   { id: "services", label: "توانمندی‌ها", latin: "Services" },
+  { id: "animations", label: "انیمیشن‌ها", latin: "Motion" },
   { id: "studio", label: "استودیو", latin: "Studio" },
   { id: "contact", label: "تماس", latin: "Contact" },
 ] as const;

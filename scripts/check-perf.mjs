@@ -127,11 +127,10 @@ check(
 
 /* --------------------------------------------------------------- loops --- */
 
-const cursor = read("src", "components", "Cursor.tsx");
-check(
-  "the custom cursor stops its loop once it has settled",
-  /Math\.abs\(dx\) \+ Math\.abs\(dy\) > 0\.35 \? window\.requestAnimationFrame\(render\) : 0/.test(cursor),
-);
+const app = read("src", "App.tsx");
+check("the native cursor replaces the custom animation", !/components\/Cursor|<Cursor/.test(app) && !/cursor:\s*none/.test(read("src", "styles", "base.css")));
+const sand = read("src", "components", "HeroSand.tsx");
+check("the hero sand stops requesting frames after settling", /if \(!unsettled\) \{ last = 0; return; \}/.test(sand));
 
 const markStage = read("src", "components", "MarkStage.tsx");
 check(
@@ -190,7 +189,7 @@ if (fs.existsSync(dist)) {
   const cssKb = css ? Math.round(gzip(css) / 1024) : 0;
 
   check("the entry bundle stays under 125 kB gzipped", entryKb > 0 && entryKb < 125, `${entryKb} kB`);
-  check("the stylesheet stays under 30 kB gzipped", cssKb > 0 && cssKb < 30, `${cssKb} kB`);
+  check("the dual-theme stylesheet stays under 33 kB gzipped", cssKb > 0 && cssKb < 33, `${cssKb} kB`);
 
   const entrySource = entry ? fs.readFileSync(path.join(dist, "assets", entry), "utf8") : "";
   check("three.js is not in the entry chunk", Boolean(entry) && !/THREE\.WebGLRenderer|OrbitControls/.test(entrySource));

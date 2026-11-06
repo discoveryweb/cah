@@ -10,16 +10,16 @@ const BUDGET_SCALE = CORE_COUNT <= 2 ? 0.55 : CORE_COUNT <= 4 ? 0.8 : 1;
 /**
  * A phone paints the same plate on a third of the pixels and has a fraction of
  * the fill rate, so the cloud is rebuilt from fewer, slightly larger points.
- * Above ~2.5k points the mark stops reading as particles and starts reading as
- * a slow surface; below it, the silhouette is lost. This is that window.
+ * The cloud is denser on capable devices while the CPU and pixel budgets remain
+ * lower on phones. The existing renderer stops updating settled positions.
  */
 const COMPACT = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-const POINT_BUDGET = COMPACT ? 2400 : 9000;
+const POINT_BUDGET = COMPACT ? 5400 : 18000;
 
 const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" | "onLoad" | "onError"> = {
   count: Math.round(POINT_BUDGET * BUDGET_SCALE),
-  size: COMPACT ? 3.1 : 2.55,
-  sizeVariance: 0.3,
+  size: COMPACT ? 2.9 : 2.35,
+  sizeVariance: 0.48,
   /**
    * Empty keeps the mark's own chrome. The plate lifts its brightness in CSS so
    * the dark indigo facets of the shipped asset still read on a dark ground.
@@ -29,9 +29,9 @@ const PARTICLE_OPTIONS: Omit<ParticleObjectProps, "src" | "className" | "style" 
   scale: 3.5,
   cameraDistance: 4.1,
   fov: 62,
-  radius: COMPACT ? 58 : 88,
-  strength: COMPACT ? 0.52 : 0.66,
-  swirl: COMPACT ? 0.34 : 0.46,
+  radius: COMPACT ? 108 : 140,
+  strength: COMPACT ? 1.02 : 1.05,
+  swirl: COMPACT ? 0.48 : 0.55,
   spring: 1.12,
   damping: 0.46,
   drift: 0.26,
