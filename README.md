@@ -358,6 +358,10 @@ Owners can add, disable and remove administrators from *مدیران* without to
 
 ### Environment variables
 
+A step-by-step guide — where each variable goes in Netlify, what a valid value
+looks like, and how to verify the panel and the SMS channel afterwards — is in
+[`docs/netlify-environment.md`](docs/netlify-environment.md) (Persian).
+
 | Variable | Purpose |
 | --- | --- |
 | `ADMIN_EMAIL` | Owner email used to sign in (required). |
