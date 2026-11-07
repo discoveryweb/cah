@@ -1,0 +1,189 @@
+import type {
+  ActivityEntry,
+  AdminRole,
+  AdminUser,
+  MediaEntry,
+  OrderRecord,
+  SiteContent,
+  SmsSummary,
+} from "../content/types";
+import { announceContentSaved } from "../content/live";
+
+export class ApiFailure extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function request<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body && !(init.body instanceof Blob) ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+    credentials: "same-origin",
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok === false) {
+    // A dead session should return the operator to the sign-in screen instead of
+    // leaving an editable but unsavable panel on screen.
+    if (response.status === 401 && !input.includes("/api/admin/login")) {
+      window.dispatchEvent(new Event("cahen:unauthorized"));
+    }
+    throw new ApiFailure(
+      response.status,
+      payload?.code ?? "request_failed",
+      payload?.message ?? "درخواست انجام نشد."
+    );
+  }
+  return payload as T;
+}
+
+export interface SessionInfo {
+  ok: true;
+  configured: boolean;
+  issues: string[];
+  sessionHours: number;
+  admin: AdminUser | null;
+  expiresAt: string | null;
+}
+
+export interface AdminState {
+  ok: true;
+  admin: AdminUser;
+  accounts: AdminUser[];
+  orderStats: { total: number; pending: number };
+  sms: SmsSummary;
+  content: SiteContent | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  media: MediaEntry[];
+  activity: ActivityEntry[];
+  session: { expiresAt: string; sessionHours: number };
+}
+
+export const api = {
+  session: () => request<SessionInfo>("/api/admin/session"),
+  login: (body: { email: string; password: string }) =>
+    request<{ ok: true; admin: AdminUser; expiresAt: string; mustChangePassword?: boolean }>(
+      "/api/admin/login",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    ),
+  logout: () => request<{ ok: true }>("/api/admin/logout", { method: "POST" }),
+  logoutAll: () => request<{ ok: true }>("/api/admin/logout?all=1", { method: "POST" }),
+  state: () => request<AdminState>("/api/admin/state"),
+  /**
+   * A save is announced the moment the store has it, so an open site tab in the
+   * same browser shows the new copy without a reload.
+   */
+  saveContent: async (content: SiteContent, message?: string) => {
+    const result = await request<{ ok: true; updatedAt: string; updatedBy: string }>("/api/admin/content", {
+      method: "PUT",
+      body: JSON.stringify({ content, message }),
+    });
+    announceContentSaved(result.updatedAt);
+    return result;
+  },
+  resetContent: async () => {
+    const result = await request<{ ok: true }>("/api/admin/content/reset", { method: "POST" });
+    announceContentSaved(new Date().toISOString());
+    return result;
+  },
+  activity: () => request<{ ok: true; activity: ActivityEntry[] }>("/api/admin/activity"),
+  upload: async (file: Blob, name: string) => {
+    const response = await fetch(`/api/admin/media?name=${encodeURIComponent(name)}`, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "image/jpeg" },
+      body: file,
+      credentials: "same-origin",
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.ok) {
+      throw new ApiFailure(response.status, payload?.code ?? "upload_failed", payload?.message ?? "بارگذاری انجام نشد.");
+    }
+    return payload as { ok: true; media: MediaEntry; url: string };
+  },
+  deleteMedia: (name: string) =>
+    request<{ ok: true }>(`/api/admin/media?name=${encodeURIComponent(name)}`, {
+      method: "DELETE",
+    }),
+  exportContent: () => request<{ ok: true; exportedAt: string; content: SiteContent | null }>("/api/admin/export"),
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<{ ok: true; admin: AdminUser }>("/api/admin/password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  createAccount: (body: {
+    email: string;
+    name: string;
+    role: AdminRole;
+    mode: "invite" | "password";
+    password?: string;
+  }) =>
+    request<{ ok: true; account: AdminUser; oneTimePassword: string | null }>("/api/admin/accounts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateAccount: (id: string, body: { name?: string; role?: AdminRole; active?: boolean }) =>
+    request<{ ok: true; account: AdminUser }>(`/api/admin/accounts/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAccount: (id: string) =>
+    request<{ ok: true }>(`/api/admin/accounts/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  resetAccountPassword: (id: string) =>
+    request<{ ok: true; oneTimePassword: string }>(
+      `/api/admin/accounts/${encodeURIComponent(id)}/password`,
+      { method: "POST" }
+    ),
+  orders: () =>
+    request<{ ok: true; orders: OrderRecord[]; total: number; sms: SmsSummary }>(
+      "/api/admin/orders?limit=200"
+    ),
+  retryOrder: (id: string) =>
+    request<{ ok: true; order: OrderRecord; sms: SmsSummary }>(
+      `/api/admin/orders/${encodeURIComponent(id)}/retry`,
+      { method: "POST" }
+    ),
+  deleteOrder: (id: string) =>
+    request<{ ok: true }>(`/api/admin/orders/${encodeURIComponent(id)}`, { method: "DELETE" }),
+};
+
+/** Downscale and re-encode an image in the browser before it is uploaded. */
+export async function prepareImage(file: File, maxEdge = 1800): Promise<Blob> {
+  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size < 900_000) {
+    bitmap.close?.();
+    return file;
+  }
+
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", 0.9)
+  );
+  return blob && blob.size < file.size ? blob : file;
+}

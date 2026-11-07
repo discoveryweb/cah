@@ -1,0 +1,130 @@
+/* CAHEN / luminous glass. This layer is deliberately last: it is a visual
+   skin over the existing semantic sections, controls and content system. */
+@layer components {
+  :root {
+    --paper: #09070f;
+    --paper-deep: #100a1b;
+    --ink-deep: #07050c;
+    --vermilion: #a855f7;
+    --vermilion-soft: #d8b4fe;
+    --line: rgba(208, 187, 255, .14);
+    --line-strong: rgba(208, 187, 255, .3);
+    --glass-rom: rgba(210, 190, 255, .2);
+    --glass-rom-lit: rgba(209, 174, 255, .5);
+    --glass-tint: linear-gradient(145deg, rgba(75, 54, 105, .32), rgba(18, 13, 29, .82) 65%, rgba(16, 26, 35, .65));
+    --glass-sheen: linear-gradient(125deg, rgba(255,255,255,.11), transparent 35%), radial-gradient(110% 80% at 100% 0%, rgba(168,85,247,.15), transparent 70%);
+    --card-radius: 26px;
+  }
+  .theme-paper { --bg: #0d0914; }
+  .theme-ink { --bg: #09070f; }
+  .site { background: #09070f; }
+
+  /* A floating, narrow glass instrument instead of a full-width bar. */
+  .header, .header--solid, .header--invert.header--solid {
+    top: 16px;
+    height: 68px;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .header__inner {
+    width: min(calc(100% - 48px), 1450px);
+    max-width: none;
+    padding: 7px 12px 7px 20px;
+    border: 1px solid rgba(214, 193, 255, .23);
+    border-radius: 999px;
+    background: var(--chrome-pill);
+    box-shadow: 0 16px 50px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.13), inset 0 -1px rgba(168,85,247,.12);
+    backdrop-filter: blur(20px) saturate(145%);
+    -webkit-backdrop-filter: blur(20px) saturate(145%);
+  }
+  /* The floating pill is glass while the machine can afford a live backdrop
+     blur. On a low-tier device the same gradient is simply made opaque: the
+     look survives, the per-frame re-blur of everything scrolling underneath it
+     does not. */
+  html[data-perf="low"] .header__inner {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--chrome-pill-opaque);
+  }
+  .header--hidden { transform: translateY(-130%); }
+  .brand__mark { width: 36px; height: 32px; }
+  .brand__word { font-size: 15px; }
+  .nav { position: relative; gap: 2px; padding: 4px; border: 1px solid rgba(219,200,255,.09); border-radius: 999px; background: rgba(7,5,14,.28); }
+  .nav__indicator { position: absolute; left: 0; top: 4px; bottom: 4px; opacity: 0; border: 1px solid rgba(216,180,254,.25); border-radius: 999px; background: linear-gradient(120deg, rgba(168,85,247,.28), rgba(94,252,232,.09)); box-shadow: inset 0 1px rgba(255,255,255,.12), 0 0 25px rgba(168,85,247,.13); pointer-events: none; transition: transform 500ms var(--ease), width 500ms var(--ease), opacity 200ms; }
+  .nav__link { z-index: 1; display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 7px 13px; border-radius: 999px; font-size: 12px; transition: color 300ms, opacity 300ms; }
+  .nav__link::after { display: none; }
+  .nav__icon { width: 14px; height: 14px; color: #c4a0ff; transition: transform 450ms var(--ease), color 300ms, filter 300ms; }
+  .nav__link:hover .nav__icon, .nav__link--active .nav__icon { color: #85f4e5; filter: drop-shadow(0 0 6px rgba(94,252,232,.6)); transform: translateY(-2px); }
+  .header__cta { padding: 11px 17px; border: 1px solid rgba(214,190,255,.24); border-radius: 999px; background: linear-gradient(120deg, rgba(168,85,247,.32), rgba(139,92,246,.12)); }
+  .menu-btn { width: 42px; height: 42px; border-color: rgba(218,196,255,.3); background: rgba(255,255,255,.035); }
+
+  /* Hero: an editorial headline against an interactive, orbital light field. */
+  .hero__stage { min-height: min(900px, calc(100svh - 54px)); background: #09070f; }
+  .hero__field { background: radial-gradient(ellipse at 30% 42%, #32205a 0%, #160f26 34%, #09070f 75%); }
+  .hero__veil { background: linear-gradient(90deg, rgba(9,7,15,.1) 0%, rgba(9,7,15,.18) 45%, rgba(9,7,15,.7) 100%), linear-gradient(0deg, #09070f 0%, transparent 28%, rgba(9,7,15,.35) 100%); }
+  .hero__overlay { padding-top: 120px; padding-bottom: 48px; }
+  .hero__inner { gap: 24px; }
+  .hero__meta { border-color: rgba(214,190,255,.15); }
+  .hero__status { padding: 7px 12px; border: 1px solid rgba(94,252,232,.18); border-radius: 999px; background: rgba(94,252,232,.055); color: #d7f8f2; }
+  .hero__status i { background: #5efce8; box-shadow: 0 0 14px rgba(94,252,232,.8); }
+  .hero__body { align-self: center; position: relative; z-index: 1; }
+  .hero__eyebrow { display: flex; align-items: center; gap: 10px; width: fit-content; margin-bottom: 24px; color: #c0a8e4; font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; }
+  .hero__eyebrow span { width: 28px; height: 1px; background: #5efce8; box-shadow: 0 0 10px #5efce8; }
+  .hero__eyebrow b { color: #5efce8; font-weight: 400; }
+  .hero__title { max-width: 100%; font-size: clamp(3rem, 6.5vw, 6.5rem); line-height: 1.22; letter-spacing: -.04em; }
+  .hero__line--2 { padding-inline-start: 0; }
+  .hero__line--2 .hero__line-inner { color: #e3c7ff; }
+  .hero__dot { background: #5efce8; box-shadow: 0 0 24px rgba(94,252,232,.65); }
+  .hero__translation { width: fit-content; margin-top: 22px; margin-left: auto; }
+  .hero__translation em { color: #d9c7f7; }
+  .hero__foot { border-color: rgba(214,190,255,.14); }
+  .hero__lede { color: rgba(243,236,255,.78); }
+  .hero__secondary { padding: 14px 18px; border: 1px solid rgba(217,197,255,.24); border-radius: 999px; background: rgba(255,255,255,.045); }
+  .hero__ticker { background: #100b19; border-color: rgba(205,178,255,.12); }
+  .hero__ticker .marquee__item:nth-child(odd) { color: #d6b4ff; }
+  .hero__orbit-art { position: absolute; z-index: 2; top: 17%; left: 5%; width: min(48vw, 650px); aspect-ratio: 1; pointer-events: none; opacity: .8; }
+  .hero__orbit-label { position: absolute; bottom: 13%; left: 7%; color: rgba(229,215,255,.5); font: 9px var(--font-mono); letter-spacing: .18em; }
+  .hero__orbit-label b { color: #5efce8; padding: 0 8px; }
+
+  /* Reusable glass and gradients, preserving the cards' existing interactions. */
+  .btn, .cta__button { border: 1px solid rgba(226,201,255,.38); border-radius: 999px; background: linear-gradient(120deg, #8b5cf6, #a855f7 55%, #7446cb); color: #fff; box-shadow: 0 12px 36px rgba(121,61,214,.28), inset 0 1px rgba(255,255,255,.25); }
+  .btn:hover, .cta__button:hover { box-shadow: 0 16px 42px rgba(168,85,247,.43), inset 0 1px rgba(255,255,255,.3); }
+  .intro, .services { background: radial-gradient(70% 35% at 92% 15%, rgba(100,49,160,.12), transparent 70%), #0d0914; }
+  .work { background: radial-gradient(70% 40% at 12% 30%, rgba(87,43,150,.17), transparent 75%), #09070f; }
+  .studio { background: radial-gradient(70% 50% at 70% 25%, rgba(95,47,155,.18), transparent 75%), #0a0810; }
+  .service, .gallery__details, .cta__social-panel, .studio__sheet, .modal__panel { border-color: rgba(217,192,255,.2); box-shadow: 0 28px 70px -42px #000, inset 0 1px rgba(255,255,255,.12), inset 0 0 45px -35px rgba(168,85,247,.6); }
+  .service:hover, .service--open { border-color: rgba(195,151,255,.48); }
+  .service__num, .section-head__index .numeral--section { color: #c084fc; }
+  .mark-stage { border-radius: 28px; border-color: rgba(209,174,255,.26); }
+  .cta { background: radial-gradient(ellipse at 50% 70%, rgba(95,43,148,.2), transparent 68%), #0d0914; }
+  .dock { border: 1px solid rgba(211,181,255,.27); box-shadow: 0 18px 55px rgba(0,0,0,.5), inset 0 1px rgba(255,255,255,.14), 0 0 25px rgba(139,92,246,.1); }
+
+  @media (max-width: 1023px) {
+    .hero__title { max-width: 100%; font-size: clamp(2.5rem, 7vw, 4.8rem); }
+    .hero__orbit-art { width: 60vw; left: -10%; top: 22%; opacity: .55; }
+  }
+  @media (max-width: 767px) {
+    .header, .header--solid, .header--invert.header--solid { top: max(10px, env(safe-area-inset-top)); height: 58px; padding-top: 0; }
+    .header__inner { width: calc(100% - 24px); padding: 5px 9px 5px 14px; backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--chrome-pill-mobile); }
+    .brand__mark { width: 32px; height: 29px; }
+    .menu-btn { border-radius: 50%; }
+    .hero__stage { min-height: max(720px, calc(100svh - 48px)); }
+    .hero__overlay { padding-top: 96px; padding-bottom: 28px; }
+    .hero__inner { gap: 18px; }
+    .hero__body { align-self: end; }
+    .hero__title { max-width: 100%; font-size: clamp(2.2rem, 9.4vw, 3.5rem); line-height: 1.26; }
+    .hero__eyebrow { font-size: 8px; letter-spacing: .1em; margin-bottom: 14px; }
+    .hero__orbit-art { top: 14%; left: 25%; width: 50vw; opacity: .75; }
+    .hero__orbit-label { display: none; }
+    .hero__veil { background: linear-gradient(0deg, #09070f 0%, rgba(9,7,15,.65) 38%, rgba(9,7,15,.08) 75%); }
+    .hero__foot { padding-top: 16px; }
+    .hero__secondary { min-height: 48px; }
+    .hero__status { font-size: 10px; }
+    .mark-stage { border-radius: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav__indicator, .nav__icon { transition: none; }
+  }
+}

@@ -1,0 +1,692 @@
+@layer components {
+  /* =========================================================
+     Hero film — a full-bleed clip that holds the viewport while
+     the first screen scrolls, then releases into the page.
+     ========================================================= */
+  .hero {
+    position: relative;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  /**
+   * The opening screen is exactly one screen, and deliberately not a full one:
+   * the ticker and a sliver of the section below stay visible, so the page
+   * never reads as a wall the reader has to break through. There is no track
+   * and nothing is pinned — scrolling moves the page, always.
+   */
+  .hero__stage {
+    position: relative;
+    display: grid;
+    min-height: min(calc(100svh - 64px), 980px);
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--paper-deep);
+    border-radius: 0;
+  }
+
+  @media (max-width: 767px) {
+    .hero__stage {
+      min-height: calc(100svh - 52px);
+    }
+  }
+
+  /* ---------- The light ---------- */
+  /**
+   * Three slow gradients, one grain, one canvas. Nothing here is a download:
+   * the whole opening screen weighs less than a single frame of the footage it
+   * replaces, and it is cut from the studio's own palette rather than borrowed
+   * from a stock render.
+   */
+  .hero__field {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(130% 105% at 50% 0%, #201f52 0%, #14133a 40%, #0a0a20 78%, #08081a 100%),
+      /* A lamp on the floor of the page: depth under the buttons, for free. */
+      radial-gradient(90% 46% at 50% 116%, rgba(120, 76, 255, 0.34) 0%, rgba(70, 44, 190, 0.14) 46%, transparent 76%);
+    will-change: transform, opacity;
+  }
+
+  .hero__aurora {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    /* no blur: the gradient is already smooth */
+    opacity: 0.62;
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .hero__aurora--violet {
+    top: -18%;
+    left: -8%;
+    width: 78vmax;
+    height: 78vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(126, 82, 255, 0.6) 0%,
+      rgba(92, 56, 216, 0.32) 42%,
+      rgba(20, 16, 56, 0) 72%
+    );
+    animation: aurora-drift-a 46s var(--ease-io) infinite alternate;
+  }
+
+  .hero__aurora--indigo {
+    right: -22%;
+    bottom: -34%;
+    width: 86vmax;
+    height: 86vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(64, 44, 186, 0.66) 0%,
+      rgba(38, 27, 120, 0.34) 48%,
+      rgba(10, 10, 30, 0) 74%
+    );
+    animation: aurora-drift-b 62s var(--ease-io) infinite alternate;
+  }
+
+  .hero__aurora--lilac {
+    top: 26%;
+    left: 34%;
+    width: 46vmax;
+    height: 46vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(216, 194, 255, 0.28) 0%,
+      rgba(167, 122, 255, 0.16) 46%,
+      rgba(10, 10, 30, 0) 72%
+    );
+    animation: aurora-drift-c 38s var(--ease-io) infinite alternate;
+  }
+
+  @keyframes aurora-drift-a {
+    from {
+      transform: translate3d(-2%, -1%, 0) scale(1.02);
+    }
+    to {
+      transform: translate3d(5%, 4%, 0) scale(1.14);
+    }
+  }
+
+  @keyframes aurora-drift-b {
+    from {
+      transform: translate3d(2%, 3%, 0) scale(1.08);
+    }
+    to {
+      transform: translate3d(-4%, -3%, 0) scale(1);
+    }
+  }
+
+  @keyframes aurora-drift-c {
+    from {
+      transform: translate3d(-3%, 2%, 0) scale(0.96);
+    }
+    to {
+      transform: translate3d(3%, -4%, 0) scale(1.1);
+    }
+  }
+
+  /** A single raking light, the way a print plate catches a lamp. */
+  .hero__beam {
+    position: absolute;
+    inset: -20% -10%;
+    background: linear-gradient(
+      104deg,
+      transparent 30%,
+      rgba(214, 196, 255, 0.1) 46%,
+      rgba(167, 122, 255, 0.16) 52%,
+      transparent 68%
+    );
+    pointer-events: none;
+  }
+
+  /**
+   * The object. A full-bleed canvas that paints the mark as a lit relief; it
+   * fades in over the CSS field once its first frame is drawn, so the first
+   * paint is never waiting for a shader to compile.
+   */
+  .hero__relief {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 900ms var(--ease);
+    pointer-events: none;
+  }
+
+  .hero__relief.is-live {
+    opacity: 1;
+  }
+
+  /* With the object drawing, the CSS aurora steps back to being the room. */
+  .hero__field:has(.hero__relief.is-live) .hero__aurora {
+    opacity: 0.42;
+  }
+
+  .hero__field:has(.hero__relief.is-live) .hero__beam {
+    opacity: 0.5;
+  }
+
+  /** Print grain: the texture that makes a flat gradient read as paper. */
+  .hero__grain {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsdGVyPSJ1cmwoI24pIi8+PC9zdmc+");
+    background-size: 200px 200px;
+    /* Painted *under* the canvas, deliberately: a soft-light blend above a
+       surface that repaints at 60 fps is a full-screen blend every frame, while
+       below it the blend is computed once against the static field and the
+       glyph simply covers it. */
+    mix-blend-mode: soft-light;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /**
+   * Type has to sit on all of this and stay readable: a vignette at the edges,
+   * a lift under the headline, and one soft darkening at the foot where the
+   * lede and the buttons live.
+   */
+  .hero__veil {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(120% 80% at 50% 8%, transparent 30%, rgba(6, 5, 18, 0.55) 100%),
+      linear-gradient(180deg, rgba(6, 5, 18, 0.62) 0%, transparent 26%, transparent 46%, rgba(8, 7, 24, 0.72) 88%, rgba(10, 10, 30, 0.96) 100%);
+    pointer-events: none;
+  }
+
+  /* ---------- Overlay ---------- */
+  .hero__overlay {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    /* One stretched row so .hero__inner can split itself into meta / title / foot. */
+    grid-template-rows: minmax(0, 1fr);
+    padding-top: calc(var(--header-h) + clamp(12px, 1.8vw, 24px));
+    padding-bottom: clamp(20px, 3.2vw, 44px);
+    /* The engine writes opacity/transform directly: compositor-only, no style
+       recalculation for the subtree underneath. */
+    will-change: opacity, transform;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .hero__inner {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100%;
+    min-height: 0;
+    gap: clamp(18px, 3vw, 40px);
+  }
+
+  /* ---------- Meta strip ---------- */
+  .hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(220, 210, 255, 0.2);
+  }
+
+  .hero__meta-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 20px;
+  }
+
+  .hero__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: rgba(246, 244, 255, 0.76);
+    font-size: 11.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .hero__status i {
+    position: relative;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vermilion-soft);
+    box-shadow: 0 0 14px rgba(211, 188, 255, 0.9);
+  }
+
+  .hero__status i::after {
+    position: absolute;
+    inset: -4px;
+    border: 1px solid rgba(211, 188, 255, 0.55);
+    border-radius: 50%;
+    content: "";
+    animation: status-ping 2.8s ease-out infinite;
+  }
+
+  @keyframes status-ping {
+    0% {
+      transform: scale(0.7);
+      opacity: 0.9;
+    }
+    70%,
+    100% {
+      transform: scale(1.9);
+      opacity: 0;
+    }
+  }
+
+  .hero__meta .label {
+    color: rgba(239, 236, 255, 0.6);
+  }
+
+  .hero__meta-index {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.16em;
+    color: var(--vermilion-soft);
+    font-family: var(--font-serif);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    line-height: 1;
+  }
+
+  /* ---------- Title ---------- */
+  .hero__body {
+    align-self: end;
+    min-width: 0;
+  }
+
+  .hero__title {
+    position: relative;
+    margin: 0;
+    max-width: 20ch;
+    color: #f8f6ff;
+    font-size: clamp(2.35rem, 6vw, 5.9rem);
+    font-weight: 760;
+    line-height: 1.07;
+    letter-spacing: -0.045em;
+    text-shadow: 0 2px 24px rgba(4, 2, 18, 0.6);
+  }
+
+  .hero__line {
+    display: block;
+    overflow: hidden;
+    padding-block: 0.04em;
+  }
+
+  .hero__line-inner {
+    display: block;
+    white-space: nowrap;
+    transform: translateY(112%);
+    transition: transform 1200ms var(--ease);
+  }
+
+  .is-ready .hero__line-inner {
+    transform: none;
+  }
+
+  .hero__line--2 {
+    padding-inline-start: clamp(0px, 3.4vw, 62px);
+  }
+
+  .hero__title em {
+    font-family: var(--font-serif);
+    font-size: 0.94em;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--vermilion-soft);
+  }
+
+  .hero__dot {
+    display: inline-block;
+    width: 0.16em;
+    height: 0.16em;
+    margin-inline-start: 0.08em;
+    border-radius: 50%;
+    background: var(--vermilion-soft);
+    transform: translateY(-0.05em);
+  }
+
+  .hero__annotation {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-inline-start: clamp(10px, 1.4vw, 22px);
+    transform: translateY(-0.9em);
+    color: rgba(239, 236, 255, 0.55);
+    font-family: var(--font-mono);
+    font-size: clamp(8px, 0.72vw, 10px);
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    vertical-align: top;
+  }
+
+  .hero__annotation::before {
+    width: 22px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+  }
+
+  .hero__translation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 14px;
+    margin-top: clamp(14px, 1.8vw, 22px);
+    color: rgba(239, 236, 255, 0.5);
+  }
+
+  .hero__translation em {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 1.5vw, 1.42rem);
+    font-weight: 400;
+    letter-spacing: 0.005em;
+    color: rgba(246, 244, 255, 0.92);
+  }
+
+  .hero__translation-line {
+    width: clamp(28px, 4vw, 56px);
+    height: 1px;
+    background: currentColor;
+    opacity: 0.4;
+    transform: translateY(-4px);
+  }
+
+  .hero__translation-src {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    color: rgba(239, 236, 255, 0.42);
+  }
+
+  /* ---------- Foot: copy, CTAs, scroll cue ---------- */
+  .hero__foot {
+    display: grid;
+    align-content: end;
+    gap: clamp(18px, 2.4vw, 30px);
+    padding-top: clamp(18px, 2.4vw, 30px);
+    border-top: 1px solid rgba(220, 210, 255, 0.18);
+  }
+
+  @media (min-width: 900px) {
+    .hero__foot {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: end;
+      gap: clamp(24px, 3vw, 52px);
+    }
+  }
+
+  .hero__lede {
+    max-width: 46ch;
+    color: rgba(240, 237, 255, 0.82);
+    text-shadow: 0 1px 12px rgba(4, 2, 18, 0.7);
+    font-size: clamp(13.5px, 1.02vw, 15.5px);
+    line-height: 2.05;
+  }
+
+  .hero__lede strong {
+    color: #f6f4ff;
+    font-weight: 560;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
+  }
+
+  .hero__secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(220, 210, 255, 0.38);
+    color: #f4f1ff;
+    font-size: 13px;
+    font-weight: 460;
+    transition: color 300ms ease, border-color 300ms ease, gap 460ms var(--ease);
+  }
+
+  .hero__secondary svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 460ms var(--ease);
+  }
+
+  .hero__secondary:hover {
+    gap: 13px;
+    color: var(--vermilion-soft);
+    border-color: var(--vermilion-soft);
+  }
+
+  .hero__secondary:hover svg {
+    transform: translateY(3px);
+  }
+
+  .hero__scroll {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(239, 236, 255, 0.5);
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .hero__scroll-hint {
+    display: none;
+  }
+
+  .hero__scroll svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .hero__scroll-line {
+    position: relative;
+    width: 44px;
+    height: 1px;
+    overflow: hidden;
+    background: rgba(220, 210, 255, 0.3);
+  }
+
+  .hero__scroll-line::after {
+    position: absolute;
+    inset: 0;
+    transform: translateX(100%);
+    background: var(--vermilion-soft);
+    content: "";
+    animation: scroll-line 2.4s var(--ease-io) infinite;
+  }
+
+  @keyframes scroll-line {
+    0% {
+      transform: translateX(100%);
+    }
+    60%,
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* ---------- Ticker ---------- */
+  .hero__ticker {
+    position: relative;
+    z-index: 4;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding-block: 14px;
+    background: color-mix(in srgb, var(--ink) 3%, var(--paper));
+  }
+
+  .hero__ticker .marquee__item {
+    color: var(--fg-soft);
+    font-family: var(--font-mono);
+    font-size: clamp(10px, 0.85vw, 12px);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .hero__ticker .marquee__item:nth-child(odd) {
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  /**
+   * Reduced motion: the light becomes a still plate. The gradients, the grain
+   * and the mark's assembled state all survive — the screen is as composed as
+   * ever, it simply does not move, and the parallax engine never runs.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .hero__aurora {
+      animation: none;
+    }
+
+    .hero__field {
+      will-change: auto;
+    }
+  }
+}
+
+@layer components {
+  @media (max-width: 1023px) {
+    .hero__title {
+      max-width: 24ch;
+      font-size: clamp(2.2rem, 8.4vw, 4rem);
+    }
+
+    .hero__line-inner {
+      white-space: normal;
+    }
+
+    .hero__line--2 {
+      padding-inline-start: 0;
+    }
+  }
+
+  @media (max-width: 767px) {
+    /* One screen on a phone too; the ticker underneath is the whole point. */
+    .hero__stage {
+      min-height: calc(100svh - 52px);
+    }
+
+    /* No blur at all: a 78vmax layer with a gaussian on it is the most
+       expensive paint on the first screen, and it buys nothing over a gradient. */
+    .hero__aurora {
+      opacity: 0.58;
+    }
+
+    .hero__aurora--lilac {
+      opacity: 0.7;
+    }
+
+    /* The mark moves behind the meta strip on a narrow screen so it never
+       collides with the headline. */
+    .hero__constellation {
+      opacity: 0.8;
+    }
+
+    .hero__inner {
+      gap: 16px;
+    }
+
+    .hero__meta {
+      gap: 8px 14px;
+    }
+
+    .hero__meta-right .label {
+      display: none;
+    }
+
+    .hero__title {
+      font-size: clamp(2.05rem, 10.4vw, 3rem);
+      line-height: 1.16;
+      letter-spacing: -0.038em;
+    }
+
+    .hero__annotation {
+      display: none;
+    }
+
+    .hero__translation-src {
+      display: none;
+    }
+
+    .hero__foot {
+      gap: 16px;
+      padding-top: 16px;
+    }
+
+    .hero__lede {
+      font-size: 13px;
+      line-height: 1.95;
+      max-width: 100%;
+    }
+
+    .hero__actions {
+      width: 100%;
+      gap: 10px 18px;
+    }
+
+    .hero__actions .btn {
+      flex: 1 1 auto;
+    }
+
+    .hero__scroll {
+      display: none;
+    }
+
+    .hero__ticker {
+      padding-block: 11px;
+    }
+
+    .hero__ticker .marquee__item {
+      font-size: 9.5px;
+      gap: 16px;
+      padding-inline-end: 16px;
+    }
+  }
+
+  @media (max-width: 1279px) {
+    .hero__annotation {
+      display: none;
+    }
+  }
+
+  /* Short landscape screens: keep the copy on one screen. */
+  @media (max-height: 620px) and (min-width: 768px) {
+    .hero__stage {
+      min-height: 560px;
+    }
+
+    .hero__title {
+      font-size: clamp(1.9rem, 4.4vw, 3.4rem);
+    }
+
+    .hero__foot {
+      padding-top: 14px;
+      gap: 14px;
+    }
+  }
+}
+
+@layer components {
+  @media (prefers-reduced-motion: reduce) {
+    .hero__scroll-line::after {
+      animation: none;
+      transform: none;
+    }
+  }
+}

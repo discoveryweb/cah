@@ -1,0 +1,257 @@
+@layer components {
+  /* =========================================================
+     Glass
+
+     Every card on the site is cut from the same pane: a translucent
+     tint, a lit rim, a soft inner glow, and one diagonal reflection.
+
+     Performance rule learned the hard way on the hero: a real
+     backdrop blur re-runs on every frame the page moves. So the blur
+     is reserved for small floating surfaces (sheet, dialog, dock,
+     back-to-top) and for cards on pointer devices where it can be
+     afforded. On a phone the pane is still glass — the tint, the rim
+     and the reflection do the work — without a per-frame blur.
+     ========================================================= */
+  :root {
+    --glass-blur: 18px;
+    /* Four layers make the pane: the tint of the glass, the light along its
+       top rim, the glow it keeps inside, and the shadow it casts. */
+    --glass-tint: linear-gradient(158deg, rgba(46, 38, 96, 0.6), rgba(10, 10, 28, 0.68) 62%, rgba(18, 20, 44, 0.72));
+    --glass-rom: rgba(196, 178, 255, 0.26);
+    --glass-rom-lit: rgba(216, 200, 255, 0.48);
+    --glass-inner:
+      inset 0 1px 0 rgba(255, 255, 255, 0.13),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.035),
+      inset 0 0 28px -13px rgba(167, 122, 255, 0.58);
+    --glass-drop:
+      0 34px 80px -48px rgba(0, 0, 0, 0.96),
+      0 2px 12px -8px rgba(74, 40, 168, 0.55);
+    /* The reflection: one broad band of light across the top-left corner, a
+       violet bloom where the light enters, and the faintest cool bounce in the
+       opposite corner. All static gradients — nothing here repaints. */
+    --glass-sheen:
+      linear-gradient(112deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.055) 17%, rgba(255, 255, 255, 0) 43%),
+      radial-gradient(130% 82% at 8% -14%, rgba(176, 138, 255, 0.26), transparent 62%),
+      radial-gradient(90% 64% at 100% 108%, rgba(94, 252, 232, 0.09), transparent 68%);
+    /* The same light, tuned for the floating chrome: denser, because it sits
+       over a bar that is already translucent. */
+    --chrome-sheen:
+      linear-gradient(115deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.04) 22%, transparent 58%),
+      radial-gradient(120% 140% at 6% -40%, rgba(168, 120, 255, 0.24), transparent 62%);
+  }
+
+  /* ---------- The pane ---------- */
+  .service,
+  .gallery__card,
+  .gallery__details,
+  .cta__social-panel,
+  .cta__channel,
+  .studio__sheet,
+  .motion-lab__plate,
+  .modal__panel {
+    isolation: isolate;
+    border: 1px solid var(--glass-rom);
+    background-color: rgba(18, 15, 40, 0.5);
+    background-image: var(--glass-tint);
+    box-shadow: var(--glass-drop), var(--glass-inner);
+    transition:
+      border-color 380ms ease,
+      box-shadow 460ms var(--ease),
+      transform 460ms var(--ease);
+  }
+
+  /* Only the panes that are still in flow need a positioning context for the
+     reflection. The carousel card is positioned by the carousel and must be
+     left alone, and the sheet and the dialog already declare their own. */
+  .service,
+  .gallery__details,
+  .cta__social-panel,
+  .cta__channel {
+    position: relative;
+  }
+
+  /* ---------- The reflection, laid under the content ---------- */
+  .service::after,
+  .gallery__card::after,
+  .gallery__details::after,
+  .cta__social-panel::after,
+  .cta__channel::after,
+  .studio__sheet::after,
+  .motion-lab__plate::after,
+  .modal__panel::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--glass-sheen);
+    content: "";
+    opacity: 0.85;
+    pointer-events: none;
+    transition: opacity 480ms var(--ease);
+  }
+
+  /* Plates that hold a photograph carry the reflection over it instead. */
+  .intro__portrait-frame::before,
+  .project__media::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--glass-sheen);
+    content: "";
+    opacity: 0.75;
+    pointer-events: none;
+    transition: opacity 480ms var(--ease);
+  }
+
+  /* A photograph already carries its own light: the reflection is quieter. */
+  .intro__portrait-frame::before,
+  .project__media::before {
+    opacity: 0.55;
+  }
+
+  /* ---------- The rim ---------- */
+  .intro__portrait-frame,
+  .project__media {
+    isolation: isolate;
+    border: 1px solid var(--glass-rom);
+    box-shadow: var(--glass-drop), var(--glass-inner);
+  }
+
+  /* ---------- Where a real blur is affordable ---------- */
+
+  /* Floating surfaces: always glass, always blurred. */
+  .modal__panel,
+  .to-top {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  }
+
+  .to-top {
+    border: 1px solid var(--glass-rom);
+    background: linear-gradient(150deg, rgba(40, 34, 82, 0.8), rgba(9, 9, 24, 0.86));
+    box-shadow: var(--glass-drop), var(--glass-inner);
+  }
+
+  /**
+   * Cards in the flow get the material, never a blur.
+   *
+   * A backdrop-filter on an element that scrolls re-samples and re-blurs
+   * everything behind it on every frame it moves: six or eight of those on the
+   * page is the single most expensive thing a browser does here, and it is what
+   * turns a smooth scroll into a stutter on a laptop with integrated graphics.
+   * The pane does not need it — the tint, the rim and the reflection are what
+   * the eye reads as glass. Only surfaces that float and sit still relative to
+   * the viewport (the bar, the dialog, the dock, back-to-top) keep a real blur.
+   */
+  @media (hover: hover) and (pointer: fine) and (min-width: 900px) {
+    .service,
+    .gallery__details,
+    .cta__social-panel,
+    .cta__channel,
+    .studio__sheet {
+      /* No blur: see the note above. The rim and the reflection carry it. */
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    /* Light through the pane. */
+    .service:hover,
+    .cta__channel:hover,
+    .cta__social-panel:hover {
+      border-color: var(--glass-rom-lit);
+      box-shadow:
+        0 40px 96px -46px rgba(0, 0, 0, 0.98),
+        0 0 0 1px rgba(167, 122, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .service:hover::after,
+    .cta__channel:hover::after,
+    .cta__social-panel:hover::after {
+      opacity: 1;
+    }
+
+    .gallery__details:hover,
+    .intro__portrait-frame:hover,
+    .studio__sheet:hover {
+      border-color: var(--glass-rom-lit);
+    }
+  }
+
+  /* The carousel animates every frame: it gets glass, never a blur. */
+  .gallery__card {
+    box-shadow:
+      0 26px 60px -34px rgba(0, 0, 0, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  /* ---------- The chrome wears the same pane ----------
+
+     The bar, the phone dock and the chapter rail are the same material as the
+     cards: a translucent surface, a rim, and a reflection across it. The
+     reflection is a static gradient on a pseudo element kept behind the
+     content (`z-index: -1` inside an isolated context), so it never intercepts
+     a tap and never costs a repaint — the only thing that changes on hover or
+     scroll is the colour of the rim. */
+
+  /* The bar's inner pill is the only one of the three that is not already
+     positioned; the dock and the rail are fixed, and forcing a position on
+     them here would move them. */
+  .header__inner {
+    position: relative;
+  }
+
+  .header__inner,
+  .dock,
+  .rail {
+    isolation: isolate;
+  }
+
+  .header__inner::before,
+  .dock::before,
+  .rail::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background-image: var(--chrome-sheen);
+    content: "";
+    pointer-events: none;
+  }
+
+  /* The capsule inside the bar is glass too, a shade quieter. */
+  .nav {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* ---------- The stage plate keeps its violet depth ---------- */
+  .mark-stage {
+    border-color: var(--glass-rom);
+    box-shadow:
+      var(--glass-drop),
+      var(--glass-inner),
+      0 46px 100px -54px rgba(0, 0, 0, 0.98);
+  }
+
+  /* ---------- No blur engine: stay translucent, keep the light ---------- */
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .modal__panel,
+    .to-top {
+      background-color: rgba(20, 17, 44, 0.92);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .service,
+    .gallery__card,
+    .gallery__details,
+    .cta__social-panel,
+    .cta__channel,
+    .studio__sheet,
+    .modal__panel,
+    .to-top {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,423 @@
+@layer components {
+  /* =========================================================
+     Identity plate — the CAHEN mark rebuilt from live particles
+     ========================================================= */
+  .mark-stage {
+    --tilt-x: 0;
+    --tilt-y: 0;
+    --shift-x: 0px;
+    --shift-y: 0px;
+    position: relative;
+    display: grid;
+    aspect-ratio: 1 / 1.06;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 4px;
+    overflow: hidden;
+    isolation: isolate;
+    padding: clamp(14px, 2vw, 20px);
+    border: 1px solid var(--card-line);
+    border-radius: 30px;
+    background:
+      radial-gradient(circle at 52% 42%, rgba(116, 74, 240, 0.5), transparent 58%),
+      radial-gradient(circle at 18% 88%, rgba(72, 48, 170, 0.34), transparent 52%),
+      linear-gradient(158deg, rgba(30, 25, 72, 0.98), rgba(6, 6, 20, 0.99));
+    box-shadow:
+      0 46px 100px -54px rgba(0, 0, 0, 0.98),
+      0 30px 64px -46px rgba(129, 84, 246, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    touch-action: pan-y;
+  }
+
+  /* A soft blob drawn as a gradient rather than a solid circle with a 48 px
+     gaussian under it: same picture, no offscreen filter buffer. */
+  .mark-stage__glow {
+    position: absolute;
+    z-index: 0;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .mark-stage__glow--one {
+    top: -18%;
+    right: -12%;
+    width: 62%;
+    aspect-ratio: 1;
+    background: radial-gradient(circle, rgba(129, 84, 246, 0.5) 0%, rgba(129, 84, 246, 0.28) 42%, transparent 70%);
+    animation: mark-glow 13s ease-in-out infinite alternate;
+  }
+
+  .mark-stage__glow--two {
+    bottom: -22%;
+    left: -14%;
+    width: 56%;
+    aspect-ratio: 1;
+    background: radial-gradient(circle, rgba(74, 52, 190, 0.42) 0%, rgba(74, 52, 190, 0.24) 44%, transparent 72%);
+    animation: mark-glow 17s ease-in-out -6s infinite alternate-reverse;
+  }
+
+  @keyframes mark-glow {
+    from {
+      opacity: 0.55;
+      transform: translate3d(0, 0, 0) scale(0.94);
+    }
+    to {
+      opacity: 0.95;
+      transform: translate3d(12px, -10px, 0) scale(1.08);
+    }
+  }
+
+  .mark-stage__inner {
+    position: relative;
+    display: grid;
+    min-height: 0;
+    place-items: center;
+    transform: perspective(1400px) rotateX(calc(var(--tilt-y) * 5deg))
+      rotateY(calc(var(--tilt-x) * -5deg));
+    transform-style: preserve-3d;
+    transition: transform 200ms linear;
+    will-change: transform;
+  }
+
+  .mark-stage__grid {
+    position: absolute;
+    inset: 2%;
+    background-image:
+      linear-gradient(rgba(190, 176, 255, 0.075) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(190, 176, 255, 0.075) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle, #000 12%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 72%);
+    pointer-events: none;
+  }
+
+  .mark-stage__axis {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(190, 176, 255, 0.22), transparent);
+    pointer-events: none;
+  }
+
+  .mark-stage__axis--v {
+    top: 6%;
+    bottom: 6%;
+    left: 50%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(190, 176, 255, 0.2), transparent);
+  }
+
+  .mark-stage__axis--h {
+    top: 50%;
+    right: 6%;
+    left: 6%;
+    height: 1px;
+  }
+
+  .mark-stage__ring {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .mark-stage__ring--outer {
+    width: 84%;
+    aspect-ratio: 1;
+    border: 1px solid rgba(190, 176, 255, 0.22);
+    box-shadow:
+      0 0 0 24px rgba(190, 176, 255, 0.03),
+      0 0 0 54px rgba(190, 176, 255, 0.018),
+      inset 0 0 60px rgba(129, 84, 246, 0.14);
+  }
+
+  .mark-stage__ring--inner {
+    width: 58%;
+    aspect-ratio: 1;
+    border: 1px dashed rgba(190, 176, 255, 0.26);
+    animation: mark-orbit 54s linear infinite;
+  }
+
+  @keyframes mark-orbit {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .mark-stage__halo {
+    position: absolute;
+    width: 70%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(150, 110, 255, 0.34), transparent 66%);
+    /* no blur: the gradient is already smooth */
+    pointer-events: none;
+  }
+
+  /* ---------- The mark itself ---------- */
+  .mark-stage__object {
+    position: relative;
+    z-index: 2;
+    width: 96%;
+    aspect-ratio: 1;
+    transform: translate3d(var(--shift-x), var(--shift-y), 0);
+    transition: transform 200ms linear;
+  }
+
+  .mark-stage .particle-logo-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+  }
+
+  /* A blurred silhouette gives the cloud body and keeps the mark visible. */
+  .mark-stage .particle-logo-ghost {
+    position: absolute;
+    inset: 4%;
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+    opacity: 0.38;
+    filter: saturate(1.2) brightness(1.1) blur(14px);
+    pointer-events: none;
+  }
+
+  .mark-stage .particle-logo-stage[data-textured="false"] .particle-logo-ghost {
+    filter: hue-rotate(24deg) saturate(1.4) brightness(1.55) blur(13px);
+    opacity: 0.36;
+  }
+
+  .mark-stage .particle-logo-static {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    object-fit: contain;
+    filter: saturate(1.05) drop-shadow(0 12px 34px rgba(90, 56, 210, 0.7));
+    opacity: 1;
+    transition: opacity 700ms var(--ease);
+    animation: mark-breathe 7s ease-in-out infinite;
+  }
+
+  .mark-stage .particle-logo-static.is-loaded {
+    opacity: 0;
+  }
+
+  /* Before the violet remap lands the raw dark chrome needs a lift. */
+  .mark-stage .particle-logo-stage[data-textured="false"] .particle-logo-static {
+    filter: hue-rotate(24deg) saturate(1.35) brightness(1.7)
+      drop-shadow(0 12px 34px rgba(90, 56, 210, 0.65));
+  }
+
+  @keyframes mark-breathe {
+    0%,
+    100% {
+      transform: translateY(-3px) scale(1);
+    }
+    50% {
+      transform: translateY(4px) scale(1.015);
+    }
+  }
+
+  .mark-stage .particle-logo-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: pan-y;
+    filter: brightness(1.18) saturate(1.08) drop-shadow(0 0 30px rgba(150, 108, 255, 0.6));
+    opacity: 0;
+    transition: opacity 800ms var(--ease);
+  }
+
+  .mark-stage .particle-logo-stage[data-loaded="true"] .particle-logo-canvas {
+    opacity: 1;
+  }
+
+  /* ---------- Plate chrome ---------- */
+  .mark-stage__corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(214, 198, 255, 0.5);
+    pointer-events: none;
+  }
+
+  .mark-stage__corner--tl {
+    top: 0;
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .mark-stage__corner--tr {
+    top: 0;
+    right: 0;
+    border-bottom: 0;
+    border-left: 0;
+  }
+
+  .mark-stage__corner--bl {
+    bottom: 0;
+    left: 0;
+    border-top: 0;
+    border-right: 0;
+  }
+
+  .mark-stage__corner--br {
+    right: 0;
+    bottom: 0;
+    border-top: 0;
+    border-left: 0;
+  }
+
+  .mark-stage__rail {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 18px;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(226, 216, 255, 0.62);
+  }
+
+  .mark-stage__rail--bottom {
+    justify-content: space-between;
+    padding-top: 2px;
+    border-top: 1px solid rgba(190, 176, 255, 0.14);
+  }
+
+  .mark-stage__dash {
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, rgba(190, 176, 255, 0.4), transparent);
+  }
+
+  .mark-stage__tag--dim {
+    color: rgba(226, 216, 255, 0.34);
+  }
+
+  .mark-stage__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(232, 224, 255, 0.86);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.01em;
+    text-transform: none;
+  }
+
+  .mark-stage__live i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(214, 198, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(129, 84, 246, 0.16);
+  }
+
+  .mark-stage__live[data-live="true"] i {
+    background: #d9c8ff;
+    box-shadow:
+      0 0 0 4px rgba(129, 84, 246, 0.22),
+      0 0 14px rgba(167, 122, 255, 0.95);
+    animation: mark-live 2.2s ease-in-out infinite;
+  }
+
+  @keyframes mark-live {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scale(0.7);
+    }
+  }
+
+  .mark-stage__hint {
+    position: absolute;
+    z-index: 4;
+    top: 50%;
+    right: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    transform: translate(50%, 118px) scale(1);
+    border: 1px solid rgba(214, 198, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(10, 8, 30, 0.6);
+    color: rgba(238, 232, 255, 0.9);
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    transition: opacity 520ms ease, transform 520ms var(--ease);
+  }
+
+  .mark-stage__hint svg {
+    width: 13px;
+    height: 13px;
+    color: var(--vermilion-soft);
+  }
+
+  .mark-stage[data-touched="true"] .mark-stage__hint,
+  .mark-stage[data-mode="static"] .mark-stage__hint {
+    opacity: 0;
+    transform: translate(50%, 132px) scale(0.92);
+  }
+
+  @media (max-width: 767px) {
+    .mark-stage {
+      aspect-ratio: 1 / 1.02;
+      border-radius: 22px;
+      padding: 12px;
+    }
+
+    /* A CSS filter over a canvas that repaints every frame is re-rasterised
+       every frame. On a phone that alone costs more than the particle cloud;
+       the plate's own glow already carries the light. */
+    .mark-stage .particle-logo-canvas {
+      filter: none;
+    }
+
+    .mark-stage .particle-logo-ghost {
+      filter: saturate(1.2) brightness(1.08) blur(9px);
+    }
+
+    .mark-stage__rail {
+      font-size: 7px;
+      letter-spacing: 0.16em;
+    }
+
+    .mark-stage__live {
+      font-size: 9px;
+    }
+
+    .mark-stage__hint {
+      transform: translate(50%, 96px);
+      font-size: 9px;
+      padding: 6px 11px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark-stage__glow,
+    .mark-stage__ring--inner,
+    .mark-stage .particle-logo-static {
+      animation: none;
+    }
+
+    .mark-stage__inner,
+    .mark-stage__object {
+      transform: none;
+    }
+  }
+}

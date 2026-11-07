@@ -1,0 +1,110 @@
+@import "tailwindcss";
+@import "./styles/fonts.css";
+@import "./styles/base.css";
+@import "./styles/header.css";
+@import "./styles/hero.css";
+@import "./styles/mark.css";
+@import "./styles/editorial.css";
+@import "./styles/work.css";
+@import "./styles/services.css";
+@import "./styles/studio.css";
+@import "./styles/footer.css";
+@import "./styles/modal.css";
+@import "./styles/motion.css";
+@import "./styles/typography.css";
+@import "./styles/glass.css";
+@import "./styles/mobile.css";
+@import "./styles/experience.css";
+@import "./styles/liquid.css";
+@import "./styles/light.css";
+
+@theme {
+  --font-sans: "Estedad Variable", "Vazirmatn Variable", Tahoma, sans-serif;
+  /* Persian text in mono/serif slots falls back to the same Persian sans. */
+  /* Persian glyphs in a mono slot fall back to the site's own Persian face,
+     not to a second family: one voice, one download. */
+  --font-mono: "JetBrains Mono Variable", "Estedad Variable", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", "Estedad Variable", Georgia, serif;
+
+  --color-paper: #0a0a1e;
+  --color-paper-2: #11112c;
+  --color-ink: #f6f4ff;
+  --color-ink-2: #08081a;
+  --color-vermilion: #a77aff;
+  --color-vermilion-soft: #d3bcff;
+  --color-stone: #8f8ca8;
+  --color-mist: #5d5b78;
+}
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* The identity palette: deep indigo ground, violet signal, porcelain type. */
+  --paper: #09070f;
+  --paper-deep: #100a1b;
+  --ink: #f6f4ff;
+  --ink-deep: #07050c;
+  --vermilion: #a855f7;
+  --vermilion-soft: #d8b4fe;
+
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --fg-soft: rgba(246, 244, 255, 0.68);
+  --fg-mute: rgba(246, 244, 255, 0.44);
+  --line: rgba(190, 176, 255, 0.14);
+  --line-strong: rgba(190, 176, 255, 0.3);
+  --surface: rgba(255, 255, 255, 0.045);
+
+  /* Card system — rounded glass plates with a violet rim, as in the first build. */
+  --card-bg: linear-gradient(158deg, rgba(32, 29, 68, 0.92), rgba(12, 12, 32, 0.94));
+  --card-bg-soft: linear-gradient(158deg, rgba(24, 22, 54, 0.72), rgba(11, 11, 28, 0.86));
+  --card-line: rgba(190, 176, 255, 0.16);
+  --card-line-hover: rgba(190, 176, 255, 0.42);
+  --card-shadow: 0 26px 70px -38px rgba(4, 2, 20, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --card-shadow-hover: 0 34px 90px -34px rgba(92, 52, 226, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --card-radius: 22px;
+  --card-radius-sm: 16px;
+  --glow: rgba(122, 86, 255, 0.42);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --gutter: clamp(18px, 3.6vw, 44px);
+  --max: 1520px;
+  --header-h: 78px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 92px;
+  }
+}
+
+/* A phone gets a shorter bar: the film should own the screen, not the chrome. */
+@media (max-width: 767px) {
+  :root {
+    --header-h: 62px;
+  }
+}
+
+.theme-ink {
+  --bg: #09070f;
+  --fg: #f6f4ff;
+  --fg-soft: rgba(246, 244, 255, 0.7);
+  --fg-mute: rgba(246, 244, 255, 0.42);
+  --line: rgba(190, 176, 255, 0.15);
+  --line-strong: rgba(190, 176, 255, 0.32);
+  --surface: rgba(255, 255, 255, 0.05);
+  --accent: var(--vermilion-soft);
+  color-scheme: dark;
+}
+
+.theme-paper {
+  --bg: #0d0914;
+  --accent: var(--vermilion);
+  color-scheme: dark;
+}
+

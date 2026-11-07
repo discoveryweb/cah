@@ -1,0 +1,136 @@
+@layer components {
+  /* =========================================================
+     Shared reveal primitives
+     ========================================================= */
+  .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+      opacity 900ms var(--ease) var(--reveal-delay, 0ms),
+      transform 900ms var(--ease) var(--reveal-delay, 0ms);
+    will-change: transform, opacity;
+  }
+
+  .reveal--visible {
+    transform: none;
+    opacity: 1;
+  }
+
+  /* The reveal has finished: stop holding a compositor layer for it. */
+  .reveal--settled {
+    will-change: auto;
+  }
+
+  .reveal[data-variant="mask"] {
+    overflow: hidden;
+    padding-bottom: 0.08em;
+    transform: none;
+  }
+
+  .reveal[data-variant="mask"] > * {
+    display: block;
+    transform: translateY(105%);
+    transition: transform 1000ms var(--ease) var(--reveal-delay, 0ms);
+  }
+
+  .reveal[data-variant="mask"].reveal--visible > * {
+    transform: none;
+  }
+
+  .reveal[data-variant="scale"] {
+    transform: translateY(20px) scale(0.985);
+  }
+
+  .reveal[data-variant="scale"].reveal--visible {
+    transform: none;
+  }
+
+  /* Split text words */
+  .split {
+    display: inline;
+  }
+
+  .split__word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+
+  .split__word > span {
+    display: inline-block;
+    transform: translateY(115%) rotate(1.5deg);
+    transition:
+      transform 900ms var(--ease) var(--word-delay, 0ms),
+      opacity 600ms ease var(--word-delay, 0ms);
+    opacity: 0.001;
+  }
+
+  .split--visible .split__word > span {
+    transform: none;
+    opacity: 1;
+  }
+
+  /* Marquee intensity on scroll is handled inline in the component. */
+
+  /* =========================================================
+     Ambient motion
+     ========================================================= */
+  .float-slow {
+    animation: float-slow 9s ease-in-out infinite;
+  }
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-9px);
+    }
+  }
+
+  .fade-up {
+    animation: fade-up 900ms var(--ease) both;
+  }
+
+  @keyframes fade-up {
+    from {
+      transform: translateY(18px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  /* =========================================================
+     Accessibility
+     ========================================================= */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    .reveal,
+    .reveal[data-variant="mask"] > *,
+    .split__word > span,
+    .hero__line-inner {
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    .work__preview {
+      display: none !important;
+    }
+  }
+}
