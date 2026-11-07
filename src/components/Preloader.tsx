@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { LogoMark } from "./ui";
+import { releasePage } from "../utils/bus";
 
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const toPersianDigits = (value: string) =>
@@ -54,8 +55,12 @@ function SandWord({
     let gk: Float32Array = new Float32Array(0);
     let settled = 0;
     let grainSize = 3;
+    /** What the current canvas was built from: box, ratio and the face's metrics. */
+    let builtKey = "";
     let inkTop = 0;
     let inkBottom = 0;
+    let surfaceGradient: CanvasGradient | null = null;
+    let neckGradient: CanvasGradient | null = null;
 
     const stream = Array.from({ length: 110 }, () => ({
       x: 0,
@@ -115,7 +120,18 @@ function SandWord({
       const rect = wrap.getBoundingClientRect();
       width = Math.max(Math.round(rect.width), 1);
       height = Math.max(Math.round(rect.height), 1);
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Sand has no thin strokes to protect: 1.5 is indistinguishable from 2
+      // here and it is 44 % fewer pixels to clear, blit and composite per frame.
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+
+      /* The pour must not rebuild under itself. The face arriving is the one
+         thing that changes the glyphs, and it is the one thing that used to
+         rebuild the whole grain field mid-animation — the hitch in the
+         entrance. Measure first, and only rebuild when the answer moved. */
+      ctx.font = `700 200px ${fontStack}`;
+      const key = `${width}x${height}@${dpr}|${ctx.measureText(text).width.toFixed(1)}`;
+      if (key === builtKey) return;
+      builtKey = key;
 
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -133,13 +149,14 @@ function SandWord({
       outlineCtx.scale(dpr, dpr);
       drawGlyphs(outlineCtx, "rgba(214, 198, 255, 0.26)", "stroke");
 
-      // 2. Mask used to know which cells belong to a letter.
+      // 2. Mask used to know which cells belong to a letter. It is read once at
+      //    CSS resolution — the grains are sampled on a grid coarser than a
+      //    pixel, so a device-resolution mask only made the read bigger.
       const mask = document.createElement("canvas");
-      mask.width = canvas.width;
-      mask.height = canvas.height;
+      mask.width = width;
+      mask.height = height;
       const maskCtx = mask.getContext("2d", { willReadFrequently: true });
       if (!maskCtx) return;
-      maskCtx.scale(dpr, dpr);
       drawGlyphs(maskCtx, "#ffffff", "fill");
       const pixels = maskCtx.getImageData(0, 0, mask.width, mask.height).data;
 
@@ -156,8 +173,8 @@ function SandWord({
       const inside = new Uint8Array(columns * rows);
       for (let row = 0; row < rows; row += 1) {
         for (let column = 0; column < columns; column += 1) {
-          const sx = Math.min(mask.width - 1, Math.round((column + 0.5) * grainSize * dpr));
-          const sy = Math.min(mask.height - 1, Math.round((row + 0.5) * grainSize * dpr));
+          const sx = Math.min(mask.width - 1, Math.round((column + 0.5) * grainSize));
+          const sy = Math.min(mask.height - 1, Math.round((row + 0.5) * grainSize));
           if (pixels[(sy * mask.width + sx) * 4 + 3] < 120) continue;
           inside[row * columns + column] = 1;
           capacity += 1;
@@ -191,22 +208,34 @@ function SandWord({
         }
       }
 
-      // Sort by settling time so drawing stays incremental.
-      const order = Array.from({ length: capacity }, (_, i) => i).sort(
-        (a, b) => thresholds[a] - thresholds[b]
-      );
+      // Sort by settling time so drawing stays incremental. A counting sort
+      // over a fixed number of levels: the same order, without a comparator
+      // running thousands of times inside the entrance's first frame.
+      const LEVELS = 512;
+      const buckets = new Uint32Array(LEVELS + 1);
+      for (let i = 0; i < capacity; i += 1) {
+        buckets[Math.min(LEVELS, Math.floor(thresholds[i] * LEVELS))] += 1;
+      }
+      for (let level = 1; level <= LEVELS; level += 1) buckets[level] += buckets[level - 1];
+      const order = new Uint32Array(capacity);
+      for (let i = capacity - 1; i >= 0; i -= 1) {
+        const level = Math.min(LEVELS, Math.floor(thresholds[i] * LEVELS));
+        buckets[level] -= 1;
+        order[buckets[level]] = i;
+      }
       const sortedThresholds = new Float32Array(capacity);
       const sortedX = new Float32Array(capacity);
       const sortedY = new Float32Array(capacity);
       const sortedS = new Float32Array(capacity);
       const sortedK = new Float32Array(capacity);
-      order.forEach((from, to) => {
+      for (let to = 0; to < capacity; to += 1) {
+        const from = order[to];
         sortedThresholds[to] = thresholds[from];
         sortedX[to] = gx[from];
         sortedY[to] = gy[from];
         sortedS[to] = gs[from];
         sortedK[to] = gk[from];
-      });
+      }
       thresholds = sortedThresholds;
       gx = sortedX;
       gy = sortedY;
@@ -225,6 +254,18 @@ function SandWord({
       stream.forEach((drop) => {
         drop.alive = false;
       });
+
+      /* Gradients are identical every frame; building them is not free, and
+         this loop runs sixty times a second. The radial one is built at the
+         origin and translated onto the neck when it is painted. */
+      surfaceGradient = ctx.createLinearGradient(width * 0.08, 0, width * 0.92, 0);
+      surfaceGradient.addColorStop(0, "rgba(214, 198, 255, 0)");
+      surfaceGradient.addColorStop(0.5, "rgba(236, 226, 255, 0.28)");
+      surfaceGradient.addColorStop(1, "rgba(214, 198, 255, 0)");
+
+      neckGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, width * 0.1);
+      neckGradient.addColorStop(0, "rgba(219, 199, 255, 0.34)");
+      neckGradient.addColorStop(1, "rgba(219, 199, 255, 0)");
     };
 
     const drawSettled = (progress: number) => {
@@ -299,33 +340,52 @@ function SandWord({
         ctx.globalAlpha = 1;
 
         // Impact glow at the neck, and a faint line where the sand stands.
-        const glow = ctx.createRadialGradient(width / 2, frontY, 0, width / 2, frontY, width * 0.1);
-        glow.addColorStop(0, "rgba(219, 199, 255, 0.34)");
-        glow.addColorStop(1, "rgba(219, 199, 255, 0)");
-        ctx.fillStyle = glow;
-        ctx.fillRect(width / 2 - width * 0.11, frontY - 14, width * 0.22, 30);
+        if (neckGradient) {
+          ctx.save();
+          ctx.translate(width / 2, frontY);
+          ctx.fillStyle = neckGradient;
+          ctx.fillRect(-width * 0.11, -14, width * 0.22, 30);
+          ctx.restore();
+        }
 
-        const surface = ctx.createLinearGradient(width * 0.08, 0, width * 0.92, 0);
-        surface.addColorStop(0, "rgba(214, 198, 255, 0)");
-        surface.addColorStop(0.5, "rgba(236, 226, 255, 0.28)");
-        surface.addColorStop(1, "rgba(214, 198, 255, 0)");
-        ctx.fillStyle = surface;
-        ctx.fillRect(width * 0.08, frontY, width * 0.84, 1);
+        if (surfaceGradient) {
+          ctx.fillStyle = surfaceGradient;
+          ctx.fillRect(width * 0.08, frontY, width * 0.84, 1);
+        }
       }
 
       if (sandLayer) ctx.drawImage(sandLayer, 0, 0, width, height);
 
-      raf = window.requestAnimationFrame(frame);
+      raf = document.hidden ? 0 : window.requestAnimationFrame(frame);
     };
 
+    let resizeTimer = 0;
     const onResize = () => {
       // Growing the window rebuilds the vessel; the fill state is derived from
-      // progress, so nothing is lost.
-      build();
+      // progress, so nothing is lost. A drag across the edge fires this dozens
+      // of times a second, so the rebuild waits for the drag to stop.
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        if (!disposed) build();
+      }, 140);
     };
 
     build();
     raf = window.requestAnimationFrame(frame);
+
+    /* A tab in the background has no viewer: the pour does not need to keep
+       clearing and compositing a full-screen canvas behind a hidden page. */
+    const onVisibility = () => {
+      if (disposed) return;
+      if (document.hidden) {
+        window.cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        last = 0;
+        raf = window.requestAnimationFrame(frame);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     // Re-sample once the display face is ready, so the grains trace real glyphs.
     const onFonts = () => {
@@ -341,6 +401,8 @@ function SandWord({
     return () => {
       disposed = true;
       window.cancelAnimationFrame(raf);
+      window.clearTimeout(resizeTimer);
+      document.removeEventListener("visibilitychange", onVisibility);
       observer.disconnect();
     };
   }, [progressRef, text]);
@@ -367,10 +429,16 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     root.classList.add("is-loading");
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    /**
+     * The page is released: the curtain is up and the hero may start drawing.
+     * Everything expensive on the first screen waits for this, so the entrance
+     * animation owns the main thread while it is on screen.
+     */
     const finish = () => {
       if (doneRef.current) return;
       doneRef.current = true;
       onDone();
+      releasePage();
     };
 
     if (reduced) {
@@ -395,9 +463,9 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     const phone =
       window.matchMedia("(max-width: 767px)").matches ||
       (window.matchMedia("(pointer: coarse)").matches && window.innerHeight < 900);
-    const minDuration = phone ? 900 : 1100;
-    const maxDuration = phone ? 1700 : 1950;
-    const hold = phone ? 220 : 340;
+    const minDuration = phone ? 760 : 900;
+    const maxDuration = phone ? 1420 : 1640;
+    const hold = phone ? 190 : 280;
     /** Re-targeted the moment the page is ready; always >= the elapsed time. */
     let finishAt = maxDuration;
     const start = performance.now();

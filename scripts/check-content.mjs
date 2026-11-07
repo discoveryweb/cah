@@ -87,7 +87,7 @@ check("the channels are Telegram, Instagram and WhatsApp",
 
 check(
   "Telegram points at the studio channel",
-  byPlatform("Telegram")?.href === "https://t.me/CAHENWEB",
+  byPlatform("Telegram")?.href === "https://t.me/CAHENWEBADMIN",
   String(byPlatform("Telegram")?.href),
 );
 check(
@@ -115,7 +115,7 @@ for (const channel of socials) {
   check(`${channel.platform} declares a glyph`, ["telegram", "instagram", "whatsapp"].includes(channel.icon), channel.icon);
 }
 
-check("the handle matches the profile", contact.handle.replace("@", "").toLowerCase() === "cahenweb", contact.handle);
+check("the handle matches the profile", contact.handle.replace("@", "").toLowerCase() === "cahenwebadmin", contact.handle);
 
 /* ------------------------------------------------- no addresses hardcoded */
 
@@ -131,6 +131,15 @@ for (const file of componentFiles) {
   if (/hello@|cahen\.studio/.test(source)) offenders.push(`${file}: old address`);
 }
 check("no component hardcodes an address", offenders.length === 0, offenders.join(", "));
+
+/* A failed submission must not leave the reader with nothing to do: the
+   studio's own address is the fallback, and it is read from the document the
+   panel edits rather than typed into the component. */
+const orderForm = fs.readFileSync(path.join(ROOT, "src/components/OrderModal.tsx"), "utf8");
+check(
+  "a form that cannot send still offers the studio's address",
+  /href=\{\`mailto:\$\{content\.contact\.email\}\`\}/.test(orderForm),
+);
 
 /* --------------------------------------- a site published before the change */
 
@@ -167,6 +176,29 @@ check("no component hardcodes an address", offenders.length === 0, offenders.joi
   };
   const untouched = adoptPublishedAddresses(custom);
   check("an address an editor typed is never rewritten", untouched === custom);
+
+  /* The channel was renamed. A document saved before the rename is migrated;
+     the studio's own previous address is the only thing that is rewritten. */
+  const renamed = {
+    ...content,
+    contact: { ...content.contact, handle: "@CAHENWEB" },
+    socials: content.socials.map((channel) =>
+      channel.platform === "Telegram" ? { ...channel, href: "https://t.me/CAHENWEB" } : channel,
+    ),
+  };
+  const migrated = adoptPublishedAddresses(renamed);
+  check(
+    "a document saved before the channel was renamed opens the current channel",
+    migrated.socials.find((channel) => channel.platform === "Telegram")?.href === "https://t.me/CAHENWEBADMIN" &&
+      migrated.contact.handle === "@CAHENWEBADMIN",
+    `${migrated.socials.find((channel) => channel.platform === "Telegram")?.href} / ${migrated.contact.handle}`,
+  );
+  check(
+    "the rename leaves the other channels exactly as they were",
+    migrated.socials.filter((channel) => channel.platform !== "Telegram").every(
+      (channel, index) => channel.href === renamed.socials.filter((entry) => entry.platform !== "Telegram")[index].href,
+    ),
+  );
 
   const clean = adoptPublishedAddresses(content);
   check("a correct document is returned untouched", clean === content);

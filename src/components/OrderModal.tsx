@@ -368,7 +368,15 @@ export function OrderModal({
               {status === "error" ? (
                 <div role="alert" className="modal__alert">
                   <AlertCircle aria-hidden="true" />
-                  <p>{statusMessage}</p>
+                  <p>
+                    {statusMessage}
+                    {/* A form that cannot send must never be a dead end: the
+                        studio's own address is one tap away, and it comes from
+                        the same content document the panel edits. */}
+                    <a className="modal__alert-link" href={`mailto:${content.contact.email}`} dir="ltr">
+                      {content.contact.email}
+                    </a>
+                  </p>
                 </div>
               ) : null}
 

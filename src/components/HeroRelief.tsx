@@ -30,6 +30,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createRectCache } from "./canvasui/rect-cache";
+import { RELEASE_EVENT } from "../utils/bus";
 
 const FULL = "/hero/mark-relief.webp";
 const COMPACT = "/hero/mark-relief@512.webp";
@@ -500,7 +501,32 @@ export function HeroRelief({ className }: { className?: string }) {
       frame = requestAnimationFrame(loop);
     };
 
-    const start = () => {
+    /**
+     * The relief is the most expensive thing on the page, and it is invisible
+     * until the entrance lifts: the curtain is opaque and drawn over it. So it
+     * waits for the release instead of competing with the pour for the main
+     * thread — that contention was what made the entrance stutter on a laptop.
+     * If no entrance is running (reduced motion, a returning visitor, a test
+     * harness) there is nothing to wait for and it starts at once.
+     */
+    let releaseTimer = 0;
+    const onRelease = () => {
+      window.clearTimeout(releaseTimer);
+      window.removeEventListener(RELEASE_EVENT, onRelease);
+      begin();
+    };
+    const whenReleased = (run: () => void) => {
+      if (!document.documentElement.classList.contains("is-loading")) {
+        run();
+        return;
+      }
+      window.addEventListener(RELEASE_EVENT, onRelease, { once: true });
+      // A floor under the whole thing: a broken entrance must never leave the
+      // hero blank.
+      releaseTimer = window.setTimeout(onRelease, 2600);
+    };
+
+    const begin = () => {
       if (disposed || !ready) return;
       startedAt = performance.now();
       setLive(true);
@@ -509,6 +535,11 @@ export function HeroRelief({ className }: { className?: string }) {
         return;
       }
       if (!frame) frame = requestAnimationFrame(loop);
+    };
+
+    const start = () => {
+      if (disposed || !ready) return;
+      whenReleased(begin);
     };
 
     const image = new Image();
@@ -661,6 +692,8 @@ export function HeroRelief({ className }: { className?: string }) {
 
     return () => {
       disposed = true;
+      window.clearTimeout(releaseTimer);
+      window.removeEventListener(RELEASE_EVENT, onRelease);
       cancelAnimationFrame(frame);
       box.destroy();
       observer?.disconnect();

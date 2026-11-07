@@ -154,7 +154,7 @@ check(
   "the social profiles are the published handles",
   JSON.stringify(studio?.sameAs ?? []) ===
     JSON.stringify([
-      "https://t.me/CAHENWEB",
+      "https://t.me/CAHENWEBADMIN",
       "https://www.instagram.com/CAHENWEB/",
       "https://wa.me/989023841612",
     ]),

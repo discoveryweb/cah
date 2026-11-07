@@ -265,7 +265,7 @@ await sleep(200);
   check("every channel has a visible name and platform", channels.every((c) => c.name && c.platform));
   check("every channel shows where the tap goes", channels.every((c) => c.arrow && /پنجرهٔ تازه/.test(c.label || "")));
 
-  check("Telegram points at the studio channel", named("Telegram")?.href === "https://t.me/CAHENWEB", String(named("Telegram")?.href));
+  check("Telegram points at the studio channel", named("Telegram")?.href === "https://t.me/CAHENWEBADMIN", String(named("Telegram")?.href));
   check(
     "Instagram points at the studio profile",
     named("Instagram")?.href === "https://www.instagram.com/CAHENWEB/",

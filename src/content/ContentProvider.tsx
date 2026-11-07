@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_CONTENT } from "./defaults";
+import { CONTENT_CHANNEL, CONTENT_STORAGE_KEY } from "./live";
 import { adoptPublishedAddresses, adoptRealPortfolio } from "./normalize";
 import type { SiteContent } from "./types";
 
@@ -54,23 +55,96 @@ export function ContentProvider({ children }: { children: ReactNode }) {
   const [customised, setCustomised] = useState(false);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
+  /**
+   * The document the page is currently showing. `updatedAt` is the store's own
+   * stamp, so a refetch that changes nothing changes nothing here either: no
+   * re-render, no reflow, no lost scroll position.
+   */
+  const stamp = useRef<string | null>(null);
+  const inflight = useRef<AbortController | null>(null);
+  const lastAttempt = useRef(0);
+
+  const load = useCallback(async () => {
+    inflight.current?.abort();
     const controller = new AbortController();
-    fetch("/api/content", { signal: controller.signal, headers: { Accept: "application/json" } })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (controller.signal.aborted || !payload?.ok) return;
-        if (payload.content) {
-          setContent(resolveContent(payload.content));
-          setCustomised(true);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!controller.signal.aborted) setReady(true);
+    inflight.current = controller;
+    lastAttempt.current = Date.now();
+    try {
+      const response = await fetch("/api/content", {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+        cache: "no-store",
       });
-    return () => controller.abort();
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (controller.signal.aborted || !payload?.ok) return;
+      const next = payload.updatedAt ?? null;
+      if (next && next === stamp.current) return;
+      stamp.current = next;
+      if (payload.content) {
+        setContent(resolveContent(payload.content));
+        setCustomised(true);
+      } else {
+        /* The panel can also put the site back on its own copy. An open page
+           has to follow that too, or "reset" would only exist for whoever
+           reloads. The default document is the same object the page started
+           with, so this is a no-op for a visitor who never saw a saved one. */
+        setContent(DEFAULT_CONTENT);
+        setCustomised(false);
+      }
+    } catch {
+      /* offline, cold start, storage outage: the page keeps its defaults and
+         tries again next time it is focused */
+    } finally {
+      if (!controller.signal.aborted) setReady(true);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+
+    /**
+     * A page that is already open stays current: when the tab comes back into
+     * view, when the window is focused, when the connection returns, and the
+     * instant the panel in another tab announces a save. All of it is one small
+     * request at most every couple of seconds, and nothing at all while the
+     * reader is reading.
+     */
+    const refresh = () => {
+      if (document.hidden) return;
+      if (Date.now() - lastAttempt.current < 1500) return;
+      void load();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === CONTENT_STORAGE_KEY) refresh();
+    };
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel === "function") {
+        channel = new BroadcastChannel(CONTENT_CHANNEL);
+        channel.onmessage = () => refresh();
+      }
+    } catch {
+      channel = null;
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("storage", onStorage);
+      channel?.close();
+      inflight.current?.abort();
+    };
+  }, [load]);
 
   // Keep the document head in step with the editable meta fields. The social
   // cards are edited from the same panel, so they follow the same values: a

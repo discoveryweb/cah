@@ -382,6 +382,21 @@ check("the hero renders no video element", document.querySelectorAll("video").le
 // The content API is the site's own plumbing; media is what must be zero.
 const mediaRequests = window.__fetches.filter((url) => /film|\.mp4|\.webm|\.webp|\.jpg/.test(url));
 check("the opening screen downloads no media at all", mediaRequests.length === 0, mediaRequests.join(", "));
+/* One mark, one frame: the orbit that once carried a second logo left two
+   circular outlines behind it. Nothing may circle the relief again. */
+check(
+  "the hero draws no orbit rings around the mark",
+  document.querySelectorAll(".hero__orbit-ring").length === 0 &&
+    !fs
+      .readdirSync(path.join(ROOT, "src/styles"))
+      .some((file) => fs.readFileSync(path.join(ROOT, "src/styles", file), "utf8").includes("hero__orbit-ring")),
+);
+check(
+  "the hero paints its mark once",
+  document.querySelectorAll(".hero canvas, .hero__relief").length === 1,
+  `${document.querySelectorAll(".hero canvas, .hero__relief").length} marks`,
+);
+
 check(
   "the page preloads no film frame",
   !/hero-poster|hero-scrub/.test(fs.readFileSync(path.join(ROOT, "index.html"), "utf8")),

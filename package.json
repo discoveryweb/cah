@@ -20,10 +20,12 @@
     "seo:check": "node scripts/check-seo.mjs",
     "security:check": "node scripts/check-security.mjs",
     "routing:check": "node scripts/check-routing.mjs",
-    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check && npm run seo:check && npm run security:check && npm run mark:check && npm run perf:check && npm run theme:check",
+    "verify": "npm run typecheck && npm run hero:check && npm run mobile:check && npm run content:check && npm run admin:check && npm run sms:check && npm run netlify:check && npm run routing:check && npm run product:check && npm run seo:check && npm run security:check && npm run mark:check && npm run perf:check && npm run theme:check && npm run theme:surface && npm run live:check",
     "mark:check": "node scripts/check-mark-mobile-card.mjs",
     "perf:check": "node scripts/check-perf.mjs",
-    "theme:check": "node scripts/check-theme.mjs"
+    "theme:check": "node scripts/check-theme.mjs",
+    "theme:surface": "node scripts/check-theme-surface.mjs",
+    "live:check": "node scripts/check-live.mjs"
   },
   "dependencies": {
     "@fontsource-variable/estedad": "^5.3.0",
@@ -34,7 +36,6 @@
     "lucide-react": "^1.55.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "tailwind-merge": "3.4.0",
     "three": "^0.185.1"
   },
   "devDependencies": {

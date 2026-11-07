@@ -219,6 +219,19 @@ laptop and on a phone, not on how it looks in a screenshot. What that took:
 - **Below-the-fold photography is lazy** (`loading="lazy"`, intrinsic size, async
   decode), and the hero's height map has its own revalidated cache rule, because
   it is preloaded on every visit.
+- **Cards in the flow carry no `backdrop-filter`.** A blur on an element that
+  scrolls re-samples everything behind it on every frame it moves; six of them is
+  the difference between a smooth scroll and a stutter on integrated graphics.
+  The tint, the rim and the reflection are what reads as glass. Only surfaces
+  that float — the bar, the dialog, the dock, back-to-top — keep a real blur, and
+  the low tier loses it (and the SVG surface filter) entirely.
+- **The entrance owns the main thread.** The hero renderer waits for the curtain
+  to announce its release instead of compiling a shader under the sand pour; the
+  pour itself is drawn at 1.5× rather than 2×, reads its glyph mask at CSS
+  resolution, sorts its grains with a counting sort, caches its gradients, and
+  never rebuilds when the display face measures the same.
+- **The class-name helper is `clsx` alone.** `tailwind-merge` was 25 kB of
+  download to resolve Tailwind conflicts the BEM classes never create.
 
 `npm run perf:check` tests all of it — including payload budgets for the entry
 bundle, the stylesheet, the fonts and the hero texture — because none of this is
@@ -227,7 +240,7 @@ visible in a screenshot, which is exactly why it needs a test.
 ## Addresses
 
 `src/content/defaults.ts` is the only place the studio's public identity lives:
-`info@cahen.ir`, `t.me/CAHENWEB`, `instagram.com/CAHENWEB/` and a WhatsApp chat
+`info@cahen.ir`, `t.me/CAHENWEBADMIN`, `instagram.com/CAHENWEB/` and a WhatsApp chat
 at `wa.me/989023841612` (E.164 digits, no plus — that is what `wa.me` expects).
 The email is rendered through `contact.email`, the channels through
 `contact.socials`, so the menu, footer, contact section and 3D social visual can
@@ -338,17 +351,26 @@ glass through tint, rim, glow and reflection, at no per-frame cost.
 
 ## Collaboration form and SMS notifications
 
-The collaboration dialog requires a name and phone number; email, service, and project description are optional. Submissions are posted to the same-origin `/api/collaboration` endpoint. Every accepted order is stored first, then its full details are sent by SMS to the fixed manager number; the visitor cannot select or change that recipient.
+The collaboration dialog requires a name and phone number; email, service, and project description are optional. Submissions are posted to the same-origin `/api/collaboration` endpoint. Every accepted order is stored first, and the studio is then notified through an approved **pattern** (الگو) — the copy lives at the provider, and this app only fills its two slots:
+
+```
+درخواست همکاری جدید CAHEN
+نام: {0}
+موبایل: {1}
+CAHEN
+```
+
+`{0}` is the name typed into the form, `{1}` the mobile typed into the form, in that order; the recipient is the fixed manager number and the visitor cannot select or change it.
 
 Orders live in the shared storage layer (max 500, newest first) and appear in the panel's **سفارش‌ها / Orders** tab with the delivery status of each SMS part. When Melipayamak settings are missing or a send fails, the order keeps its `pending`/`failed` status and an owner or editor can re-send it from that tab — the form never drops a lead because of notification problems. Duplicate submissions from the same phone within two minutes are acknowledged without creating a second record.
 
 Configure a private local `.env` file using `.env.example` (never add real credentials to `VITE_*` variables or commit `.env`):
 
-- `ORDER_MANAGER_PHONE`: the manager's mobile number.
+- `ORDER_MANAGER_PHONE`: the manager's mobile number (the recipient).
 - `MELIPAYAMAK_USERNAME` and either `MELIPAYAMAK_API_KEY` or `MELIPAYAMAK_PASSWORD`.
-- `MELIPAYAMAK_FROM`: an active sender line enabled for web-service sending.
+- `MELIPAYAMAK_PATTERN_CODE`: the approved pattern code. No sender line is sent: the line belongs to the pattern.
 
-The server follows National Messagek's [SendSimpleSMS2 REST documentation](https://www.melipayamak.com/api/sendsimplesms2/) and posts form-encoded `username`, `password`, `to`, `from`, `text`, and `isflash` fields to its documented REST endpoint. Development uses a Vite middleware; production can run with `npm run build && npm start` (binds to `0.0.0.0`, defaults to port 4173). Provider credentials and the manager number stay on the server. An in-memory limit allows up to three successful submissions per IP per hour; for multi-instance deployments, move that limiter to shared storage. A provider acceptance ID is not a delivery receipt, and provider sender-line, account, balance, IP-allowlist, and filtering rules still apply.
+The server posts form-encoded `username`, `password`, `text`, `bodyId`, and `to` to Melipayamak's base-service endpoint (`/api/SendSMS/BaseServiceNumber`), where `text` is `{0};{1}` — the name and the local-form mobile, joined in the pattern's own order — and `bodyId` is `MELIPAYAMAK_PATTERN_CODE`. Nothing else from the form travels: a `;` inside a value is stripped, so a typed name can never open a third slot. Development uses a Vite middleware; production can run with `npm run build && npm start` (binds to `0.0.0.0`, defaults to port 4173). Provider credentials and the manager number stay on the server. An in-memory limit allows up to three successful submissions per IP per hour; for multi-instance deployments, move that limiter to shared storage. A provider acceptance ID is not a delivery receipt, and provider pattern-approval, account balance, IP-allowlist, and filtering rules still apply.
 
 ## Admin panel (`/shenataisoni`)
 
@@ -379,25 +401,27 @@ Generate a hash without writing the password anywhere:
 npm run admin:hash -- "a long unique passphrase"
 ```
 
-Ten checks run entirely offline:
+The checks run entirely offline:
 
-- `npm run hero:check` — 88 assertions: the shaders parse and are not truncated; the mark is upright (one `-q.y`, in the shared projection, upload unflipped); normals, key light, specular and fresnel are present; the pointer, the shockwaves and the fragment share one projection, and a real `pointerdown` reaches the GPU as a lens and a ring buffer entry; passive listeners only; raw WebGL2 with logged shader errors, a reduced tier, one frame for reduced motion, and a loop that halts when hidden; no video and no media request; nothing pinned; a scroll re-renders nothing and writes only transform and opacity.
+- `npm run hero:check` — 90 assertions: the shaders parse and are not truncated; the mark is upright (one `-q.y`, in the shared projection, upload unflipped); normals, key light, specular and fresnel are present; the pointer, the shockwaves and the fragment share one projection, and a real `pointerdown` reaches the GPU as a lens and a ring buffer entry; passive listeners only; raw WebGL2 with logged shader errors, a reduced tier, one frame for reduced motion, and a loop that halts when hidden; no video and no media request; nothing pinned; a scroll re-renders nothing and writes only transform and opacity.
 - `npm run mobile:check` — 51 assertions: the dock exists, arrives after the hero, opens the index and the sheet; the entrance paints the same light as the hero; safe areas, the 62 px bar, the bottom sheet and 16 px fields are present; no blur on a phone.
-- `npm run content:check` — 34 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; the three shipped case studies (with their live links and alt text) and the absence of the old demonstration plates; a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed; and a stored portfolio that still holds the demo plates adopts the real one while a portfolio an editor shaped is left alone.
+- `npm run content:check` — 37 assertions: the published email, Telegram channel, Instagram profile and WhatsApp number; every channel has a glyph; no component hardcodes an address; the three shipped case studies (with their live links and alt text) and the absence of the old demonstration plates; a site published with the old placeholder addresses adopts the real ones without overwriting anything an editor typed; and a stored portfolio that still holds the demo plates adopts the real one while a portfolio an editor shaped is left alone.
 - `npm run admin:check` — 63 assertions over the API and the security model.
-- `npm run sms:check` — 21 assertions: order storage and Melipayamak formatting with a stubbed provider.
+- `npm run sms:check` — 28 assertions: order storage and the Melipayamak pattern channel, whose two slots are locked to name and mobile in that order.
 - `npm run netlify:check` — 23 assertions: bundles both functions with esbuild and exercises them against a mock Netlify Blobs edge API.
 - `npm run mark:check` — 37 assertions: the particle mark is decoded from an inline payload instead of fetched (the CSP refusal that hid it), the phone budget, and the case-study card.
 - `npm run product:check` — 65 assertions on the built output: payload budgets, font and image weight, the single scroll listener, metadata, icons, structured data, 404, sitemap, robots, cache and security headers, focus states, reduced motion, alt text and one `<h1>`.
-- `npm run perf:check` — 48 assertions on speed: no idle frame loops, no layout
+- `npm run perf:check` — 57 assertions on speed: no idle frame loops, no layout
   reads in the scroll frame or in a pointer handler, gallery cards moved by
   transform only, a coarse surface grid that encodes just the disturbed crop, a
   text mask refreshed on layout change instead of on a timer, a footer wordmark
   drawn in ink instead of filtered, a low-tier machine that paints without a
   backdrop blur, an opaque header, a lazy grid, a pixel budget on the hero, a
   bounded `will-change` count, and gzipped budgets for the entry bundle
-  (< 125 kB), the stylesheet (< 30 kB), the fonts and the hero texture.
+  (< 118 kB), the stylesheet (< 33 kB), the fonts and the hero texture.
 - `npm run seo:check` — 63 assertions on how the page is read by a crawler: one title and one description inside result limits, a canonical that agrees with `og:url`, `hreflang` for Persian, a complete Open Graph and X card, a linked manifest with 192 and 512 icons, one `@graph` whose studio, site and page nodes share an `@id` and carry the published addresses and four service offers, a sitemap dated at build time with one public URL, robots.txt that keeps the control room and the API out while advertising that sitemap, a noindexed 404, and a real section behind every navigation link.
+- `npm run theme:surface` — 17 assertions that read the built stylesheet and resolve the cascade, layers included, for every surface that carries the theme: the header pill, the scrolled bar, the phone dock and the full-screen menu, at three widths, both device tiers, scrolled and inverted, in both themes — plus the contrast of the type on the bar, a ban on any chrome surface painted with a literal colour, and a day palette that must restate every chrome token.
+- `npm run live:check` — 13 assertions on the seam between the panel and the site: the first load paints the published document rather than the seeded defaults, a tab that comes back into view picks up a save, the panel's announcement reaches an open page, an unchanged document re-renders nothing at all, and a storage outage leaves the site standing on its defaults.
 - `npm run security:check` — 55 assertions on the response and the code behind it: HSTS, framing denial, `nosniff`, COOP/CORP, a narrowed permission policy, and a CSP with no inline script, no eval of any kind (wasm included), no inline handlers, no frames, no plugins, a locked `base-uri`/`form-action` and HTTPS upgrades — with the one inline JSON-LD block allowed by its own hash; no source maps, no server secret or `VITE_`-leaked value in the bundle, no raw-HTML rendering or runtime evaluation, no new tab without `noopener`; and at the API, constant-time session and password comparisons, scrypt storage, an HttpOnly/SameSite=Strict/Secure cookie, per-address and per-account login throttles, an origin check on every state change, capped bodies, magic-byte upload sniffing with no SVG, a basename-only media name, prototype-pollution guards, uncached and sandboxed responses, `405` for anything unsupported, and an `.env` template with every credential left blank.
 - `npm run typecheck` — the TypeScript build, also part of `npm run build`.
 
@@ -434,7 +458,7 @@ The panel is fully closed while these variables are missing: `/api/admin/session
 Required environment variables (Site configuration → Environment variables, scope **Functions**):
 
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (or `ADMIN_PASSWORD`), `ADMIN_SESSION_SECRET` — the owner account. Use `npm run admin:hash -- "passphrase"`; never commit the hash.
-- `ORDER_MANAGER_PHONE`, `MELIPAYAMAK_USERNAME`, `MELIPAYAMAK_API_KEY` (or `MELIPAYAMAK_PASSWORD`), `MELIPAYAMAK_FROM` — SMS notifications. Missing values do not break the site: orders are stored and queued.
+- `ORDER_MANAGER_PHONE`, `MELIPAYAMAK_USERNAME`, `MELIPAYAMAK_API_KEY` (or `MELIPAYAMAK_PASSWORD`), `MELIPAYAMAK_PATTERN_CODE` — pattern notifications. Missing values do not break the site: orders are stored and queued.
 
 Optional: `ADMIN_NAME`, `ADMIN_SESSION_HOURS` (1–72, default 8), `ADMIN_TEAM` (JSON array of extra env-level editors/viewers), `ADMIN_BLOB_STORE` (default `cahen-admin`), `ADMIN_COOKIE_SECURE`, `TRUST_PROXY`.
 

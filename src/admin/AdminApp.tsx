@@ -135,8 +135,14 @@ function AdminRoot() {
     };
   }, []);
 
-  const loadState = useCallback(async (adopt: boolean) => {
-    setLoading(true);
+  /**
+   * `adopt` decides whether the editor's working copy is replaced; `quiet` is
+   * for the refresh a focused tab does, which must not flash the loading state
+   * or throw away a half-written edit — only the counts, the queue and the
+   * activity list come back.
+   */
+  const loadState = useCallback(async (adopt: boolean, quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const state = await api.state();
       setAdmin(state.admin);
@@ -160,9 +166,35 @@ function AdminRoot() {
         toast(error instanceof ApiFailure ? error.message : "خواندن داده‌های پنل انجام نشد.", "error");
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [toast]);
+
+  /**
+   * The control room is the place the studio sits in all day, so it stays
+   * current the same way the site does: an order that arrives while the tab is
+   * in the background is on screen when it comes back, without a reload and
+   * without disturbing whatever is being edited.
+   */
+  useEffect(() => {
+    if (!admin) return;
+    let last = 0;
+    const refresh = () => {
+      if (document.hidden) return;
+      if (Date.now() - last < 4000) return;
+      last = Date.now();
+      void loadState(false, true);
+    };
+    const onVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [admin?.id, loadState]);
 
   useEffect(() => {
     if (admin) void loadState(true);

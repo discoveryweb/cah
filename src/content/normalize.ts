@@ -25,6 +25,20 @@ const PLACEHOLDER_HREFS = new Set([
 ]);
 
 /**
+ * The studio's Telegram channel was renamed, so the address the site published
+ * before is no longer the studio's. A document saved from the panel still
+ * carries it, and a menu that opens the old channel is a dead end that looks
+ * configured. This migrates exactly those studio addresses and nothing else:
+ * a link an editor typed for their own account is never rewritten.
+ */
+const RENAMED_CHANNEL_HANDLES = new Map([
+  ["https://t.me/cahenweb", "https://t.me/CAHENWEBADMIN"],
+  ["http://t.me/cahenweb", "https://t.me/CAHENWEBADMIN"],
+  ["https://telegram.me/cahenweb", "https://t.me/CAHENWEBADMIN"],
+]);
+const RENAMED_STUDIO_HANDLE = "@cahenweb";
+
+/**
  * The gallery was seeded with three demonstration case studies while the studio
  * had no published client work. Those demo plates are placeholders, and a
  * document saved from the panel before the real portfolio existed still carries
@@ -52,6 +66,11 @@ export function adoptPublishedAddresses(content: SiteContent): SiteContent {
   if (email !== content.contact.email) changed = true;
 
   const socials = content.socials.map((channel) => {
+    const renamed = RENAMED_CHANNEL_HANDLES.get(channel.href.trim().toLowerCase());
+    if (renamed) {
+      changed = true;
+      return { ...channel, href: renamed };
+    }
     if (!PLACEHOLDER_HREFS.has(channel.href.trim())) return channel;
     const replacement = DEFAULT_CONTENT.socials.find(
       (candidate) => candidate.platform === channel.platform || candidate.icon === channel.icon,
@@ -61,6 +80,12 @@ export function adoptPublishedAddresses(content: SiteContent): SiteContent {
     return { ...channel, href: replacement.href };
   });
 
+  const handle =
+    content.contact.handle.trim().toLowerCase() === RENAMED_STUDIO_HANDLE
+      ? DEFAULT_CONTENT.contact.handle
+      : content.contact.handle;
+  if (handle !== content.contact.handle) changed = true;
+
   if (!changed) return content;
-  return { ...content, contact: { ...content.contact, email }, socials };
+  return { ...content, contact: { ...content.contact, email, handle }, socials };
 }

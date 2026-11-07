@@ -125,7 +125,7 @@ check("the social card declares its size", /og:image:width" content="1200"/.test
 check("the locale is declared", /og:locale" content="fa_IR"/.test(html));
 check("the social card has alt text", /og:image:alt/.test(html));
 check("structured data names the studio", /"@type": "ProfessionalService"/.test(html));
-check("structured data carries the real addresses", /info@cahen\.ir/.test(html) && /t\.me\/CAHENWEB/.test(html));
+check("structured data carries the real addresses", /info@cahen\.ir/.test(html) && /t\.me\/CAHENWEBADMIN/.test(html));
 check("the structured data is valid JSON", (() => {
   const match = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html);
   try {

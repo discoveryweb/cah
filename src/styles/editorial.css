@@ -361,6 +361,10 @@
     width: 26px;
     height: 22px;
     object-fit: contain;
+    /* The tint and the shadow are the mark's, not part of the pulse: an
+       infinite animation of `filter` repaints the element every frame forever,
+       and a shadow that grows by four pixels is not worth a paint loop. */
+    filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 4px 11px rgba(10, 6, 30, 0.6));
     animation: badge-pulse 4.5s ease-in-out infinite;
   }
 
@@ -368,11 +372,9 @@
     0%,
     100% {
       transform: scale(1) rotate(-4deg);
-      filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 2px 8px rgba(10, 6, 30, 0.5));
     }
     50% {
       transform: scale(1.14) rotate(4deg);
-      filter: hue-rotate(26deg) saturate(1.12) drop-shadow(0 6px 16px rgba(10, 6, 30, 0.7));
     }
   }
 }

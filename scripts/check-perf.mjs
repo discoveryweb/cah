@@ -74,7 +74,9 @@ const headerCss = read("src", "styles", "header.css");
 check("the fixed header never backdrop-blurs the page under it", !/backdrop-filter:\s*blur\(/.test(headerCss));
 check(
   "the header is an opaque pane instead",
-  /\.header--solid\s*\{[^}]*background:\s*color-mix\(in srgb, #07071a 9[0-9]%, transparent\)/.test(headerCss),
+  // The pane is still opaque, but its colour is the theme's now: a literal
+  // here is exactly the bar that could not follow the reader's choice.
+  /\.header--solid\s*\{[^}]*background:\s*var\(--chrome-bar\)/.test(headerCss),
 );
 check(
   "reveals hand their compositor layer back when they settle",
@@ -132,8 +134,10 @@ check(
 
 const app = read("src", "App.tsx");
 check("the native cursor replaces the custom animation", !/components\/Cursor|<Cursor/.test(app) && !/cursor:\s*none/.test(read("src", "styles", "base.css")));
-const sand = read("src", "components", "HeroSand.tsx");
-check("the hero sand stops requesting frames after settling", /if \(!unsettled\) \{ last = 0; return; \}/.test(sand));
+check(
+  "the hero draws its mark once (the sand copy is gone)",
+  !/HeroSand/.test(read("src", "components", "Hero.tsx")) && !/hero__sand/.test(read("src", "styles", "experience.css")),
+);
 
 const markStage = read("src", "components", "MarkStage.tsx");
 check(
@@ -148,6 +152,41 @@ check(
 const preloader = read("src", "components", "Preloader.tsx");
 check("the preloader is removed from the DOM when it finishes", /if \(gone\) return null;/.test(preloader));
 
+/* The entrance is the one animation the reader judges the whole site by. It
+   must not be the thing that stutters, so the pour is held to a pixel budget
+   and nothing is allowed to rebuild underneath it. */
+check(
+  "the pour is drawn below device resolution, where sand cannot tell",
+  /Math\.min\(window\.devicePixelRatio \|\| 1, 1\.5\)/.test(preloader),
+);
+check(
+  "the glyph mask is read at CSS resolution, not device resolution",
+  /mask\.width = width;/.test(preloader) && /mask\.height = height;/.test(preloader),
+);
+check(
+  "the grain field is not rebuilt when the face measures the same",
+  /if \(key === builtKey\) return;/.test(preloader),
+);
+check(
+  "a counting sort replaces the comparator inside the first frame",
+  /const buckets = new Uint32Array\(LEVELS \+ 1\)/.test(preloader) && !/\.sort\(\s*\(a, b\) =>\s*thresholds\[a\] - thresholds\[b\]/.test(preloader),
+);
+check("the pour stops on a hidden tab", /document\.hidden \? 0 : window\.requestAnimationFrame/.test(preloader));
+check(
+  "the curtain announces its release instead of an animation guessing",
+  /releasePage\(\)/.test(preloader) && /RELEASE_EVENT/.test(read("src", "utils", "bus.ts")),
+);
+
+const relief = read("src", "components", "HeroRelief.tsx");
+check(
+  "the hero renderer waits for the entrance to hand the page over",
+  /whenReleased\(begin\)/.test(relief) && /classList\.contains\("is-loading"\)/.test(relief),
+);
+check(
+  "and a broken entrance can never leave the hero blank",
+  /releaseTimer = window\.setTimeout\(onRelease, 2600\)/.test(relief),
+);
+
 /* --------------------------------------------------------------- network - */
 
 const work = read("src", "components", "Work.tsx");
@@ -158,7 +197,13 @@ check(
 
 const shell = read("index.html");
 const preloads = (shell.match(/rel="preload"/g) ?? []).length;
-check("the shell preloads only what the first screen needs", preloads <= 3, `${preloads} preloads`);
+// Three, and the four faces of the first screen: the mark, the two Estedad
+// cuts the headline is set in, and the mono the entrance pours its sand into.
+check("the shell preloads only what the first screen needs", preloads <= 4, `${preloads} preloads`);
+check(
+  "the entrance's own face is preloaded, so the word is never re-shaped mid-pour",
+  /rel="preload"[\s\S]{0,120}jetbrains-mono-latin\.woff2/.test(shell),
+);
 check(
   "the hero texture is the highest-priority asset",
   /rel="preload" as="image" href="\/hero\/mark-relief\.webp" fetchpriority="high"/.test(shell),
@@ -247,7 +292,10 @@ if (fs.existsSync(dist)) {
   const entryKb = entry ? Math.round(gzip(entry) / 1024) : 0;
   const cssKb = css ? Math.round(gzip(css) / 1024) : 0;
 
-  check("the entry bundle stays under 125 kB gzipped", entryKb > 0 && entryKb < 125, `${entryKb} kB`);
+  // The budget is a promise, not a ceiling that happens to be above today's
+  // number: it was 125 kB until the Tailwind merge engine left the entry, so it
+  // is 118 kB now and the win cannot be spent in silence.
+  check("the entry bundle stays under 118 kB gzipped", entryKb > 0 && entryKb < 118, `${entryKb} kB`);
   check("the dual-theme stylesheet stays under 33 kB gzipped", cssKb > 0 && cssKb < 33, `${cssKb} kB`);
 
   const entrySource = entry ? fs.readFileSync(path.join(dist, "assets", entry), "utf8") : "";

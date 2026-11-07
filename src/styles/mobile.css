@@ -84,7 +84,7 @@
      * becomes a near-opaque pane. At 93 % the difference is invisible.
      */
     .header--solid {
-      background: color-mix(in srgb, #07071a 93%, transparent);
+      background: var(--chrome-bar);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
@@ -328,7 +328,7 @@
       padding: 6px 6px 6px 12px;
       border: 1px solid rgba(190, 176, 255, 0.2);
       border-radius: 999px;
-      background: linear-gradient(158deg, rgba(30, 26, 62, 0.94), rgba(8, 8, 22, 0.96));
+      background: var(--chrome-dock);
       box-shadow:
         0 22px 50px -26px rgba(0, 0, 0, 0.95),
         inset 0 1px 0 rgba(255, 255, 255, 0.07);

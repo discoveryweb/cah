@@ -26,7 +26,7 @@ export const DEFAULT_CONTENT: SiteContent = {
      * footer. Fill this in the panel to also publish a `tel:` link.
      */
     phone: "",
-    handle: "@CAHENWEB",
+    handle: "@CAHENWEBADMIN",
     city: "تهران، ایران",
     latinCity: "TEHRAN / IRAN",
     responseTime: "کمتر از یک روز کاری",
@@ -43,7 +43,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     {
       name: "تلگرام",
       platform: "Telegram",
-      href: "https://t.me/CAHENWEB",
+      href: "https://t.me/CAHENWEBADMIN",
       color: "#3fb6f2",
       icon: "telegram",
     },

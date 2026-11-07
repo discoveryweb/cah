@@ -7,6 +7,7 @@ import type {
   SiteContent,
   SmsSummary,
 } from "../content/types";
+import { announceContentSaved } from "../content/live";
 
 export class ApiFailure extends Error {
   status: number;
@@ -82,13 +83,23 @@ export const api = {
   logout: () => request<{ ok: true }>("/api/admin/logout", { method: "POST" }),
   logoutAll: () => request<{ ok: true }>("/api/admin/logout?all=1", { method: "POST" }),
   state: () => request<AdminState>("/api/admin/state"),
-  saveContent: (content: SiteContent, message?: string) =>
-    request<{ ok: true; updatedAt: string; updatedBy: string }>("/api/admin/content", {
+  /**
+   * A save is announced the moment the store has it, so an open site tab in the
+   * same browser shows the new copy without a reload.
+   */
+  saveContent: async (content: SiteContent, message?: string) => {
+    const result = await request<{ ok: true; updatedAt: string; updatedBy: string }>("/api/admin/content", {
       method: "PUT",
       body: JSON.stringify({ content, message }),
-    }),
-  resetContent: () =>
-    request<{ ok: true }>("/api/admin/content/reset", { method: "POST" }),
+    });
+    announceContentSaved(result.updatedAt);
+    return result;
+  },
+  resetContent: async () => {
+    const result = await request<{ ok: true }>("/api/admin/content/reset", { method: "POST" });
+    announceContentSaved(new Date().toISOString());
+    return result;
+  },
   activity: () => request<{ ok: true; activity: ActivityEntry[] }>("/api/admin/activity"),
   upload: async (file: Blob, name: string) => {
     const response = await fetch(`/api/admin/media?name=${encodeURIComponent(name)}`, {

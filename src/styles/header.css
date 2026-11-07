@@ -22,8 +22,8 @@
    * difference from the blurred version is invisible.
    */
   .header--solid {
-    border-bottom-color: rgba(190, 176, 255, 0.12);
-    background: color-mix(in srgb, #07071a 92%, transparent);
+    border-bottom-color: var(--line);
+    background: var(--chrome-bar);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -338,7 +338,7 @@
     grid-template-rows: 1fr;
     visibility: hidden;
     overflow: hidden;
-    background: radial-gradient(ellipse at 78% 8%, #1b1444 0%, #0a0a20 42%, #05050f 100%);
+    background: var(--chrome-menu);
     color: var(--ink);
     opacity: 0;
     pointer-events: none;
@@ -372,12 +372,14 @@
     position: absolute;
     inset: 0;
     content: "";
-    opacity: 0.5;
+    opacity: 0.85;
     pointer-events: none;
     background-image:
+      var(--chrome-sheen),
       linear-gradient(rgba(190, 176, 255, 0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(190, 176, 255, 0.05) 1px, transparent 1px);
-    background-size: 64px 64px;
+    /* One size per layer: the reflection fills the screen, the grid tiles. */
+    background-size: 100% 100%, 64px 64px, 64px 64px;
     mask-image: radial-gradient(circle at 30% 20%, #000 0%, transparent 72%);
     -webkit-mask-image: radial-gradient(circle at 30% 20%, #000 0%, transparent 72%);
   }

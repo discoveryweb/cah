@@ -5,7 +5,6 @@ import { RichText, renderRichText } from "../content/RichText";
 import { useHeroParallax } from "../hooks/useHeroParallax";
 import { Button, Magnetic, Marquee } from "./ui";
 import { HeroRelief } from "./HeroRelief";
-import { HeroSand } from "./HeroSand";
 
 /**
  * The opening screen: type, light, and the studio's own mark.
@@ -35,10 +34,10 @@ export function Hero({ onOrder }: { onOrder: () => void }) {
       data-hero="light"
     >
       <div className="hero__stage">
+        {/* One mark, one place. The orbit that used to hold a second copy of
+            the logo is gone from the hero entirely — rings included — so
+            nothing circles the relief. Only the studio line stays. */}
         <div className="hero__orbit-art" aria-hidden="true">
-          <HeroSand />
-          <span className="hero__orbit-ring hero__orbit-ring--outer" />
-          <span className="hero__orbit-ring hero__orbit-ring--inner" />
           <span className="hero__orbit-label" dir="ltr">INDEPENDENT DIGITAL STUDIO <b>—</b> EST. FOR WHAT’S NEXT</span>
         </div>
         <div className="hero__field" ref={fieldRef} aria-hidden="true">

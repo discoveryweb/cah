@@ -148,7 +148,7 @@
     # (no wasm, no eval), nothing may be framed in or out, no inline event
     # handler attributes, no plugins, no base-uri rewriting, no form posts to
     # anywhere but us — and every request is upgraded to HTTPS first.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-07cPImGjTNWEbAlNm+QPA06l16O5c9CxYI2iehubgvI='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-nJcgf48nZCwYh+tWhXKQ3qu+/EkXcluGxsbIBftZs58='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 # Self-hosted typefaces; the file names carry a ?v= tag, so a year is safe.
 [[headers]]

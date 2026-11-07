@@ -263,6 +263,23 @@
     line-height: 1.9;
   }
 
+  .modal__alert p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .modal__alert-link {
+    color: var(--vermilion-soft);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 260ms ease;
+  }
+
+  .modal__alert-link:hover {
+    color: var(--ink);
+  }
+
   .modal__alert svg {
     width: 15px;
     height: 15px;

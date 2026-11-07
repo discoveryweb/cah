@@ -38,6 +38,14 @@ export function SurfacePhysics() {
     const filter = filterRef.current;
     if (!overlay || !image || !filter) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    /**
+     * A device the boot script already judged weak gets the page without this
+     * layer at all: the filter is one SVG displacement pass per frame over the
+     * viewport, and on a four-core laptop it costs more than it shows. The page
+     * is complete without it — this is a flourish, and a flourish is the first
+     * thing that should go.
+     */
+    if (document.documentElement.dataset.perf === "low") return;
     // A URL-backed backdrop filter is essential: don't fake the effect with a graphic.
     if (!CSS.supports("backdrop-filter", "url(#cahen-surface-filter)") && !CSS.supports("-webkit-backdrop-filter", "url(#cahen-surface-filter)")) return;
 

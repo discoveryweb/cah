@@ -62,7 +62,7 @@ const directive = (name) => {
 
 check("a policy is set on every response", /for = "\/\*"[\s\S]{0,1600}Content-Security-Policy/.test(netlify));
 check("it defaults to the site's own origin", directive("default-src") === "'self'", directive("default-src"));
-check("scripts come only from us", directive("script-src") === "'self' 'sha256-07cPImGjTNWEbAlNm+QPA06l16O5c9CxYI2iehubgvI='", directive("script-src"));
+check("scripts come only from us", directive("script-src") === "'self' 'sha256-nJcgf48nZCwYh+tWhXKQ3qu+/EkXcluGxsbIBftZs58='", directive("script-src"));
 check("no inline script is allowed by a blanket rule", !/'unsafe-inline'/.test(directive("script-src")));
 check("no eval of any kind, wasm included", !/unsafe-eval/.test(csp), csp.includes("wasm-unsafe-eval") ? "wasm-unsafe-eval present" : "");
 check("inline event handler attributes are refused", directive("script-src-attr") === "'none'", directive("script-src-attr"));
