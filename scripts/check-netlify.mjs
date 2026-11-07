@@ -135,7 +135,7 @@ process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(
 delete process.env.MELIPAYAMAK_USERNAME;
 delete process.env.MELIPAYAMAK_API_KEY;
 delete process.env.MELIPAYAMAK_PASSWORD;
-delete process.env.MELIPAYAMAK_FROM;
+delete process.env.MELIPAYAMAK_PATTERN_CODE;
 delete process.env.ORDER_MANAGER_PHONE;
 
 const adminModule = await import(pathToFileURL(path.join(outDir, "admin.mjs")).href);

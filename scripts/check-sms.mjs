@@ -8,7 +8,10 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
-  buildOrderParts,
+  MELIPAYAMAK_PATTERN_ENDPOINT,
+  PATTERN_SLOTS,
+  buildPatternValues,
+  patternText,
   providerResponseIsSuccessful,
   readSmsConfiguration,
   sendOrderSms,
@@ -41,7 +44,7 @@ const checkAsync = async (name, fn) => {
 const configured = {
   MELIPAYAMAK_USERNAME: "studio",
   MELIPAYAMAK_API_KEY: "secret-key",
-  MELIPAYAMAK_FROM: "30001234",
+  MELIPAYAMAK_PATTERN_CODE: "123456",
   ORDER_MANAGER_PHONE: "09121234567",
 };
 
@@ -84,13 +87,42 @@ check("provider responses are classified", () => {
   assert.equal(providerResponseIsSuccessful(""), false);
 });
 
-check("long orders split into numbered parts", () => {
-  const parts = buildOrderParts({ ...order, message: "توضیح ".repeat(40) });
-  assert.ok(parts.length > 1, "expected multiple parts");
-  parts.forEach((part, index) => {
-    assert.ok(part.startsWith(`${index + 1}/${parts.length}`), `part ${index + 1} prefix`);
-    assert.ok(part.length <= 90, "part stays small enough for one SMS");
-  });
+/* ------------------------------- the pattern ------------------------------- */
+
+check("the pattern slots are the name, then the mobile", () => {
+  // The published copy is:
+  //   درخواست همکاری جدید CAHEN / نام: {0} / موبایل: {1} / CAHEN
+  assert.deepEqual(PATTERN_SLOTS, ["name", "phone"]);
+});
+
+check("the two values come from what the form stored", () => {
+  const values = buildPatternValues(order);
+  assert.equal(values.name, "سارا محمدی");
+  assert.equal(values.phone, "09121234567");
+  assert.equal(patternText(values), "سارا محمدی;09121234567");
+});
+
+check("only two values ever travel, and in that order", () => {
+  const text = patternText(buildPatternValues({ ...order, message: "توضیح", email: "a@b.c" }));
+  assert.equal(text.split(";").length, 2);
+  const [name, phone] = text.split(";");
+  assert.equal(name, "سارا محمدی");
+  assert.equal(phone, "09121234567");
+});
+
+check("a value cannot smuggle a third slot", () => {
+  const values = buildPatternValues({ ...order, name: "سارا;محمدی\n09120000000" });
+  assert.equal(values.name, "سارا محمدی 09120000000");
+  assert.equal(patternText(values).split(";").length, 2);
+});
+
+check("an untrimmed name is collapsed, not cut mid-word", () => {
+  const values = buildPatternValues({ ...order, name: "  سارا   محمدی  " });
+  assert.equal(values.name, "سارا محمدی");
+});
+
+check("an international mobile is sent in local form", () => {
+  assert.equal(buildPatternValues({ ...order, phone: "+989121234567" }).phone, "09121234567");
 });
 
 await checkAsync("missing configuration queues instead of dropping the order", async () => {
@@ -108,23 +140,49 @@ await checkAsync("missing configuration queues instead of dropping the order", a
   assert.ok(result.missing.length > 0);
 });
 
-await checkAsync("configured send posts every field to Melipayamak", async () => {
+await checkAsync("the pattern is posted to the base-service endpoint", async () => {
   const calls = [];
   const result = await sendOrderSms(order, { env: configured, fetchImpl: stubFetch(["1001"], calls) });
   assert.equal(result.status, "sent");
-  assert.equal(result.parts, calls.length);
-  assert.equal(result.references.length, result.parts);
-  assert.ok(calls.length >= 1);
-  assert.match(calls[0].url, /rest\.payamak-panel\.com/);
-  assert.equal(calls[0].body.get("username"), "studio");
-  assert.equal(calls[0].body.get("password"), "secret-key");
-  assert.equal(calls[0].body.get("to"), "09121234567");
-  assert.equal(calls[0].body.get("from"), "30001234");
-  const combined = calls.map((call) => call.body.get("text")).join("\n");
-  assert.match(combined, /C-A1B2C3/);
-  assert.match(combined, /09121234567/);
-  assert.match(combined, /sara@example\.com/);
-  assert.match(combined, /طراحی برند/);
+  assert.equal(calls.length, 1, "one pattern call per order");
+  assert.equal(result.parts, 1);
+  assert.equal(result.sentParts, 1);
+  assert.equal(result.references.length, 1);
+  assert.equal(calls[0].url, MELIPAYAMAK_PATTERN_ENDPOINT);
+  assert.match(calls[0].url, /\/api\/SendSMS\/BaseServiceNumber$/);
+});
+
+await checkAsync("the pattern body carries the code, the recipient and two slots", async () => {
+  const calls = [];
+  await sendOrderSms(order, { env: configured, fetchImpl: stubFetch(["1001"], calls) });
+  const body = calls[0].body;
+  assert.equal(body.get("username"), "studio");
+  assert.equal(body.get("password"), "secret-key");
+  assert.equal(body.get("bodyId"), "123456");
+  assert.equal(body.get("to"), "09121234567", "the studio, not the sender of the form");
+  assert.equal(body.get("text"), "سارا محمدی;09121234567");
+
+  // The old free-text channel is gone: no sender line, no message body, no
+  // flash flag — a pattern call takes none of them.
+  for (const retired of ["from", "isflash"]) {
+    assert.equal(body.get(retired), null, `${retired} must not be sent any more`);
+  }
+  const text = body.get("text");
+  assert.ok(!text.includes("C-A1B2C3"), "the order code is not a slot");
+  assert.ok(!text.includes("sara@example.com"), "the email is not a slot");
+  assert.ok(!text.includes("طراحی برند"), "the service is not a slot");
+});
+
+await checkAsync("a missing slot is queued, not sent half-filled", async () => {
+  let called = false;
+  const result = await sendOrderSms(
+    { ...order, phone: "" },
+    { env: configured, fetchImpl: async () => { called = true; return new Response("1001"); } },
+  );
+  assert.equal(called, false);
+  assert.equal(result.status, "pending");
+  assert.equal(result.error, "sms_missing_values");
+  assert.deepEqual(result.missing, ["موبایل"]);
 });
 
 await checkAsync("provider error code marks the order failed", async () => {
@@ -134,17 +192,14 @@ await checkAsync("provider error code marks the order failed", async () => {
   assert.equal(result.error, "provider_200");
 });
 
-await checkAsync("multi-part delivery records partial when a later part fails", async () => {
-  const longOrder = { ...order, message: "توضیح ".repeat(40) };
+await checkAsync("the reference from the provider is kept", async () => {
   const calls = [];
-  const result = await sendOrderSms(longOrder, {
+  const result = await sendOrderSms(order, {
     env: configured,
-    fetchImpl: stubFetch(["1001", "0"], calls),
+    fetchImpl: stubFetch(['{"RetStatus":1,"Value":"3641"}'], calls),
   });
-  assert.ok(result.parts > 1);
-  assert.equal(result.status, "partial");
-  assert.equal(result.sentParts, 1);
-  assert.equal(result.references.length, 1);
+  assert.equal(result.status, "sent");
+  assert.deepEqual(result.references, ["3641"]);
 });
 
 await checkAsync("network failure never throws", async () => {
